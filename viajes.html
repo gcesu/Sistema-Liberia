@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Operaciones de Viajes - Admin Shuttle</title>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&family=Oswald:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- CONEXIÓN AL MENÚ GLOBAL -->
+    <script src="menu.js" defer></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <style>
+        :root {
+            --primary: #002a3f;
+            --secondary: #ffffff;
+            --accent: #ed4441;
+            --bg-light: #f1f5f9;
+        }
+
+        body {
+            font-family: 'Lato', sans-serif;
+            background-color: var(--bg-light);
+            color: #333;
+            margin: 0;
+            -webkit-font-smoothing: antialiased;
+            font-size: 15px;
+            padding-bottom: 40px;
+        }
+
+        h1, h2, h3, .title-font {
+            font-family: 'Oswald', sans-serif;
+            text-transform: uppercase;
+        }
+        
+        #indexing-status {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 42, 63, 0.95);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            z-index: 98;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            display: none;
+            backdrop-filter: blur(4px);
+            align-items: center;
+            gap: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.3s ease;
+        }
+
+        /* --- ESTILO DE TABLA (CLONADO DE INDEX) --- */
+        .table-wrapper {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 0;
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+        }
+
+        thead th {
+            background-color: #f8fafc;
+            padding: 16px 20px;
+            font-size: 11px;
+            font-weight: 900;
+            text-transform: uppercase;
+            color: #64748b;
+            border-bottom: 2px solid #e2e8f0;
+            text-align: left;
+            letter-spacing: 1px;
+            white-space: nowrap;
+        }
+
+        tbody tr { 
+            background: white;
+            border-bottom: 1px solid #e2e8f0; 
+            transition: all 0.2s ease;
+        }
+
+        tbody tr:hover { 
+            background: #f8fafc; 
+        }
+        
+        td { 
+            padding: 16px 20px; 
+            font-size: 15px; 
+            color: #334155; 
+            vertical-align: middle; 
+        }
+
+        .client-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #e0f2fe;
+            color: #0369a1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 14px;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+
+        /* Estados */
+        .status-pill {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            letter-spacing: 0.5px;
+        }
+        .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+        
+        .status-completed { background: #dcfce7; color: #166534; }
+        .status-processing { background: #fef9c3; color: #854d0e; }
+        .status-on-hold { background: #ffedd5; color: #9a3412; }
+        .status-pending { background: #fef3c7; color: #92400e; }
+        .status-cancelled, .status-failed { background: #fee2e2; color: #991b1b; }
+
+        /* Tipo de Viaje */
+        .trip-badge {
+            font-size: 10px;
+            font-weight: 900;
+            padding: 4px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .badge-arrival { background: #f1f5f9; color: #0f172a; border: 1px solid #e2e8f0; }
+        .badge-departure { background: #fff7ed; color: #9a3412; border: 1px solid #ffedd5; }
+        
+        .date-cell {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.2;
+        }
+        .date-day { font-weight: 800; color: var(--primary); font-size: 15px; }
+
+        /* Filtros */
+        .filter-container {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: end;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: #64748b;
+            margin-bottom: 6px;
+        }
+
+        .custom-input {
+            border: 1px solid #cbd5e1;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            width: 100%;
+            outline: none;
+            transition: all 0.2s;
+            background: #f8fafc;
+        }
+        .custom-input:focus { border-color: var(--primary); background: white; }
+
+        .btn-action {
+            background-color: var(--primary);
+            color: white;
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-weight: 800;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 1px;
+            height: 42px;
+            transition: background 0.2s;
+        }
+        .btn-action:hover { background-color: var(--accent); }
+
+    </style>
+</head>
+<body>
+
+    <!-- Notificación Flotante -->
+    <div id="indexing-status">
+        <div id="status-icon" class="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+        <span id="indexing-text">Iniciando...</span>
+    </div>
+
+    <!-- MENÚ GLOBAL -->
+    <admin-navbar></admin-navbar>
+
+    <main class="max-w-[1600px] mx-auto p-4 md:p-8">
+        
+        <div class="mb-8 flex items-center justify-between">
+             <h2 class="text-2xl font-bold text-[#002a3f] title-font">Logística de Viajes</h2>
+        </div>
+
+        <!-- Panel de Filtros -->
+        <div class="filter-container shadow-sm">
+            <div class="w-full md:w-64 input-group">
+                <label>Rango de Fechas (Viaje)</label>
+                <input type="text" id="date-range" class="custom-input" placeholder="Seleccionar rango...">
+            </div>
+            
+            <div class="w-full md:w-48 input-group">
+                <label>Tipo de Viaje</label>
+                <select id="filter-type" class="custom-input">
+                    <option value="all">Todos</option>
+                    <option value="arrival">Solo Llegadas</option>
+                    <option value="departure">Solo Salidas</option>
+                </select>
+            </div>
+
+            <div class="w-full md:w-64 input-group">
+                <label>Buscar</label>
+                <input type="text" id="search-text" oninput="applyFilters()" class="custom-input" placeholder="Cliente, Hotel, ID...">
+            </div>
+
+            <button onclick="applyFilters()" class="btn-action w-full md:w-auto mt-4 md:mt-0">Filtrar</button>
+            <button onclick="resetFilters()" class="text-gray-400 text-xs font-bold uppercase hover:text-red-500 ml-4">Limpiar</button>
+            
+            <div class="ml-auto flex flex-col items-end">
+                <span class="text-xs text-gray-400 font-bold uppercase">Viajes Visibles</span>
+                <span class="text-2xl font-black text-[#002a3f]" id="total-trips-count">0</span>
+            </div>
+        </div>
+
+        <!-- Tabla -->
+        <div class="table-wrapper shadow-sm overflow-hidden">
+            <table id="trips-table">
+                <thead>
+                    <tr>
+                        <th class="w-20 pl-6">ID</th>
+                        <th class="w-64">Cliente</th>
+                        <th>Fecha / Hora</th>
+                        <th>Tipo</th>
+                        <th>Ruta (Origen ➝ Destino)</th>
+                        <th>Vuelo</th>
+                        <th class="pr-6">Estatus</th>
+                    </tr>
+                </thead>
+                <tbody id="trips-body">
+                    <!-- Filas generadas por JS -->
+                </tbody>
+            </table>
+        </div>
+        
+        <div id="empty-state" class="hidden py-12 text-center">
+            <div class="text-4xl mb-4">📭</div>
+            <h3 class="text-gray-500 font-bold text-lg">No se encontraron viajes</h3>
+            <p class="text-gray-400 text-sm">Prueba ajustando el rango de fechas o esperando la carga.</p>
+        </div>
+
+    </main>
+
+    <script>
+        // API Proxy - Las credenciales están protegidas en el servidor
+        const API_PROXY = "woo-proxy.php";
+
+        const currentYear = new Date().getFullYear();
+        const prevYear = currentYear - 1;
+        const START_DATE_FILTER = `${prevYear}-01-01T00:00:00`;
+        
+        let allTrips = []; 
+        let datePicker;
+        let isIndexing = false;
+
+        function getInitials(name) {
+            if (!name) return "##";
+            const parts = name.split(" ");
+            let initials = parts[0].substring(0, 1).toUpperCase();
+            if (parts.length > 1) initials += parts[parts.length - 1].substring(0, 1).toUpperCase();
+            return initials;
+        }
+
+        window.refreshData = function(page = 1) {
+            allTrips = []; 
+            startBackgroundIndexing();
+        };
+
+        window.onload = () => {
+            initDatePicker();
+            startBackgroundIndexing(); 
+        };
+
+        function initDatePicker() {
+            datePicker = flatpickr("#date-range", {
+                mode: "range",
+                dateFormat: "d/M/Y", 
+                defaultDate: [new Date(), new Date(new Date().setDate(new Date().getDate() + 30))],
+                locale: {
+                    firstDayOfWeek: 1,
+                    rangeSeparator: " a ",
+                    weekdays: {
+                        shorthand: ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa'],
+                        longhand: ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'],
+                    },
+                    months: {
+                        shorthand: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
+                        longhand: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'],
+                    },
+                },
+                onChange: function() {
+                    applyFilters();
+                }
+            });
+        }
+
+        async function startBackgroundIndexing() {
+            if(isIndexing) return;
+            isIndexing = true;
+            toggleIndexingUI(true);
+            
+            let page = 1;
+            let totalPages = 1; 
+            let keepFetching = true;
+            
+            try {
+                while(keepFetching) {
+                    const response = await fetch(`${API_PROXY}?per_page=100&page=${page}&after=${START_DATE_FILTER}&orderby=date&order=desc`);
+                    
+                    if (!response.ok) throw new Error("Error API");
+                    
+                    if (page === 1) {
+                        const totalHeader = response.headers.get('x-wp-totalpages');
+                        if (totalHeader) totalPages = parseInt(totalHeader);
+                    }
+
+                    const orders = await response.json();
+                    
+                    if (Array.isArray(orders) && orders.length > 0) {
+                        const newTrips = processBatch(orders);
+                        allTrips = [...allTrips, ...newTrips];
+                        allTrips.sort((a, b) => a.raw_date - b.raw_date);
+
+                        applyFilters();
+
+                        const progress = Math.min(100, Math.round((page / totalPages) * 100));
+                        updateProgressUI(progress, `Indexando ${progress}%`);
+
+                        if (page >= totalPages || orders.length < 100) {
+                            keepFetching = false;
+                        } else {
+                            page++;
+                        }
+                    } else {
+                        keepFetching = false;
+                    }
+                    
+                    if (page > 50) keepFetching = false; 
+                }
+
+                showCompletionState();
+
+            } catch (error) {
+                console.error(error);
+                updateProgressUI(100, "Error de conexión");
+                setTimeout(() => toggleIndexingUI(false), 3000);
+            } finally {
+                isIndexing = false;
+            }
+        }
+
+        function processBatch(orders) {
+            const batchTrips = [];
+            const ARRIVAL_KEYS = ["- Arrival Date"];
+            const ARRIVAL_TIME_KEYS = ["- Arrival Time", "Arrival Time"];
+            const ARRIVAL_FLIGHT_KEYS = ["- Arrival Flight Number", "Arrival Flight"];
+            const DEPARTURE_KEYS = ["- Departure Date"];
+            const DEPARTURE_TIME_KEYS = ["- Pick-up Time at Hotel", "Pick up Time"];
+            const DEPARTURE_FLIGHT_KEYS = ["- Departure Flight Number", "Departure Flight"];
+
+            orders.forEach(order => {
+                const clientName = `${order.billing.first_name} ${order.billing.last_name}`;
+                const hotel = order.line_items?.[0]?.name || "Hotel no especificado";
+                const status = order.status;
+
+                const arrivalDateStr = findMetaValue(order, ARRIVAL_KEYS);
+                if (arrivalDateStr) {
+                    const parsedDate = parseFlexibleDate(arrivalDateStr);
+                    if (parsedDate) {
+                        const rawTime = findMetaValue(order, ARRIVAL_TIME_KEYS);
+                        const normalizedTime = normalizeTime(rawTime);
+                        const fullDate = new Date(parsedDate);
+                        const [th, tm] = normalizedTime !== '--:--' ? normalizedTime.split(':') : [0, 0];
+                        fullDate.setHours(th, tm);
+
+                        batchTrips.push({
+                            id: order.id,
+                            order_status: status,
+                            client: clientName,
+                            type: 'arrival',
+                            dateStr: formatDateStandard(parsedDate),
+                            time: rawTime || '--:--',
+                            route: `Aeropuerto LIR ➝ ${hotel}`,
+                            flight: findMetaValue(order, ARRIVAL_FLIGHT_KEYS) || '--',
+                            raw_date: fullDate
+                        });
+                    }
+                }
+
+                const departureDateStr = findMetaValue(order, DEPARTURE_KEYS);
+                if (departureDateStr) {
+                    const parsedDate = parseFlexibleDate(departureDateStr);
+                    if (parsedDate) {
+                        const rawTime = findMetaValue(order, DEPARTURE_TIME_KEYS);
+                        const normalizedTime = normalizeTime(rawTime);
+                        const fullDate = new Date(parsedDate);
+                        const [th, tm] = normalizedTime !== '--:--' ? normalizedTime.split(':') : [0, 0];
+                        fullDate.setHours(th, tm);
+
+                        batchTrips.push({
+                            id: order.id,
+                            order_status: status,
+                            client: clientName,
+                            type: 'departure',
+                            dateStr: formatDateStandard(parsedDate),
+                            time: rawTime || '--:--',
+                            route: `${hotel} ➝ Aeropuerto LIR`,
+                            flight: findMetaValue(order, DEPARTURE_FLIGHT_KEYS) || '--',
+                            raw_date: fullDate
+                        });
+                    }
+                }
+            });
+            return batchTrips;
+        }
+
+        function findMetaValue(order, possibleKeys) {
+            const clean = k => k.toLowerCase().trim();
+            const targetKeys = possibleKeys.map(k => clean(k));
+            for (let m of order.meta_data) {
+                if (targetKeys.includes(clean(m.key)) || (m.label && targetKeys.includes(clean(m.label)))) {
+                    if (m.value) return m.value;
+                }
+            }
+            if (order.line_items && Array.isArray(order.line_items)) {
+                for (let item of order.line_items) {
+                    if (item.meta_data) {
+                        for (let m of item.meta_data) {
+                            if (targetKeys.includes(clean(m.key)) || (m.display_key && targetKeys.includes(clean(m.display_key)))) {
+                                if (m.value) return m.value;
+                            }
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        function parseFlexibleDate(dateStr) {
+            if (!dateStr) return null;
+            let s = dateStr.toString().trim();
+            if (s.match(/^\d{4}-\d{2}-\d{2}/)) return new Date(s.substring(0, 10) + 'T12:00:00'); 
+            if (s.includes('/')) {
+                const parts = s.split('/');
+                if (parts.length === 3) {
+                    if (parts[0].length === 4) return new Date(`${parts[0]}-${parts[1]}-${parts[2]}T12:00:00`);
+                    return new Date(`${parts[2]}-${parts[0]}-${parts[1]}T12:00:00`);
+                }
+            }
+            const d = new Date(s.replace(/ de /gi, ' ').replace(/ del /gi, ' '));
+            return isNaN(d.getTime()) ? null : d;
+        }
+
+        function formatDateStandard(dateObj) {
+            if (!dateObj || isNaN(dateObj.getTime())) return '---';
+            const day = dateObj.getDate().toString().padStart(2, '0');
+            const months = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
+            const month = months[dateObj.getMonth()];
+            const year = dateObj.getFullYear();
+            return `${day}/${month}/${year}`;
+        }
+
+        function toggleIndexingUI(show) {
+            document.getElementById('indexing-status').style.display = show ? 'flex' : 'none';
+        }
+
+        function updateProgressUI(percent, text) {
+            document.getElementById('indexing-text').innerText = text;
+        }
+
+        function showCompletionState() {
+            const iconDiv = document.getElementById('status-icon');
+            const textSpan = document.getElementById('indexing-text');
+            if(iconDiv) iconDiv.className = "w-3 h-3 bg-green-500 rounded-full shadow-[0_0_10px_rgba(34,197,94,0.8)]";
+            if(textSpan) textSpan.innerText = "100% Indexado";
+        }
+
+        function applyFilters() {
+            const range = datePicker.selectedDates;
+            const typeFilter = document.getElementById('filter-type').value;
+            const searchText = document.getElementById('search-text').value.toLowerCase();
+
+            let filtered = allTrips;
+
+            if (range.length === 2) {
+                const start = range[0]; start.setHours(0,0,0,0);
+                const end = range[1]; end.setHours(23,59,59,999);
+                filtered = filtered.filter(t => t.raw_date >= start && t.raw_date <= end);
+            }
+
+            if (typeFilter !== 'all') {
+                filtered = filtered.filter(t => t.type === typeFilter);
+            }
+
+            if (searchText) {
+                filtered = filtered.filter(t => 
+                    t.client.toLowerCase().includes(searchText) || 
+                    t.route.toLowerCase().includes(searchText) ||
+                    t.id.toString().includes(searchText)
+                );
+            }
+
+            renderTrips(filtered);
+        }
+
+        function renderTrips(trips) {
+            const tbody = document.getElementById('trips-body');
+            tbody.innerHTML = '';
+            document.getElementById('total-trips-count').innerText = trips.length;
+
+            if (trips.length === 0) {
+                document.getElementById('empty-state').classList.remove('hidden');
+            } else {
+                document.getElementById('empty-state').classList.add('hidden');
+                trips.forEach(trip => {
+                    const isArrival = trip.type === 'arrival';
+                    const initials = getInitials(trip.client);
+                    
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td class="pl-6 font-bold text-gray-400">#${trip.id}</td>
+                        <td>
+                            <div class="flex items-center">
+                                <div class="client-avatar">${initials}</div>
+                                <span class="font-bold text-[#002a3f] text-base">${trip.client}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="date-cell">
+                                <span class="date-day">${trip.dateStr}</span>
+                                <span class="text-xs font-bold text-gray-400 uppercase">${trip.time}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="trip-badge ${isArrival ? 'badge-arrival' : 'badge-departure'}">
+                                ${isArrival ? 'Llegada' : 'Salida'}
+                            </span>
+                        </td>
+                        <td class="font-semibold text-gray-600 text-sm">${trip.route}</td>
+                        <td class="font-mono text-sm text-gray-500">${trip.flight}</td>
+                        <td class="pr-6">
+                            <div class="status-pill status-${trip.order_status}">
+                                <span class="status-dot"></span>
+                                ${translateStatus(trip.order_status)}
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+        }
+
+        function resetFilters() {
+            datePicker.clear();
+            document.getElementById('filter-type').value = 'all';
+            document.getElementById('search-text').value = '';
+            applyFilters();
+        }
+
+        function normalizeTime(t) {
+            if (!t) return "--:--";
+            const timeLower = t.toLowerCase();
+            const isPM = timeLower.includes('pm');
+            const isAM = timeLower.includes('am');
+            let [hours, mins] = t.replace(/[^0-9:]/g, '').split(':');
+            if (!hours) return t;
+            if (!mins) mins = '00';
+            let h = parseInt(hours);
+            if (isPM && h < 12) h += 12;
+            if (isAM && h === 12) h = 0;
+            return `${h.toString().padStart(2, '0')}:${mins}`;
+        }
+
+        function translateStatus(s) { 
+            const map = { 'pending': 'Pendiente', 'processing': 'Procesando', 'on-hold': 'Espera', 'completed': 'Completado', 'cancelled': 'Cancelado', 'failed': 'Fallido' }; 
+            return map[s] || s; 
+        }
+
+        function getRelativeTime(d) {
+            const now = new Date(); now.setHours(0,0,0,0);
+            const target = new Date(d); target.setHours(0,0,0,0);
+            const diff = Math.floor((target - now) / (1000 * 60 * 60 * 24));
+            if (diff === 0) return 'Hoy';
+            if (diff === 1) return 'Mañana';
+            if (diff === -1) return 'Ayer';
+            if (diff > 0) return `En ${diff} días`;
+            return `Hace ${Math.abs(diff)} días`;
+        }
+    </script>
+</body>
+</html>

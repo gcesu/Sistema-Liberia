@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Shuttle - Liberia Airport Shuttle</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&family=Oswald:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- CONEXIÓN AL MENÚ -->
+    <script src="menu.js" defer></script>
+
+    <style>
+        :root {
+            --primary: #002a3f;
+            --secondary: #ffffff;
+            --accent: #ed4441;
+            --bg-light: #f1f5f9;
+            --whatsapp: #25d366;
+            --email-btn: #3b82f6;
+        }
+
+        body {
+            font-family: 'Lato', sans-serif;
+            background-color: var(--bg-light);
+            color: #333;
+            margin: 0;
+            -webkit-font-smoothing: antialiased;
+            font-size: 15px;
+        }
+
+        h1, h2, h3, .title-font {
+            font-family: 'Oswald', sans-serif;
+            text-transform: uppercase;
+        }
+
+        .main-container {
+            width: 100%;
+            padding: 15px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        @media (min-width: 768px) {
+            .main-container { padding: 30px; }
+        }
+
+        /* --- ESTILO DE TABLA LINEAL --- */
+        .table-wrapper {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 0;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+        }
+
+        thead th {
+            background-color: #f8fafc;
+            padding: 16px 20px;
+            font-size: 11px;
+            font-weight: 900;
+            text-transform: uppercase;
+            color: #64748b;
+            border-bottom: 2px solid #e2e8f0;
+            text-align: left;
+            letter-spacing: 1px;
+        }
+
+        tbody tr { 
+            background: white;
+            border-bottom: 1px solid #e2e8f0; 
+            transition: all 0.2s ease;
+        }
+
+        tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        tbody tr:hover { 
+            background: #f8fafc; 
+        }
+        
+        @media (min-width: 768px) {
+            td { padding: 16px 20px; font-size: 15px; color: #334155; vertical-align: middle; }
+        }
+
+        @media (max-width: 767px) {
+            .table-wrapper { border: none; background: transparent; }
+            table, thead, tbody, th, td, tr { display: block; }
+            thead tr { position: absolute; top: -9999px; left: -9999px; }
+            tr {
+                margin-bottom: 15px;
+                border: 1px solid #e2e8f0;
+                border-radius: 0;
+                padding: 20px;
+                background: white;
+                box-shadow: none;
+            }
+            td {
+                border: none;
+                position: relative;
+                padding-left: 0 !important;
+                text-align: left;
+                font-size: 15px;
+                padding: 8px 0;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 1px dashed #f1f5f9;
+            }
+            td:last-child { border-bottom: none; display: block; margin-top: 15px; }
+            td:before {
+                content: attr(data-label);
+                display: inline-block;
+                font-weight: 800;
+                text-transform: uppercase;
+                font-size: 10px;
+                color: #94a3b8;
+                margin-right: 10px;
+                min-width: 80px;
+            }
+        }
+
+        .client-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #e0f2fe;
+            color: #0369a1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 14px;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+
+        .status-pill {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            letter-spacing: 0.5px;
+        }
+        .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+        
+        .status-pill-clickable { cursor: pointer; }
+        .status-pill-clickable:hover { transform: scale(1.05); filter: brightness(0.9); }
+
+        .status-completed { background: #dcfce7; color: #166534; }
+        .status-processing { background: #fef9c3; color: #854d0e; }
+        .status-on-hold { background: #ffedd5; color: #9a3412; }
+        .status-pending { background: #fef3c7; color: #92400e; }
+        .status-cancelled, .status-failed { background: #fee2e2; color: #991b1b; }
+
+        .status-summary-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 16px;
+            background: white;
+            border-radius: 30px;
+            font-size: 11px;
+            font-weight: 900;
+            color: #64748b;
+            border: 1px solid #e2e8f0;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+        }
+
+        .status-summary-item:hover {
+            transform: translateY(-2px);
+            background: white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .status-summary-item.active-filter {
+            border-color: var(--primary);
+            background: white;
+            color: var(--primary);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        #modal-box {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: white;
+            overflow: hidden;
+        }
+
+        @media (min-width: 1024px) {
+            #modal-box {
+                width: 95vw;
+                height: 90vh;
+                max-width: 1400px;
+                border-radius: 16px;
+            }
+        }
+        
+        @media (max-width: 767px) {
+            #modal-box { padding: 0; height: 100dvh; }
+            .passenger-info .meta-field-value { font-size: 20px; }
+            .meta-field-value { font-size: 15px; }
+        }
+
+        .meta-field-label {
+            font-size: 10px;
+            font-weight: 800;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .meta-field-value {
+            font-weight: 700;
+            color: var(--primary);
+            font-size: 15px;
+            line-height: 1.4;
+        }
+
+        .input-editable {
+            width: 100%;
+            background-color: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--primary);
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .input-editable:focus {
+            border-color: var(--accent);
+            background-color: white;
+        }
+
+        #input-email, #display-email {
+            text-transform: lowercase;
+        }
+
+        .btn-whatsapp {
+            background-color: var(--whatsapp);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-weight: 800;
+            font-size: 12px;
+            text-transform: uppercase;
+            width: 100%;
+            margin-top: 8px;
+        }
+
+        .btn-email {
+            background-color: var(--email-btn);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-weight: 800;
+            font-size: 12px;
+            text-transform: uppercase;
+            width: 100%;
+            margin-top: 6px;
+        }
+
+        @media (min-width: 768px) {
+            .btn-whatsapp, .btn-email { width: fit-content; }
+        }
+
+        .operation-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .operation-card-header {
+            padding: 12px 20px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .operation-card-title {
+            font-size: 13px;
+            font-weight: 900;
+            text-transform: uppercase;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .operation-card-body {
+            padding: 20px;
+        }
+
+        .operation-section-label {
+            font-size: 10px;
+            font-weight: 900;
+            text-transform: uppercase;
+            color: #94a3b8;
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+            border-bottom: 1px dashed #e2e8f0;
+            padding-bottom: 4px;
+        }
+
+        .route-visualizer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            gap: 20px;
+            background: #002a3f;
+            color: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,42,63,0.15);
+        }
+
+        .route-point {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            flex: 1;
+        }
+
+        .route-point-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            opacity: 0.7;
+            letter-spacing: 1px;
+        }
+
+        .route-point-name {
+            font-size: 16px;
+            font-weight: 700;
+            text-align: center;
+            line-height: 1.2;
+        }
+        
+        #route-separator-emoji {
+            font-size: 28px;
+        }
+
+        .info-pill {
+            background: #f1f5f9;
+            color: #475569;
+            padding: 6px 12px;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1px solid #e2e8f0;
+        }
+
+        @media (min-width: 1024px) {
+            .column-scroll {
+                scrollbar-width: thin;
+                scrollbar-color: #cbd5e1 transparent;
+            }
+            .column-scroll::-webkit-scrollbar {
+                width: 6px;
+            }
+            .column-scroll::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            .column-scroll::-webkit-scrollbar-thumb {
+                background-color: #cbd5e1;
+                border-radius: 20px;
+            }
+        }
+
+        .btn-section-edit {
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            padding: 4px 10px;
+            background: white;
+            border: 1px solid #cbd5e1;
+            color: #64748b;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        .btn-section-edit:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        .btn-section-edit.editing {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        .table-trip-cell {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .table-trip-route {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 500;
+            color: var(--primary);
+            font-size: 14px;
+        }
+        .table-trip-label {
+            font-size: 9px;
+            font-weight: 900;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .modal-sidebar {
+            background-color: white;
+            border-right: 1px solid #f1f5f9;
+        }
+        .modal-main-content {
+            background-color: #f8fafc;
+        }
+        
+        .field-group-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        @media (max-width: 640px) {
+            .field-group-row { grid-template-columns: 1fr; gap: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Loader -->
+    <div id="global-loader" class="hidden fixed inset-0 bg-white/90 flex items-center justify-center z-[999]">
+        <div class="flex flex-col items-center">
+            <div class="w-10 h-10 border-4 border-gray-200 border-t-[#ed4441] rounded-full animate-spin mb-4"></div>
+            <p class="text-[12px] font-black uppercase tracking-widest text-[#002a3f]">Sincronizando...</p>
+        </div>
+    </div>
+
+    <!-- AQUÍ ESTÁ EL MENÚ CENTRALIZADO -->
+    <admin-navbar></admin-navbar>
+
+    <main class="main-container">
+        <!-- Dashboard Header -->
+        <div class="mb-8 flex flex-col xl:flex-row items-start xl:items-end justify-between gap-6">
+            <div class="space-y-4 w-full xl:w-auto">
+                <h2 class="text-2xl font-bold text-[#002a3f] title-font">Gestión de Reservas</h2>
+                <div class="flex flex-wrap gap-3">
+                    <div id="filter-pending" onclick="filterByStatus('pending')" class="status-summary-item bg-amber-50 border-amber-100 text-amber-600">
+                        <span class="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span>
+                        <span id="stat-pending">0</span> PENDIENTES
+                    </div>
+                    <div id="clear-filter-btn" onclick="filterByStatus('')" class="hidden status-summary-item bg-gray-100 border-gray-200 text-gray-500">
+                        &times; QUITAR FILTRO
+                    </div>
+                </div>
+            </div>
+
+            <!-- Buscador Manual -->
+            <div class="flex flex-col sm:flex-row gap-3 w-full xl:w-auto mt-4 xl:mt-0">
+                <div class="relative flex-1 md:w-80">
+                    <input type="text" id="search-input" oninput="handleSearchInput()" onkeydown="if(event.key==='Enter') refreshData(1)" placeholder="Buscar cliente, ID..." class="bg-white border border-gray-200 shadow-sm rounded-xl px-10 py-3 pr-10 text-sm w-full focus:ring-2 focus:ring-[#ed4441]/20 outline-none h-12">
+                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg pointer-events-none">🔍</span>
+                    <button id="btn-clear-search" onclick="clearSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 text-xl transition-all">&times;</button>
+                </div>
+                <button onclick="refreshData(1)" class="bg-[#002a3f] text-white px-6 h-12 rounded-xl font-bold uppercase text-[11px] tracking-widest hover:bg-[#ed4441] transition-all shadow-md">Buscar</button>
+            </div>
+        </div>
+
+        <div class="table-wrapper">
+            <table id="main-table">
+                <thead>
+                    <tr>
+                        <th class="w-20 pl-6">ID</th>
+                        <th class="w-64">Cliente</th>
+                        <th>Trayecto / Hotel</th>
+                        <th>Fecha Reserva</th>
+                        <th>Estado</th>
+                        <th class="text-right pr-6">Acción</th>
+                    </tr>
+                </thead>
+                <tbody id="full-rows" class="space-y-4"></tbody>
+            </table>
+        </div>
+
+        <div class="flex flex-col md:flex-row items-center justify-between mt-8 gap-4">
+            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider" id="pagination-info"></p>
+            <div class="flex flex-wrap justify-center gap-2" id="pagination-controls"></div>
+        </div>
+    </main>
+
+    <!-- Modal Detalle Responsivo -->
+    <div id="order-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] hidden flex items-center justify-center p-0 md:p-4" onclick="closeModal()">
+        <div id="modal-box" onclick="event.stopPropagation()" class="shadow-2xl overflow-hidden md:rounded-[24px]">
+            <!-- Header Modal -->
+            <div class="px-6 md:px-8 py-4 border-b flex justify-between items-center bg-white">
+                <div class="flex flex-wrap items-center gap-4">
+                    <h3 id="modal-title" class="text-xl md:text-2xl font-bold text-[#002a3f] title-font"></h3>
+                    
+                    <div id="status-display-container" onclick="toggleStatusEditQuick()" class="flex items-center gap-2 group cursor-pointer">
+                        <span id="det-status-pill" class="status-pill status-pill-clickable transition-all duration-300"></span>
+                        <svg class="w-4 h-4 text-gray-400 group-hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                    </div>
+
+                    <div id="status-edit-container" class="hidden">
+                        <select id="input-status" onchange="checkForChanges()" class="bg-white border-2 border-gray-200 rounded-lg px-3 py-1 text-sm font-bold uppercase outline-none focus:border-[#ed4441]">
+                            <option value="pending">Pendiente</option>
+                            <option value="processing">Procesando</option>
+                            <option value="on-hold">Espera</option>
+                            <option value="completed">Completado</option>
+                            <option value="cancelled">Cancelado</option>
+                            <option value="failed">Fallido</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <button onclick="closeModal()" class="text-3xl text-gray-300 hover:text-gray-600 transition">&times;</button>
+            </div>
+            
+            <div class="flex-1 overflow-hidden flex flex-col lg:flex-row">
+                <!-- Columna Izquierda: Cliente (Sidebar) -->
+                <div class="modal-sidebar w-full lg:w-[320px] lg:flex-shrink-0 overflow-y-auto column-scroll border-r">
+                    <div class="p-6 md:p-8">
+                        <div class="flex justify-between items-center mb-6">
+                            <h4 class="text-[11px] font-black text-gray-400 uppercase tracking-widest">Cliente</h4>
+                            <button id="btn-edit-passenger" onclick="togglePassengerEdit()" class="btn-section-edit">Editar</button>
+                        </div>
+                        
+                        <div class="flex flex-col items-center mb-6">
+                            <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center text-3xl mb-3">👤</div>
+                            <div id="display-name" class="font-bold text-xl text-[#002a3f] text-center leading-tight"></div>
+                            <input type="text" id="input-name" oninput="checkForChanges()" class="hidden input-editable text-center mt-2" placeholder="Nombre completo">
+                        </div>
+
+                        <div class="space-y-6">
+                            <div class="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                <p class="meta-field-label">📧 Correo</p>
+                                <div id="display-email" class="meta-field-value break-all"></div>
+                                <input type="email" id="input-email" oninput="handleEmailInput()" class="hidden input-editable" placeholder="ejemplo@correo.com">
+                                <a id="det-email-link" href="#" class="btn-email">Enviar Correo</a>
+                            </div>
+
+                            <div class="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                <p class="meta-field-label">📞 Teléfono</p>
+                                <div id="display-phone" class="meta-field-value"></div>
+                                <input type="text" id="input-phone" oninput="checkForChanges()" class="hidden input-editable" placeholder="+000 0000 0000">
+                                <a id="det-whatsapp-link" href="#" target="_blank" class="btn-whatsapp">WhatsApp</a>
+                            </div>
+
+                            <div class="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                <p class="meta-field-label">🌍 País</p>
+                                <div id="display-country" class="meta-field-value"></div>
+                                <select id="input-country" onchange="checkForChanges()" class="hidden input-editable">
+                                    <option value="">Selecciona un país</option>
+                                </select>
+                            </div>
+
+                            <div class="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                <p class="meta-field-label">📍 Dirección</p>
+                                <div id="display-address" class="meta-field-value text-sm"></div>
+                                <textarea id="input-address" oninput="checkForChanges()" rows="2" class="hidden input-editable resize-none" placeholder="Dirección completa"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Columna Derecha: Operaciones (Main Content) -->
+                <div class="modal-main-content flex-1 overflow-y-auto column-scroll p-6 md:p-8">
+                    <!-- Sección de Ruta y Resumen -->
+                    <div id="general-service-info" class="hidden">
+                        <div id="route-display" class="route-visualizer">
+                            <div class="route-point">
+                                <span class="text-3xl" id="origin-icon">✈️</span>
+                                <span class="route-point-label" id="origin-label">Origen</span>
+                                <span class="route-point-name" id="origin-name">LIR Airport</span>
+                            </div>
+                            
+                            <div class="route-separator-container">
+                                <span id="route-separator-emoji">➡️</span>
+                            </div>
+
+                            <div class="route-point">
+                                <span class="text-3xl" id="dest-icon">🏨</span>
+                                <span class="route-point-label" id="dest-label">Destino</span>
+                                <span class="route-point-name" id="dest-name">Hotel Name</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Píldoras Resumen -->
+                        <div class="flex flex-wrap gap-3 mb-8">
+                            <div class="info-pill bg-white shadow-sm">
+                                <span class="text-gray-400 text-[10px] uppercase font-bold">Tipo:</span>
+                                <span id="general-trip-type" class="font-bold text-[#002a3f] uppercase"></span>
+                            </div>
+                            <div class="info-pill bg-white shadow-sm">
+                                <span class="text-gray-400 text-[10px] uppercase font-bold">Pax:</span>
+                                <span id="general-pax-value" class="font-bold text-[#002a3f]"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Grid de Logística y Asignación -->
+                    <div id="logistics-container" class="grid grid-cols-1 gap-6 mb-8">
+                        <!-- Tarjeta Llegada -->
+                        <div id="col-arrival" class="operation-card">
+                            <div class="operation-card-header">
+                                <div class="operation-card-title">
+                                    <span class="title-dot-arrival"></span> LLEGADA
+                                </div>
+                                <button id="btn-edit-arrival" onclick="toggleArrivalEdit()" class="btn-section-edit">Editar</button>
+                            </div>
+                            <div class="operation-card-body space-y-5">
+                                <!-- Logística -->
+                                <div>
+                                    <div id="arrival-fields-list" class="grid grid-cols-2 gap-4"></div>
+                                </div>
+                                
+                                <!-- Asignación -->
+                                <div class="bg-blue-50/50 -mx-5 -mb-5 p-5 border-t border-blue-100">
+                                    <div class="operation-section-label text-blue-400 border-blue-200">Asignación Operativa</div>
+                                    <div class="space-y-4">
+                                        <div class="field-group-row">
+                                            <div>
+                                                <p class="meta-field-label">🚐 Chofer</p>
+                                                <select id="input-meta-chofer_llegada" onchange="checkForChanges()" class="input-editable bg-white"></select>
+                                            </div>
+                                            <div>
+                                                <p class="meta-field-label">👥 Subchofer</p>
+                                                <select id="input-meta-subchofer_llegada" onchange="checkForChanges()" class="input-editable bg-white"></select>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <p class="meta-field-label">📢 Nota Choferes</p>
+                                            <textarea id="input-meta-nota_choferes_llegada" oninput="checkForChanges()" rows="2" class="input-editable bg-white resize-none h-16"></textarea>
+                                        </div>
+                                        <div>
+                                            <p class="meta-field-label">🔒 Notas Internas</p>
+                                            <textarea id="input-meta-notas_internas_llegada" oninput="checkForChanges()" rows="1" class="input-editable bg-white resize-none"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tarjeta Salida -->
+                        <div id="col-departure" class="operation-card">
+                            <div class="operation-card-header">
+                                <div class="operation-card-title">
+                                    <span class="title-dot-departure"></span> SALIDA
+                                </div>
+                                <button id="btn-edit-departure" onclick="toggleDepartureEdit()" class="btn-section-edit">Editar</button>
+                            </div>
+                            <div class="operation-card-body space-y-5">
+                                <!-- Logística -->
+                                <div>
+                                    <div id="departure-fields-list" class="grid grid-cols-2 gap-4"></div>
+                                </div>
+
+                                <!-- Asignación -->
+                                <div class="bg-orange-50/50 -mx-5 -mb-5 p-5 border-t border-orange-100">
+                                    <div class="operation-section-label text-orange-400 border-orange-200">Asignación Operativa</div>
+                                    <div class="space-y-4">
+                                        <div class="field-group-row">
+                                            <div>
+                                                <p class="meta-field-label">🚐 Chofer</p>
+                                                <select id="input-meta-chofer_salida" onchange="checkForChanges()" class="input-editable bg-white"></select>
+                                            </div>
+                                            <div>
+                                                <p class="meta-field-label">👥 Subchofer</p>
+                                                <select id="input-meta-subchofer_salida" onchange="checkForChanges()" class="input-editable bg-white"></select>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <p class="meta-field-label">📢 Nota Choferes</p>
+                                            <textarea id="input-meta-nota_choferes_ida" oninput="checkForChanges()" rows="2" class="input-editable bg-white resize-none h-16"></textarea>
+                                        </div>
+                                        <div>
+                                            <p class="meta-field-label">🔒 Notas Internas</p>
+                                            <textarea id="input-meta-notas_internas_salida" oninput="checkForChanges()" rows="1" class="input-editable bg-white resize-none"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Información de Pago -->
+                    <div id="order-totals-container" class="mt-4">
+                        <div class="bg-white border rounded-xl p-5 shadow-sm max-w-md ml-auto">
+                            <h5 class="operation-section-label mb-4" style="border:none;">Resumen Financiero</h5>
+                            <div id="payment-breakdown-list" class="space-y-3"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Modal -->
+            <div class="p-4 border-t bg-white flex justify-end gap-3 rounded-b-xl">
+                <button onclick="saveOrderDetails()" id="btn-save" class="hidden px-6 py-2 bg-green-600 text-white rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-green-700 transition-all shadow-md">Guardar Cambios</button>
+                <button onclick="closeModal()" class="px-6 py-2 bg-gray-100 text-gray-600 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-gray-200 transition">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API Proxy - Las credenciales están protegidas en el servidor
+        const API_PROXY = "woo-proxy.php";
+
+        // CALCULAR FECHA DE INICIO (Año actual - 1)
+        const currentYear = new Date().getFullYear();
+        const prevYear = currentYear - 1;
+        // Formato ISO8601 para WooCommerce: YYYY-MM-DDTHH:MM:SS
+        const START_DATE_FILTER = `${prevYear}-01-01T00:00:00`;
+
+        // --- UTILIDADES ---
+        function formatDateShort(d) {
+            if (!d) return '---';
+            let dateObj = new Date(d);
+            
+            if (typeof d === 'string') {
+                const datePart = d.split('T')[0];
+                if (datePart.includes('-')) {
+                    const parts = datePart.split('-');
+                    if (parts.length === 3) {
+                        dateObj = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                    }
+                }
+            }
+
+            if (isNaN(dateObj.getTime())) return d;
+
+            const day = dateObj.getDate().toString().padStart(2, '0');
+            const months = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
+            const month = months[dateObj.getMonth()];
+            const year = dateObj.getFullYear();
+
+            return `${day}/${month}/${year}`;
+        }
+
+        function formatTime12h(timeStr) {
+            if (!timeStr || timeStr.toLowerCase().includes('am') || timeStr.toLowerCase().includes('pm')) return timeStr;
+            const match = timeStr.match(/^(\d{1,2}):(\d{2})/);
+            if (!match) return timeStr;
+            let hours = parseInt(match[1]);
+            const minutes = match[2];
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12 || 12;
+            return `${hours}:${minutes} ${ampm}`;
+        }
+
+        function normalizeForInput(val, type) {
+            if (!val) return "";
+            if (type === 'date') return val.split('T')[0].split(' ')[0];
+            if (type === 'time') {
+                const match = val.match(/(\d{1,2}):(\d{2})/);
+                if (match) {
+                    let h = parseInt(match[1]);
+                    if (val.toLowerCase().includes('pm') && h < 12) h += 12;
+                    if (val.toLowerCase().includes('am') && h === 12) h = 0;
+                    return `${h.toString().padStart(2, '0')}:${match[2]}`;
+                }
+            }
+            return val;
+        }
+
+        function formatPhoneNumber(phone, countryCode) {
+            if (!phone) return 'N/A';
+            const clean = phone.replace(/\D/g, '');
+            const country = countryCode?.toUpperCase() || '';
+            const prefixes = { 'CR': '506', 'US': '1', 'CA': '1', 'MX': '52', 'ES': '34' };
+            const prefix = prefixes[country] || '';
+            let raw = clean;
+            if (prefix && clean.startsWith(prefix)) raw = clean.slice(prefix.length);
+            if (country === 'CR') return `+506 ${raw.length === 8 ? `${raw.slice(0, 4)} ${raw.slice(4)}` : raw}`;
+            return prefix ? `+${prefix} ${raw}` : raw;
+        }
+        
+        function getInitials(name) {
+            if (!name) return "##";
+            const parts = name.split(" ");
+            let initials = parts[0].substring(0, 1).toUpperCase();
+            if (parts.length > 1) initials += parts[parts.length - 1].substring(0, 1).toUpperCase();
+            return initials;
+        }
+
+        const COUNTRY_MAP = { 'AF': { name: 'Afganistán' }, 'AL': { name: 'Albania' }, 'DZ': { name: 'Argelia' }, 'AD': { name: 'Andorra' }, 'AO': { name: 'Angola' }, 'AG': { name: 'Antigua y Barbuda' }, 'AR': { name: 'Argentina' }, 'AM': { name: 'Armenia' }, 'AU': { name: 'Australia' }, 'AT': { name: 'Austria' }, 'AZ': { name: 'Azerbaiyán' }, 'BS': { name: 'Bahamas' }, 'BH': { name: 'Baréin' }, 'BD': { name: 'Bangladés' }, 'BB': { name: 'Barbados' }, 'BY': { name: 'Bielorrusia' }, 'BE': { name: 'Bélgica' }, 'BZ': { name: 'Belice' }, 'BJ': { name: 'Benín' }, 'BT': { name: 'Bután' }, 'BO': { name: 'Bolivia' }, 'BA': { name: 'Bosnia y Herzegovina' }, 'BW': { name: 'Botsuana' }, 'BR': { name: 'Brasil' }, 'BN': { name: 'Brunéi' }, 'BG': { name: 'Bulgaria' }, 'BF': { name: 'Burkina Faso' }, 'BI': { name: 'Burundi' }, 'KH': { name: 'Camboya' }, 'CM': { name: 'Camerún' }, 'CA': { name: 'Canadá' }, 'CV': { name: 'Cabo Verde' }, 'CF': { name: 'República Centroafricana' }, 'TD': { name: 'Chad' }, 'CL': { name: 'Chile' }, 'CN': { name: 'China' }, 'CO': { name: 'Colombia' }, 'KM': { name: 'Comoras' }, 'CG': { name: 'Congo' }, 'CD': { name: 'Congo, República Democrática del' }, 'CR': { name: 'Costa Rica' }, 'HR': { name: 'Croacia' }, 'CU': { name: 'Cuba' }, 'CY': { name: 'Chipre' }, 'CZ': { name: 'República Checa' }, 'DK': { name: 'Dinamarca' }, 'DJ': { name: 'Yibuti' }, 'DM': { name: 'Dominica' }, 'DO': { name: 'República Dominicana' }, 'EC': { name: 'Ecuador' }, 'EG': { name: 'Egipto' }, 'SV': { name: 'El Salvador' }, 'GQ': { name: 'Guinea Ecuatorial' }, 'ER': { name: 'Eritrea' }, 'EE': { name: 'Estonia' }, 'ET': { name: 'Etiopía' }, 'FJ': { name: 'Fiyi' }, 'FI': { name: 'Finlandia' }, 'FR': { name: 'Francia' }, 'GA': { name: 'Gabón' }, 'GM': { name: 'Gambia' }, 'GE': { name: 'Georgia' }, 'DE': { name: 'Alemania' }, 'GH': { name: 'Ghana' }, 'GR': { name: 'Grecia' }, 'GD': { name: 'Granada' }, 'GT': { name: 'Guatemala' }, 'GN': { name: 'Guinea' }, 'GW': { name: 'Guinea-Bisáu' }, 'GY': { name: 'Guyana' }, 'HT': { name: 'Haití' }, 'HN': { name: 'Honduras' }, 'HU': { name: 'Hungría' }, 'IS': { name: 'Islandia' }, 'IN': { name: 'India' }, 'ID': { name: 'Indonesia' }, 'IR': { name: 'Irán' }, 'IQ': { name: 'Irak' }, 'IE': { name: 'Irlanda' }, 'IL': { name: 'Israel' }, 'IT': { name: 'Italia' }, 'JM': { name: 'Jamaica' }, 'JP': { name: 'Japón' }, 'JO': { name: 'Jordania' }, 'KZ': { name: 'Kazajistán' }, 'KE': { name: 'Kenia' }, 'KI': { name: 'Kiribati' }, 'KW': { name: 'Kuwait' }, 'KG': { name: 'Kirguistán' }, 'LA': { name: 'Laos' }, 'LV': { name: 'Letonia' }, 'LB': { name: 'Líbano' }, 'LS': { name: 'Lesoto' }, 'LR': { name: 'Liberia' }, 'LY': { name: 'Libia' }, 'LI': { name: 'Liechtenstein' }, 'LT': { name: 'Lituania' }, 'LU': { name: 'Luxemburgo' }, 'MK': { name: 'Macedonia del Norte' }, 'MG': { name: 'Madagascar' }, 'MW': { name: 'Malaui' }, 'MY': { name: 'Malasia' }, 'MV': { name: 'Maldivas' }, 'ML': { name: 'Malí' }, 'MT': { name: 'Malta' }, 'MH': { name: 'Islas Marshall' }, 'MR': { name: 'Mauritania' }, 'MU': { name: 'Mauricio' }, 'MX': { name: 'México' }, 'FM': { name: 'Micronesia' }, 'MD': { name: 'Moldavia' }, 'MC': { name: 'Mónaco' }, 'MN': { name: 'Mongolia' }, 'ME': { name: 'Montenegro' }, 'MA': { name: 'Marruecos' }, 'MZ': { name: 'Mozambique' }, 'MM': { name: 'Myanmar' }, 'NA': { name: 'Namibia' }, 'NR': { name: 'Nauru' }, 'NP': { name: 'Nepal' }, 'NL': { name: 'Países Bajos' }, 'NZ': { name: 'Nueva Zelanda' }, 'NI': { name: 'Nicaragua' }, 'NE': { name: 'Níger' }, 'NG': { name: 'Nigeria' }, 'KP': { name: 'Corea del Norte' }, 'NO': { name: 'Noruega' }, 'OM': { name: 'Omán' }, 'PK': { name: 'Pakistán' }, 'PW': { name: 'Palaos' }, 'PA': { name: 'Panamá' }, 'PG': { name: 'Papúa Nueva Guinea' }, 'PY': { name: 'Paraguay' }, 'PE': { name: 'Perú' }, 'PH': { name: 'Filipinas' }, 'PL': { name: 'Polonia' }, 'PT': { name: 'Portugal' }, 'QA': { name: 'Catar' }, 'RO': { name: 'Rumania' }, 'RU': { name: 'Rusia' }, 'RW': { name: 'Ruanda' }, 'KN': { name: 'San Cristóbal y Nieves' }, 'LC': { name: 'Santa Lucía' }, 'VC': { name: 'San Vicente y las Granadinas' }, 'WS': { name: 'Samoa' }, 'SM': { name: 'San Marino' }, 'ST': { name: 'Santo Tomé y Príncipe' }, 'SA': { name: 'Arabia Saudita' }, 'SN': { name: 'Senegal' }, 'RS': { name: 'Serbia' }, 'SC': { name: 'Seychelles' }, 'SL': { name: 'Sierra Leona' }, 'SG': { name: 'Singapur' }, 'SK': { name: 'Eslovaquia' }, 'SI': { name: 'Eslovenia' }, 'SB': { name: 'Islas Salomón' }, 'SO': { name: 'Somalia' }, 'ZA': { name: 'Sudáfrica' }, 'KR': { name: 'Corea del Sur' }, 'ES': { name: 'España' }, 'LK': { name: 'Sri Lanka' }, 'SD': { name: 'Sudán' }, 'SR': { name: 'Surinam' }, 'SZ': { name: 'Esuatini' }, 'SE': { name: 'Suecia' }, 'CH': { name: 'Suiza' }, 'SY': { name: 'Siria' }, 'TW': { name: 'Taiwán' }, 'TJ': { name: 'Tayikistán' }, 'TZ': { name: 'Tanzania' }, 'TH': { name: 'Tailandia' }, 'TL': { name: 'Timor Oriental' }, 'TG': { name: 'Togo' }, 'TO': { name: 'Tonga' }, 'TT': { name: 'Trinidad y Tobago' }, 'TN': { name: 'Túnez' }, 'TR': { name: 'Turquía' }, 'TM': { name: 'Turkmenistán' }, 'TV': { name: 'Tuvalu' }, 'UG': { name: 'Uganda' }, 'UA': { name: 'Ucrania' }, 'AE': { name: 'Emiratos Árabes Unidos' }, 'GB': { name: 'Reino Unido' }, 'US': { name: 'Estados Unidos' }, 'UY': { name: 'Uruguay' }, 'UZ': { name: 'Uzbekistán' }, 'VU': { name: 'Vanuatu' }, 'VE': { name: 'Venezuela' }, 'VN': { name: 'Vietnam' }, 'YE': { name: 'Yemen' }, 'ZM': { name: 'Zambia' }, 'ZW': { name: 'Zimbabue' } };
+
+        const CHOFERES = ["Juan Pérez", "Carlos Rodríguez", "Jorge Alvarado", "Ana Morales", "Luis Castillo"];
+
+        const ARRIVAL_FIELDS = [
+            { label: "Fecha", key: "- Arrival Date", emoji: "📅", type: "date" },
+            { label: "Hora", key: "- Arrival Time", emoji: "🕒", type: "time" },
+            { label: "Vuelo", key: "- Arrival Flight Number", emoji: "🛬", type: "text" }
+        ];
+
+        const DEPARTURE_FIELDS = [
+            { label: "Fecha de recogida", key: "- Departure Date", emoji: "🗓️", type: "date" },
+            { label: "Hora de recogida", key: "- Pick-up Time at Hotel", emoji: "🕒", type: "time" },
+            { label: "Vuelo", key: "- Departure Flight Number", emoji: "🛫", type: "text" }
+        ];
+
+        const ASSIGN_KEYS = [
+            "chofer_llegada", "subchofer_llegada", "nota_choferes_llegada", "notas_internas_llegada",
+            "chofer_salida", "subchofer_salida", "nota_choferes_ida", "notas_internas_salida"
+        ];
+
+        const PASSENGER_EDIT_KEYS = ["name", "email", "phone", "country", "address"];
+
+        let currentOrders = [];
+        let currentOrderId = null;
+        let currentPage = 1;
+        let totalPages = 1;
+        let totalOrders = 0;
+        const pageSize = 10;
+        let originalValues = {};
+        let editingSections = { passenger: false, arrival: false, departure: false };
+        let currentStatusFilter = "";
+
+        window.onload = () => {
+            initCountryDropdown();
+            initChoferSelects();
+            refreshData(1);
+        };
+
+        function initCountryDropdown() {
+            const select = document.getElementById('input-country');
+            Object.keys(COUNTRY_MAP).sort((a,b) => COUNTRY_MAP[a].name.localeCompare(COUNTRY_MAP[b].name)).forEach(code => {
+                const opt = document.createElement('option');
+                opt.value = code; opt.textContent = COUNTRY_MAP[code].name;
+                select.appendChild(opt);
+            });
+        }
+
+        function initChoferSelects() {
+            const selects = ["chofer_llegada", "subchofer_llegada", "chofer_salida", "subchofer_salida"];
+            selects.forEach(id => {
+                const sel = document.getElementById(`input-meta-${id}`);
+                if (!sel) return;
+                sel.innerHTML = '<option value="">No asignado</option>';
+                CHOFERES.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = opt.textContent = c;
+                    sel.appendChild(opt);
+                });
+            });
+        }
+
+        function getCountryDisplayName(code) { return code ? (COUNTRY_MAP[code.toUpperCase()]?.name || code.toUpperCase()) : 'N/A'; }
+
+        async function refreshData(page = 1) {
+            toggleLoader(true);
+            const searchQuery = document.getElementById('search-input').value.toLowerCase().trim();
+            try {
+                updateStats();
+                // Se agrega el parámetro &after= al endpoint para filtrar por fecha
+                let apiURL = `${API_PROXY}?per_page=${pageSize}&page=${page}&orderby=date&order=desc&after=${START_DATE_FILTER}`;
+                if (searchQuery) apiURL += `&search=${searchQuery}`;
+                if (currentStatusFilter) apiURL += `&status=${currentStatusFilter}`;
+                
+                const response = await fetch(apiURL, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                if (!response.ok) throw new Error("API Offline");
+                
+                totalOrders = parseInt(response.headers.get('x-wp-total')) || 0;
+                totalPages = parseInt(response.headers.get('x-wp-totalpages')) || 1;
+                currentPage = page;
+                currentOrders = await response.json();
+                
+                renderTable();
+                updatePaginationUI();
+                setAPIStatus('online');
+            } catch (e) { setAPIStatus('error'); } finally { toggleLoader(false); }
+        }
+
+        async function updateStats() {
+            const fetchCount = async (status, elementId) => {
+                try {
+                    // También filtramos el contador de estadísticas para que coincida con la lista
+                    const resp = await fetch(`${API_PROXY}?status=${status}&per_page=1&after=${START_DATE_FILTER}`);
+                    document.getElementById(elementId).innerText = resp.headers.get('x-wp-total') || 0;
+                } catch(e) {}
+            };
+            fetchCount('pending', 'stat-pending');
+        }
+
+        function filterByStatus(status) {
+            currentStatusFilter = status;
+            if(status === 'pending') {
+                document.getElementById('filter-pending').classList.add('active-filter');
+            } else {
+                document.getElementById('filter-pending').classList.remove('active-filter');
+            }
+            document.getElementById('clear-filter-btn').classList.toggle('hidden', status === '');
+            refreshData(1);
+        }
+
+        function formatTripTypeTable(order) {
+            const tripRaw = deepScanMeta(order, "- Type of Trip") || "";
+            const hotel = order.line_items?.[0]?.name || 'Hotel no especificado';
+            const isRound = tripRaw.toLowerCase().includes('round');
+            const hasArrival = deepScanMeta(order, "- Arrival Date") !== null;
+            
+            let routeHTML = "";
+            let label = "";
+
+            if (isRound) {
+                routeHTML = `<span>Aeropuerto 🔄</span> <span class="font-bold">${hotel}</span>`;
+                label = "Ida y Vuelta";
+            } else if (hasArrival) {
+                routeHTML = `<span>🛬 Aeropuerto ➡️</span> <span class="font-bold">${hotel}</span>`;
+                label = "Solo Llegada";
+            } else {
+                routeHTML = `<span class="font-bold">${hotel}</span> <span>➡️ Aeropuerto 🛫</span>`;
+                label = "Solo Salida";
+            }
+
+            return `
+                <div class="table-trip-cell">
+                    <div class="table-trip-route">${routeHTML}</div>
+                    <div class="table-trip-label">${label}</div>
+                </div>
+            `;
+        }
+
+        function renderTable() {
+            const container = document.getElementById('full-rows');
+            container.innerHTML = '';
+            if (currentOrders.length === 0) {
+                container.innerHTML = `<tr><td colspan="6" class="text-center py-10 text-gray-400 font-bold uppercase text-xs">No se encontraron registros</td></tr>`;
+                return;
+            }
+            currentOrders.forEach(order => {
+                const name = resolveName(order);
+                const initials = getInitials(name);
+                
+                container.innerHTML += `
+                    <tr>
+                        <td data-label="ID" class="pl-6 font-bold text-gray-400">#${order.id}</td>
+                        <td data-label="Cliente">
+                            <div class="flex items-center">
+                                <div class="client-avatar">${initials}</div>
+                                <div class="flex flex-col justify-center">
+                                    <span class="font-bold text-[#002a3f] text-base">${name}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td data-label="Trayecto" class="py-3">${formatTripTypeTable(order)}</td>
+                        <td data-label="Fecha">
+                            <div class="flex flex-col justify-center">
+                                <span class="font-bold text-[#002a3f]">${formatDateShort(order.date_created)}</span>
+                            </div>
+                        </td>
+                        <td data-label="Estado">
+                            <div class="status-pill status-${order.status}">
+                                <span class="status-dot"></span>
+                                ${translateStatus(order.status)}
+                            </div>
+                        </td>
+                        <td class="text-right pr-6">
+                            <button onclick="viewOrder(${order.id})" class="text-gray-400 hover:text-[#002a3f] hover:bg-gray-100 p-2 rounded-lg transition-all" title="Ver detalle">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                            </button>
+                        </td>
+                    </tr>`;
+            });
+        }
+
+        async function viewOrder(id) {
+            const o = currentOrders.find(x => x.id === id);
+            if (!o) return;
+            currentOrderId = id;
+            editingSections = { passenger: false, arrival: false, departure: false };
+            document.body.style.overflow = 'hidden';
+            
+            document.getElementById('modal-title').innerText = `Reserva #${o.id}`;
+            document.getElementById('btn-save').classList.add('hidden');
+
+            const fullName = resolveName(o);
+            const email = (o.billing.email || "").toLowerCase();
+            const phone = o.billing.phone || "";
+            const country = (o.billing.country || "").toUpperCase();
+            const address = resolveAddress(o);
+
+            originalValues = { name: fullName, email, phone, country, address, status: o.status };
+
+            document.getElementById('display-name').innerText = fullName;
+            document.getElementById('display-email').innerText = email;
+            document.getElementById('display-phone').innerHTML = `<a href="tel:${phone}" class="hover:text-accent">${formatPhoneNumber(phone, country)}</a>`;
+            document.getElementById('display-country').innerText = getCountryDisplayName(country);
+            document.getElementById('display-address').innerText = address;
+
+            document.getElementById('det-email-link').href = `mailto:${email}`;
+            document.getElementById('det-whatsapp-link').href = `https://wa.me/${phone.replace(/\D/g, '')}`;
+
+            document.getElementById('input-name').value = fullName;
+            document.getElementById('input-email').value = email;
+            document.getElementById('input-phone').value = phone;
+            document.getElementById('input-country').value = country;
+            document.getElementById('input-address').value = address;
+            document.getElementById('input-status').value = o.status;
+
+            PASSENGER_EDIT_KEYS.forEach(k => {
+                document.getElementById(`display-${k}`)?.classList.remove('hidden');
+                document.getElementById(`input-${k}`)?.classList.add('hidden');
+            });
+            document.getElementById('btn-edit-passenger').innerText = "Editar";
+            document.getElementById('btn-edit-passenger').classList.remove('editing');
+
+            const pill = document.getElementById('det-status-pill');
+            pill.innerText = translateStatus(o.status);
+            pill.className = `status-pill status-pill-clickable status-${o.status}`;
+            document.getElementById('status-display-container').classList.remove('hidden');
+            document.getElementById('status-edit-container').classList.add('hidden');
+
+            renderLogisticsSections(o);
+            renderGeneralInfo(o);
+            renderPaymentInfo(o);
+
+            document.getElementById('order-modal').classList.remove('hidden');
+        }
+
+        function renderLogisticsSections(o) {
+            const listArr = document.getElementById('arrival-fields-list');
+            const listDep = document.getElementById('departure-fields-list');
+            listArr.innerHTML = ''; listDep.innerHTML = '';
+
+            const renderLogistics = (fields, container) => {
+                fields.forEach(f => {
+                    const key = f.key;
+                    const val = deepScanMeta(o, key);
+                    originalValues[key] = val || "";
+                    if (val !== null) {
+                        const display = f.type === 'date' ? formatDateShort(val) : (f.type === 'time' ? formatTime12h(val) : val);
+                        container.innerHTML += `
+                            <div>
+                                <p class="meta-field-label text-gray-400">${f.label}</p>
+                                <p id="display-meta-${key}" class="meta-field-value text-base">${display}</p>
+                                <input type="${f.type}" id="input-meta-${key}" oninput="checkForChanges()" value="${normalizeForInput(val, f.type)}" class="hidden input-editable mt-1">
+                            </div>`;
+                    }
+                });
+            };
+
+            renderLogistics(ARRIVAL_FIELDS, listArr);
+            renderLogistics(DEPARTURE_FIELDS, listDep);
+
+            ASSIGN_KEYS.forEach(key => {
+                const val = deepScanMeta(o, key);
+                originalValues[key] = val || "";
+                const inputEl = document.getElementById(`input-meta-${key}`);
+                if (inputEl) {
+                    inputEl.value = val || "";
+                    inputEl.classList.remove('hidden');
+                }
+            });
+
+            [document.getElementById('btn-edit-arrival'), document.getElementById('btn-edit-departure')].forEach(btn => {
+                btn.innerText = "Editar";
+                btn.classList.remove('editing');
+            });
+
+            const hasArrival = deepScanMeta(o, "- Arrival Date") !== null;
+            const hasDeparture = deepScanMeta(o, "- Departure Date") !== null;
+
+            document.getElementById('col-arrival').classList.toggle('hidden', !hasArrival);
+            document.getElementById('col-departure').classList.toggle('hidden', !hasDeparture);
+
+            const container = document.getElementById('logistics-container');
+            if (hasArrival && hasDeparture) {
+                container.classList.add('xl:grid-cols-2');
+            } else {
+                container.classList.remove('xl:grid-cols-2');
+            }
+        }
+
+        function renderGeneralInfo(o) {
+            const hotelName = o.line_items?.[0]?.name || 'Hotel no especificado';
+            const tripRaw = deepScanMeta(o, "- Type of Trip");
+            const paxRaw = (deepScanMeta(o, "Passengers") || o.line_items?.[0]?.quantity || '1').toString().split('-')[0].trim();
+            const tripTypeFormatted = translateTripType(o, tripRaw);
+            
+            document.getElementById('general-service-info').classList.remove('hidden');
+            document.getElementById('general-trip-type').innerText = tripTypeFormatted;
+            document.getElementById('general-pax-value').innerText = paxRaw;
+
+            const originNameEl = document.getElementById('origin-name');
+            const destNameEl = document.getElementById('dest-name');
+            const originIconEl = document.getElementById('origin-icon');
+            const destIconEl = document.getElementById('dest-icon');
+            const separatorEmojiEl = document.getElementById('route-separator-emoji');
+
+            const isRoundTrip = tripTypeFormatted.includes('Vuelta');
+            const isToHotel = deepScanMeta(o, "- Arrival Date") !== null;
+
+            if (isRoundTrip) {
+                originIconEl.innerText = "✈️";
+                originNameEl.innerText = "Aeropuerto LIR";
+                destIconEl.innerText = "🏨";
+                destNameEl.innerText = hotelName;
+                separatorEmojiEl.innerText = "🔄";
+            } else if (isToHotel) {
+                originIconEl.innerText = "🛬";
+                originNameEl.innerText = "Aeropuerto LIR";
+                destIconEl.innerText = "🏨";
+                destNameEl.innerText = hotelName;
+                separatorEmojiEl.innerText = "➡️";
+            } else {
+                originIconEl.innerText = "🏨";
+                originNameEl.innerText = hotelName;
+                destIconEl.innerText = "🛫";
+                destNameEl.innerText = "Aeropuerto LIR";
+                separatorEmojiEl.innerText = "➡️";
+            }
+        }
+
+        async function saveOrderDetails() {
+            if (!currentOrderId) return;
+            toggleLoader(true);
+            const nameParts = document.getElementById('input-name').value.trim().split(' ');
+            
+            let meta = [];
+            const allMetaKeys = [...ARRIVAL_FIELDS.map(f=>f.key), ...DEPARTURE_FIELDS.map(f=>f.key), ...ASSIGN_KEYS];
+            allMetaKeys.forEach(k => {
+                const inp = document.getElementById(`input-meta-${k}`);
+                if (inp) meta.push({ key: k, value: inp.value });
+            });
+
+            const payload = {
+                status: document.getElementById('input-status').value,
+                billing: {
+                    first_name: nameParts[0] || "", last_name: nameParts.slice(1).join(' ') || "",
+                    email: document.getElementById('input-email').value.trim().toLowerCase(),
+                    phone: document.getElementById('input-phone').value.trim(),
+                    country: document.getElementById('input-country').value,
+                    address_1: document.getElementById('input-address').value.trim()
+                },
+                meta_data: meta
+            };
+
+            try {
+                const resp = await fetch(`${API_PROXY}?order_id=${currentOrderId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!resp.ok) throw new Error("Error");
+                const updated = await resp.json();
+                const idx = currentOrders.findIndex(o => o.id === currentOrderId);
+                if (idx !== -1) currentOrders[idx] = updated;
+                viewOrder(currentOrderId);
+                updateStats(); 
+            } catch (e) { console.error(e); } finally { toggleLoader(false); }
+        }
+
+        function togglePassengerEdit() {
+            editingSections.passenger = !editingSections.passenger;
+            const btn = document.getElementById('btn-edit-passenger');
+            btn.innerText = editingSections.passenger ? "Cancelar" : "Editar";
+            btn.classList.toggle('editing', editingSections.passenger);
+            PASSENGER_EDIT_KEYS.forEach(k => {
+                document.getElementById(`display-${k}`)?.classList.toggle('hidden', editingSections.passenger);
+                document.getElementById(`input-${k}`)?.classList.toggle('hidden', !editingSections.passenger);
+                if (!editingSections.passenger) document.getElementById(`input-${k}`).value = originalValues[k];
+            });
+            checkForChanges();
+        }
+
+        function toggleArrivalEdit() {
+            editingSections.arrival = !editingSections.arrival;
+            const btn = document.getElementById('btn-edit-arrival');
+            btn.innerText = editingSections.arrival ? "Cancelar" : "Editar";
+            btn.classList.toggle('editing', editingSections.arrival);
+            
+            const keys = ARRIVAL_FIELDS.map(f=>f.key);
+            keys.forEach(k => {
+                document.getElementById(`display-meta-${k}`)?.classList.toggle('hidden', editingSections.arrival);
+                document.getElementById(`input-meta-${k}`)?.classList.toggle('hidden', !editingSections.arrival);
+            });
+            checkForChanges();
+        }
+
+        function toggleDepartureEdit() {
+            editingSections.departure = !editingSections.departure;
+            const btn = document.getElementById('btn-edit-departure');
+            btn.innerText = editingSections.departure ? "Cancelar" : "Editar";
+            btn.classList.toggle('editing', editingSections.departure);
+            
+            const keys = DEPARTURE_FIELDS.map(f=>f.key);
+            keys.forEach(k => {
+                document.getElementById(`display-meta-${k}`)?.classList.toggle('hidden', editingSections.departure);
+                document.getElementById(`input-meta-${k}`)?.classList.toggle('hidden', !editingSections.departure);
+            });
+            checkForChanges();
+        }
+
+        function toggleStatusEditQuick() {
+            document.getElementById('status-display-container').classList.add('hidden');
+            document.getElementById('status-edit-container').classList.remove('hidden');
+            document.getElementById('input-status').focus();
+        }
+
+        function checkForChanges() {
+            let changed = false;
+            PASSENGER_EDIT_KEYS.forEach(k => { if (document.getElementById(`input-${k}`)?.value.trim() !== originalValues[k]) changed = true; });
+            if (document.getElementById('input-status').value !== originalValues.status) changed = true;
+            
+            const allMetaKeys = [...ARRIVAL_FIELDS.map(f=>f.key), ...DEPARTURE_FIELDS.map(f=>f.key), ...ASSIGN_KEYS];
+            for (const k of allMetaKeys) {
+                const inp = document.getElementById(`input-meta-${k}`);
+                if (inp) {
+                    const original = originalValues[k] || "";
+                    let val = inp.value;
+                    if (val !== original && val !== normalizeForInput(original, 'date') && val !== normalizeForInput(original, 'time')) {
+                        changed = true;
+                        break;
+                    }
+                }
+            }
+            document.getElementById('btn-save').classList.toggle('hidden', !changed);
+        }
+
+        function renderPaymentInfo(o) {
+            const container = document.getElementById('payment-breakdown-list');
+            container.innerHTML = '';
+            
+            const addRow = (label, value, isBold = false, isAccent = false, isDiscount = false) => {
+                const numVal = parseFloat(value);
+                if (value === undefined || value === null || value === "" || isNaN(numVal) || numVal === 0) return;
+                const formattedValue = isDiscount ? `-$${Math.abs(numVal).toFixed(2)}` : `$${numVal.toFixed(2)}`;
+                const colorClass = isDiscount ? 'text-green-600' : (isAccent ? 'text-red-500' : 'text-[#002a3f]');
+                container.innerHTML += `
+                    <div class="flex justify-between items-center ${isBold ? 'pt-3 border-t border-dashed border-gray-200 mt-2' : 'text-sm'}">
+                        <span class="font-bold uppercase opacity-50 text-[10px] tracking-widest">${label}</span>
+                        <span class="font-bold ${isBold ? 'text-2xl' : 'text-base'} ${colorClass}">${formattedValue}</span>
+                    </div>`;
+            };
+
+            if (o.payment_method_title) {
+                container.innerHTML += `<div class="text-[10px] uppercase font-black text-gray-400 mb-4 border-b pb-2">Método: ${o.payment_method_title}</div>`;
+            }
+
+            const subtotal = (o.line_items || []).reduce((acc, item) => acc + parseFloat(item.subtotal || 0), 0);
+            addRow("Subtotal Servicios", subtotal);
+
+            if (o.fee_lines && o.fee_lines.length > 0) {
+                o.fee_lines.forEach(fee => addRow(fee.name || 'Cargo Adicional', fee.total));
+            }
+
+            if (o.tax_lines && o.tax_lines.length > 0) {
+                o.tax_lines.forEach(tax => addRow(tax.label || 'Impuesto', tax.tax_total));
+            }
+
+            if (o.coupon_lines && o.coupon_lines.length > 0) {
+                o.coupon_lines.forEach(coupon => addRow(`Cupón: ${coupon.code}`, coupon.discount, false, false, true));
+            }
+            addRow("Total Pagado", o.total, true);
+        }
+
+        function closeModal() { document.getElementById('order-modal').classList.add('hidden'); document.body.style.overflow = ''; }
+        
+        function deepScanMeta(o, k) {
+            const clean = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const t = clean(k);
+            let m = o.meta_data.find(x => clean(x.key) === t || clean(x.label || '') === t);
+            if (!m && o.line_items?.[0]) m = o.line_items[0].meta_data.find(x => clean(x.key) === t || clean(x.display_key || '') === t);
+            return m ? m.value : null;
+        }
+
+        function resolveAddress(o) { return (o.shipping?.address_1 || o.billing?.address_1 || "") + (o.shipping?.city ? ', ' + o.shipping.city : ''); }
+        function resolveName(o) { const n = `${o.billing?.first_name || ''} ${o.billing?.last_name || ''}`.trim(); return n.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ') || `Reserva #${o.id}`; }
+        function translateStatus(s) { const map = { 'pending': 'Pendiente', 'processing': 'Procesando', 'on-hold': 'Espera', 'completed': 'Completado', 'cancelled': 'Cancelado', 'failed': 'Fallido' }; return map[s] || s; }
+        
+        function translateTripType(o, raw) {
+            if (!raw) return 'No especificado';
+            if (raw.toLowerCase().includes('round')) return 'Ida y Vuelta';
+            return deepScanMeta(o, "- Arrival Date") ? 'Solo ida al Hotel' : 'Solo ida al Aeropuerto';
+        }
+
+        function updatePaginationUI() {
+            document.getElementById('pagination-info').innerText = `${totalOrders} Reservas encontradas`;
+            let h = '';
+            if (totalPages > 1) {
+                if (currentPage > 1) h += `<button onclick="refreshData(${currentPage-1})" class="px-4 h-10 rounded-md bg-white border">Ant.</button>`;
+                for(let i=Math.max(1, currentPage-2); i<=Math.min(totalPages, currentPage+2); i++) h += `<button onclick="refreshData(${i})" class="w-10 h-10 rounded-md ${i===currentPage ? 'bg-[#002a3f] text-white' : 'bg-white border'}">${i}</button>`;
+                if (currentPage < totalPages) h += `<button onclick="refreshData(${currentPage+1})" class="px-4 h-10 rounded-md bg-white border">Sig.</button>`;
+            }
+            document.getElementById('pagination-controls').innerHTML = h;
+        }
+        function toggleLoader(s) { document.getElementById('global-loader').classList.toggle('hidden', !s); }
+        function setAPIStatus(s) { 
+            // Como el menú controla el estado visual, podemos enviar un evento personalizado si lo deseamos,
+            // pero por simplicidad en este paso, la función queda vacía ya que el elemento #api-dot y #api-status-badge
+            // ahora viven dentro del Shadow DOM o template del menú y no son accesibles directamente por ID desde aquí
+            // a menos que modifiquemos menu.js para exponer un método público.
+            
+            // FIX: Para mantener la funcionalidad visual del punto verde/rojo,
+            // vamos a intentar acceder al componente.
+            const navbar = document.querySelector('admin-navbar');
+            if(navbar) {
+                const badge = navbar.querySelector('#api-status-badge');
+                const dot = navbar.querySelector('#api-dot'); // Esto no funcionará si no están en el DOM principal
+                // Dado que menu.js inyecta el HTML directamente (no shadow DOM), sí podemos acceder a ellos si el componente ya se renderizó.
+                
+                const dotEl = document.getElementById('api-dot');
+                const badgeEl = document.getElementById('api-status-badge');
+                
+                if (dotEl && badgeEl) {
+                    dotEl.className = `w-2 h-2 rounded-full mr-2 ${s === 'online' ? 'bg-green-400' : 'bg-red-500'}`;
+                    badgeEl.classList.remove('hidden');
+                }
+            }
+        }
+        function handleEmailInput() { const i = document.getElementById('input-email'); i.value = i.value.toLowerCase(); checkForChanges(); }
+        function handleSearchInput() { document.getElementById('btn-clear-search').classList.toggle('hidden', document.getElementById('search-input').value === ""); }
+        function clearSearch() { document.getElementById('search-input').value = ""; refreshData(1); }
+    </script>
+</body>
+</html>
