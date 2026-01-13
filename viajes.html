@@ -626,8 +626,6 @@
                 width: 100% !important;
                 border-right: none !important;
                 border-bottom: 1px solid #e2e8f0;
-                max-height: 45vh;
-                flex-shrink: 0;
             }
             .flex.lg\\:flex-row { flex-direction: column !important; }
         }
@@ -741,7 +739,7 @@
 
     <main class="w-full px-4 md:px-8">
         
-        <div class="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+           <div class="mt-6 md:mt-8 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
              <h2 class="text-2xl md:text-3xl font-bold text-[#002a3f] title-font">Acciones - Viajes</h2>
         </div>
 
@@ -830,9 +828,9 @@
                     <button onclick="closeTripModal()" class="text-3xl text-gray-300 hover:text-gray-600 transition">&times;</button>
                 </div>
                 
-                <div class="flex-1 overflow-hidden flex flex-col lg:flex-row">
+                <div class="flex-1 overflow-y-auto column-scroll flex flex-col lg:flex-row">
                     <!-- Columna Izquierda: Cliente (Sidebar) -->
-                    <div class="modal-sidebar w-full lg:w-[320px] lg:flex-shrink-0 overflow-y-auto column-scroll border-r">
+                    <div class="modal-sidebar w-full lg:w-[320px] lg:flex-shrink-0 border-r">
                         <div class="p-6 md:p-8">
                             <div class="flex justify-between items-center mb-6">
                                 <h4 class="text-[11px] font-black text-gray-400 uppercase tracking-widest">Cliente</h4>
@@ -878,7 +876,7 @@
                     </div>
 
                     <!-- Columna Derecha: Operaciones (Main Content) -->
-                    <div class="modal-main-content flex-1 overflow-y-auto column-scroll p-6 md:p-8">
+                    <div class="modal-main-content flex-1 p-6 md:p-8">
                         <!-- Sección de Ruta y Resumen -->
                         <div id="trip-route-display" class="route-visualizer">
                             <div class="route-point">
@@ -1152,10 +1150,12 @@
                         const fullDate = new Date(parsedDate);
                         const [th, tm] = normalizedTime !== '--:--' ? normalizedTime.split(':') : [0, 0];
                         fullDate.setHours(th, tm);
+                        const tripStatus = findMetaValue(order, ["status_llegada"]) || "";
 
                         batchTrips.push({
                             id: order.id,
                             order_status: status,
+                            trip_status: tripStatus,
                             client: clientName,
                             type: 'arrival',
                             dateStr: formatDateStandard(parsedDate),
@@ -1181,10 +1181,12 @@
                         const fullDate = new Date(parsedDate);
                         const [th, tm] = normalizedTime !== '--:--' ? normalizedTime.split(':') : [0, 0];
                         fullDate.setHours(th, tm);
+                        const tripStatus = findMetaValue(order, ["status_salida"]) || "";
 
                         batchTrips.push({
                             id: order.id,
                             order_status: status,
+                            trip_status: tripStatus,
                             client: clientName,
                             type: 'departure',
                             dateStr: formatDateStandard(parsedDate),
@@ -1358,9 +1360,9 @@
                         <td data-label="Ruta" class="font-semibold text-gray-600 text-sm">${trip.route}</td>
                         <td data-label="Vuelo" class="font-mono text-sm text-gray-500">${trip.flight}</td>
                         <td data-label="Estatus">
-                            <div class="status-pill status-${trip.order_status}">
+                            <div class="status-pill status-${getTripStatusClass(trip.trip_status)}">
                                 <span class="status-dot"></span>
-                                ${translateStatus(trip.order_status)}
+                                ${translateTripStatus(trip.trip_status)}
                             </div>
                         </td>
                         <td data-label="Acción" class="pr-6 text-right">
@@ -1794,6 +1796,26 @@
         function translateStatus(s) { 
             const map = { 'pending': 'Pendiente', 'processing': 'Procesando', 'on-hold': 'Espera', 'completed': 'Completado', 'cancelled': 'Cancelado', 'failed': 'Fallido' }; 
             return map[s] || s; 
+        }
+
+        function translateTripStatus(s) {
+            const map = {
+                'confirmado': 'Confirmado',
+                'cancelado': 'Cancelado',
+                'contactado_whatsapp': 'Contactado WhatsApp',
+                'contactado_email': 'Contactado Email'
+            };
+            return map[s] || 'Sin estatus';
+        }
+
+        function getTripStatusClass(s) {
+            const map = {
+                'confirmado': 'completed',
+                'cancelado': 'cancelled',
+                'contactado_whatsapp': 'processing',
+                'contactado_email': 'on-hold'
+            };
+            return map[s] || 'pending';
         }
 
         function getRelativeTime(d) {

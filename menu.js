@@ -23,17 +23,6 @@ class AdminNavbar extends HTMLElement {
             z-index: 100;
         }
 
-        @media (max-width: 640px) {
-            .top-nav {
-                height: 60px;
-                padding: 0 12px;
-            }
-        }
-
-        @media (min-width: 641px) and (max-width: 1023px) {
-            .top-nav { padding: 0 20px; }
-        }
-
         @media (min-width: 1024px) {
             .top-nav { padding: 0 30px; }
         }
@@ -96,13 +85,6 @@ class AdminNavbar extends HTMLElement {
         }
         .btn-sync:hover { background-color: #d93a37; }
 
-        @media (max-width: 640px) {
-            .btn-sync {
-                padding: 6px 12px;
-                font-size: 10px;
-            }
-        }
-
         /* Menú Hamburguesa Móvil */
         .mobile-menu-overlay {
             position: fixed;
@@ -146,7 +128,6 @@ class AdminNavbar extends HTMLElement {
         }
       </style>
 
-      <!-- Menú Móvil Overlay -->
       <div id="mobile-menu-overlay" class="mobile-menu-overlay">
         <div class="flex justify-between items-center mb-10">
             <img src="https://liberiaairportshuttle.com/wp-content/uploads/2024/11/Grupo.png" alt="Logo" class="h-8">
@@ -155,10 +136,10 @@ class AdminNavbar extends HTMLElement {
         <nav class="flex flex-col gap-6">
             <a href="index.html" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline">📅 Reservas</a>
             <a href="viajes.html" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline">🚐 Viajes / Logística</a>
+            <a href="choferes.html" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline">👤 Choferes</a>
         </nav>
       </div>
 
-      <!-- Header Principal -->
       <header class="top-nav">
         <button id="hamburger-btn" class="hamburger-btn">
             <span></span><span></span><span></span>
@@ -171,10 +152,10 @@ class AdminNavbar extends HTMLElement {
         <nav class="nav-links-desktop">
             <a href="index.html" class="nav-item">Reservas</a>
             <a href="viajes.html" class="nav-item">Viajes</a>
+            <a href="choferes.html" class="nav-item">Choferes</a>
         </nav>
 
         <div class="ml-auto flex items-center gap-2 md:gap-4">
-            <!-- Badge Online -->
             <div id="api-status-badge" class="hidden sm:flex items-center bg-white/10 px-3 py-1.5 rounded-full">
                 <span id="api-dot" class="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
                 <span class="text-[10px] font-black uppercase tracking-widest text-white">Sistema OK</span>
@@ -221,7 +202,7 @@ class AdminNavbar extends HTMLElement {
         const href = link.getAttribute('href');
         if ((currentPath === '/' || currentPath.endsWith('index.html')) && href === 'index.html') {
             link.classList.add('active');
-        } else if (href !== '#' && currentPath.includes(href)) {
+        } else if (href !== '#' && (currentPath.includes(href) || (currentPath === '/' && href === 'index.html'))) {
             link.classList.add('active');
         }
     });

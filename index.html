@@ -532,15 +532,11 @@
                 width: 100% !important;
                 border-right: none !important;
                 border-bottom: 1px solid #e2e8f0;
-                max-height: 45vh;
-                flex-shrink: 0;
             }
         }
 
         @media (max-width: 640px) {
             .modal-sidebar {
-                max-height: 50vh;
-            }
             .field-group-row { grid-template-columns: 1fr; gap: 10px; }
         }
         
@@ -639,9 +635,9 @@
                 <button onclick="closeModal()" class="text-3xl text-gray-300 hover:text-gray-600 transition">&times;</button>
             </div>
             
-            <div class="flex-1 overflow-hidden flex flex-col lg:flex-row">
+            <div class="flex-1 overflow-y-auto column-scroll flex flex-col lg:flex-row">
                 <!-- Columna Izquierda: Cliente (Sidebar) -->
-                <div class="modal-sidebar w-full lg:w-[320px] lg:flex-shrink-0 overflow-y-auto column-scroll border-r">
+                <div class="modal-sidebar w-full lg:w-[320px] lg:flex-shrink-0 border-r">
                     <div class="p-6 md:p-8">
                         <div class="flex justify-between items-center mb-6">
                             <h4 class="text-[11px] font-black text-gray-400 uppercase tracking-widest">Cliente</h4>
@@ -687,7 +683,7 @@
                 </div>
 
                 <!-- Columna Derecha: Operaciones (Main Content) -->
-                <div class="modal-main-content flex-1 overflow-y-auto column-scroll p-6 md:p-8">
+                <div class="modal-main-content flex-1 p-6 md:p-8">
                     <!-- Sección de Ruta y Resumen -->
                     <div id="general-service-info" class="hidden">
                         <div id="route-display" class="route-visualizer">
