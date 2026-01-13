@@ -23,6 +23,17 @@ class AdminNavbar extends HTMLElement {
             z-index: 100;
         }
 
+        @media (max-width: 640px) {
+            .top-nav {
+                height: 60px;
+                padding: 0 12px;
+            }
+        }
+
+        @media (min-width: 641px) and (max-width: 1023px) {
+            .top-nav { padding: 0 20px; }
+        }
+
         @media (min-width: 1024px) {
             .top-nav { padding: 0 30px; }
         }
@@ -84,6 +95,13 @@ class AdminNavbar extends HTMLElement {
             transition: background 0.2s;
         }
         .btn-sync:hover { background-color: #d93a37; }
+
+        @media (max-width: 640px) {
+            .btn-sync {
+                padding: 6px 12px;
+                font-size: 10px;
+            }
+        }
 
         /* Menú Hamburguesa Móvil */
         .mobile-menu-overlay {
