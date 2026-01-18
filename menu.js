@@ -136,7 +136,7 @@ class AdminNavbar extends HTMLElement {
         <nav class="flex flex-col gap-6">
             <a href="index.html" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline">📅 Reservas</a>
             <a href="viajes.html" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline">🚐 Viajes / Logística</a>
-            <a href="choferes.html" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline">👤 Choferes</a>
+            <!-- <a href="choferes.html" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline">👤 Choferes</a> -->
         </nav>
       </div>
 
@@ -152,13 +152,13 @@ class AdminNavbar extends HTMLElement {
         <nav class="nav-links-desktop">
             <a href="index.html" class="nav-item">Reservas</a>
             <a href="viajes.html" class="nav-item">Viajes</a>
-            <a href="choferes.html" class="nav-item">Choferes</a>
+            <!-- <a href="choferes.html" class="nav-item">Choferes</a> -->
         </nav>
 
         <div class="ml-auto flex items-center gap-2 md:gap-4">
             <div id="api-status-badge" class="hidden sm:flex items-center bg-white/10 px-3 py-1.5 rounded-full">
                 <span id="api-dot" class="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
-                <span class="text-[10px] font-black uppercase tracking-widest text-white">Sistema OK</span>
+                <span class="text-[10px] font-black uppercase tracking-widest text-white">Online</span>
             </div>
             
             <button id="global-refresh-btn" class="btn-sync tracking-widest">Actualizar</button>
