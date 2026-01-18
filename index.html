@@ -38,13 +38,47 @@
 
         .main-container {
             width: 100%;
-            padding: 15px;
-            max-width: 1600px;
-            margin: 0 auto;
+            padding: 18px 18px 32px;
+            max-width: none;
+            margin: 0;
+        }
+
+        @media (max-width: 768px) {
+            .main-container { padding: 12px; }
         }
 
         @media (min-width: 768px) {
             .main-container { padding: 30px; }
+        }
+
+        @media (max-width: 640px) {
+            body { font-size: 14px; }
+            h2 { font-size: 1.25rem !important; }
+            .main-container { padding: 8px; }
+        }
+
+        /* Font sizes responsivos para títulos */
+        @media (max-width: 768px) {
+            h2 {
+                font-size: 1.5rem !important;
+            }
+        }
+
+        /* Responsive para botones del modal */
+        @media (max-width: 768px) {
+            #btn-save, .px-6 { padding: 0.5rem 1rem !important; }
+        }
+
+        @media (max-width: 640px) {
+            #btn-save, .px-6.py-2 { 
+                padding: 0.75rem !important;
+                font-size: 12px !important;
+                width: 100%;
+            }
+            .p-4.border-t { 
+                flex-direction: column; 
+                gap: 0.5rem !important;
+            }
         }
 
         /* --- ESTILO DE TABLA LINEAL --- */
@@ -91,31 +125,43 @@
             td { padding: 16px 20px; font-size: 15px; color: #334155; vertical-align: middle; }
         }
 
-        @media (max-width: 767px) {
+        @media (max-width: 768px) {
+            table { font-size: 13px; }
+            thead th { padding: 12px 10px; font-size: 10px; }
+            td { padding: 12px 10px; font-size: 13px; }
+            .client-avatar { width: 32px; height: 32px; font-size: 12px; margin-right: 8px; }
+        }
+
+        @media (max-width: 640px) {
             .table-wrapper { border: none; background: transparent; }
-            table, thead, tbody, th, td, tr { display: block; }
+            table, thead, tbody, th, td, tr { display: block; width: 100%; }
             thead tr { position: absolute; top: -9999px; left: -9999px; }
             tr {
-                margin-bottom: 15px;
+                margin-bottom: 16px;
                 border: 1px solid #e2e8f0;
-                border-radius: 0;
-                padding: 20px;
+                border-radius: 8px;
+                padding: 16px;
                 background: white;
-                box-shadow: none;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.05);
             }
             td {
                 border: none;
                 position: relative;
                 padding-left: 0 !important;
                 text-align: left;
-                font-size: 15px;
-                padding: 8px 0;
+                font-size: 14px;
+                padding: 8px 0 !important;
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
                 border-bottom: 1px dashed #f1f5f9;
             }
-            td:last-child { border-bottom: none; display: block; margin-top: 15px; }
+            td:last-child { 
+                border-bottom: none; 
+                margin-top: 12px;
+                padding-right: 0 !important;
+                text-align: left !important;
+            }
             td:before {
                 content: attr(data-label);
                 display: inline-block;
@@ -124,7 +170,8 @@
                 font-size: 10px;
                 color: #94a3b8;
                 margin-right: 10px;
-                min-width: 80px;
+                min-width: 70px;
+                flex-shrink: 0;
             }
         }
 
@@ -204,6 +251,26 @@
             overflow: hidden;
         }
 
+        @media (max-width: 640px) {
+            #modal-box {
+                width: 100vw !important;
+                height: 100vh !important;
+                max-width: none !important;
+                border-radius: 0 !important;
+            }
+            .passenger-info .meta-field-value { font-size: 16px; }
+            .meta-field-value { font-size: 13px; }
+        }
+
+        @media (min-width: 641px) and (max-width: 1023px) {
+            #modal-box {
+                width: 100vw;
+                height: 100vh;
+                max-width: none;
+                border-radius: 12px;
+            }
+        }
+
         @media (min-width: 1024px) {
             #modal-box {
                 width: 95vw;
@@ -211,12 +278,6 @@
                 max-width: 1400px;
                 border-radius: 16px;
             }
-        }
-        
-        @media (max-width: 767px) {
-            #modal-box { padding: 0; height: 100dvh; }
-            .passenger-info .meta-field-value { font-size: 20px; }
-            .meta-field-value { font-size: 15px; }
         }
 
         .meta-field-label {
@@ -465,6 +526,20 @@
             gap: 15px;
         }
         
+        /* Responsive para sidebar del modal */
+        @media (max-width: 1023px) {
+            .modal-sidebar {
+                width: 100% !important;
+                border-right: none !important;
+                border-bottom: 1px solid #e2e8f0;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .modal-sidebar {
+            .field-group-row { grid-template-columns: 1fr; gap: 10px; }
+        }
+        
         @media (max-width: 640px) {
             .field-group-row { grid-template-columns: 1fr; gap: 10px; }
         }
@@ -487,7 +562,7 @@
         <!-- Dashboard Header -->
         <div class="mb-8 flex flex-col xl:flex-row items-start xl:items-end justify-between gap-6">
             <div class="space-y-4 w-full xl:w-auto">
-                <h2 class="text-2xl font-bold text-[#002a3f] title-font">Gestión de Reservas</h2>
+                <h2 class="text-2xl md:text-3xl font-bold text-[#002a3f] title-font">Gestión de Acciones</h2>
                 <div class="flex flex-wrap gap-3">
                     <div id="filter-pending" onclick="filterByStatus('pending')" class="status-summary-item bg-amber-50 border-amber-100 text-amber-600">
                         <span class="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span>
@@ -560,9 +635,9 @@
                 <button onclick="closeModal()" class="text-3xl text-gray-300 hover:text-gray-600 transition">&times;</button>
             </div>
             
-            <div class="flex-1 overflow-hidden flex flex-col lg:flex-row">
+            <div class="flex-1 overflow-y-auto column-scroll flex flex-col lg:flex-row">
                 <!-- Columna Izquierda: Cliente (Sidebar) -->
-                <div class="modal-sidebar w-full lg:w-[320px] lg:flex-shrink-0 overflow-y-auto column-scroll border-r">
+                <div class="modal-sidebar w-full lg:w-[320px] lg:flex-shrink-0 border-r">
                     <div class="p-6 md:p-8">
                         <div class="flex justify-between items-center mb-6">
                             <h4 class="text-[11px] font-black text-gray-400 uppercase tracking-widest">Cliente</h4>
@@ -608,7 +683,7 @@
                 </div>
 
                 <!-- Columna Derecha: Operaciones (Main Content) -->
-                <div class="modal-main-content flex-1 overflow-y-auto column-scroll p-6 md:p-8">
+                <div class="modal-main-content flex-1 p-6 md:p-8">
                     <!-- Sección de Ruta y Resumen -->
                     <div id="general-service-info" class="hidden">
                         <div id="route-display" class="route-visualizer">
@@ -669,7 +744,7 @@
                                             </div>
                                             <div>
                                                 <p class="meta-field-label">👥 Subchofer</p>
-                                                <select id="input-meta-subchofer_llegada" onchange="checkForChanges()" class="input-editable bg-white"></select>
+                                                <input type="text" id="input-meta-subchofer_llegada" oninput="checkForChanges()" class="input-editable bg-white" placeholder="Nombre del subchofer">
                                             </div>
                                         </div>
                                         <div>
@@ -710,7 +785,7 @@
                                             </div>
                                             <div>
                                                 <p class="meta-field-label">👥 Subchofer</p>
-                                                <select id="input-meta-subchofer_salida" onchange="checkForChanges()" class="input-editable bg-white"></select>
+                                                <input type="text" id="input-meta-subchofer_salida" oninput="checkForChanges()" class="input-editable bg-white" placeholder="Nombre del subchofer">
                                             </div>
                                         </div>
                                         <div>
@@ -828,7 +903,7 @@
 
         const COUNTRY_MAP = { 'AF': { name: 'Afganistán' }, 'AL': { name: 'Albania' }, 'DZ': { name: 'Argelia' }, 'AD': { name: 'Andorra' }, 'AO': { name: 'Angola' }, 'AG': { name: 'Antigua y Barbuda' }, 'AR': { name: 'Argentina' }, 'AM': { name: 'Armenia' }, 'AU': { name: 'Australia' }, 'AT': { name: 'Austria' }, 'AZ': { name: 'Azerbaiyán' }, 'BS': { name: 'Bahamas' }, 'BH': { name: 'Baréin' }, 'BD': { name: 'Bangladés' }, 'BB': { name: 'Barbados' }, 'BY': { name: 'Bielorrusia' }, 'BE': { name: 'Bélgica' }, 'BZ': { name: 'Belice' }, 'BJ': { name: 'Benín' }, 'BT': { name: 'Bután' }, 'BO': { name: 'Bolivia' }, 'BA': { name: 'Bosnia y Herzegovina' }, 'BW': { name: 'Botsuana' }, 'BR': { name: 'Brasil' }, 'BN': { name: 'Brunéi' }, 'BG': { name: 'Bulgaria' }, 'BF': { name: 'Burkina Faso' }, 'BI': { name: 'Burundi' }, 'KH': { name: 'Camboya' }, 'CM': { name: 'Camerún' }, 'CA': { name: 'Canadá' }, 'CV': { name: 'Cabo Verde' }, 'CF': { name: 'República Centroafricana' }, 'TD': { name: 'Chad' }, 'CL': { name: 'Chile' }, 'CN': { name: 'China' }, 'CO': { name: 'Colombia' }, 'KM': { name: 'Comoras' }, 'CG': { name: 'Congo' }, 'CD': { name: 'Congo, República Democrática del' }, 'CR': { name: 'Costa Rica' }, 'HR': { name: 'Croacia' }, 'CU': { name: 'Cuba' }, 'CY': { name: 'Chipre' }, 'CZ': { name: 'República Checa' }, 'DK': { name: 'Dinamarca' }, 'DJ': { name: 'Yibuti' }, 'DM': { name: 'Dominica' }, 'DO': { name: 'República Dominicana' }, 'EC': { name: 'Ecuador' }, 'EG': { name: 'Egipto' }, 'SV': { name: 'El Salvador' }, 'GQ': { name: 'Guinea Ecuatorial' }, 'ER': { name: 'Eritrea' }, 'EE': { name: 'Estonia' }, 'ET': { name: 'Etiopía' }, 'FJ': { name: 'Fiyi' }, 'FI': { name: 'Finlandia' }, 'FR': { name: 'Francia' }, 'GA': { name: 'Gabón' }, 'GM': { name: 'Gambia' }, 'GE': { name: 'Georgia' }, 'DE': { name: 'Alemania' }, 'GH': { name: 'Ghana' }, 'GR': { name: 'Grecia' }, 'GD': { name: 'Granada' }, 'GT': { name: 'Guatemala' }, 'GN': { name: 'Guinea' }, 'GW': { name: 'Guinea-Bisáu' }, 'GY': { name: 'Guyana' }, 'HT': { name: 'Haití' }, 'HN': { name: 'Honduras' }, 'HU': { name: 'Hungría' }, 'IS': { name: 'Islandia' }, 'IN': { name: 'India' }, 'ID': { name: 'Indonesia' }, 'IR': { name: 'Irán' }, 'IQ': { name: 'Irak' }, 'IE': { name: 'Irlanda' }, 'IL': { name: 'Israel' }, 'IT': { name: 'Italia' }, 'JM': { name: 'Jamaica' }, 'JP': { name: 'Japón' }, 'JO': { name: 'Jordania' }, 'KZ': { name: 'Kazajistán' }, 'KE': { name: 'Kenia' }, 'KI': { name: 'Kiribati' }, 'KW': { name: 'Kuwait' }, 'KG': { name: 'Kirguistán' }, 'LA': { name: 'Laos' }, 'LV': { name: 'Letonia' }, 'LB': { name: 'Líbano' }, 'LS': { name: 'Lesoto' }, 'LR': { name: 'Liberia' }, 'LY': { name: 'Libia' }, 'LI': { name: 'Liechtenstein' }, 'LT': { name: 'Lituania' }, 'LU': { name: 'Luxemburgo' }, 'MK': { name: 'Macedonia del Norte' }, 'MG': { name: 'Madagascar' }, 'MW': { name: 'Malaui' }, 'MY': { name: 'Malasia' }, 'MV': { name: 'Maldivas' }, 'ML': { name: 'Malí' }, 'MT': { name: 'Malta' }, 'MH': { name: 'Islas Marshall' }, 'MR': { name: 'Mauritania' }, 'MU': { name: 'Mauricio' }, 'MX': { name: 'México' }, 'FM': { name: 'Micronesia' }, 'MD': { name: 'Moldavia' }, 'MC': { name: 'Mónaco' }, 'MN': { name: 'Mongolia' }, 'ME': { name: 'Montenegro' }, 'MA': { name: 'Marruecos' }, 'MZ': { name: 'Mozambique' }, 'MM': { name: 'Myanmar' }, 'NA': { name: 'Namibia' }, 'NR': { name: 'Nauru' }, 'NP': { name: 'Nepal' }, 'NL': { name: 'Países Bajos' }, 'NZ': { name: 'Nueva Zelanda' }, 'NI': { name: 'Nicaragua' }, 'NE': { name: 'Níger' }, 'NG': { name: 'Nigeria' }, 'KP': { name: 'Corea del Norte' }, 'NO': { name: 'Noruega' }, 'OM': { name: 'Omán' }, 'PK': { name: 'Pakistán' }, 'PW': { name: 'Palaos' }, 'PA': { name: 'Panamá' }, 'PG': { name: 'Papúa Nueva Guinea' }, 'PY': { name: 'Paraguay' }, 'PE': { name: 'Perú' }, 'PH': { name: 'Filipinas' }, 'PL': { name: 'Polonia' }, 'PT': { name: 'Portugal' }, 'QA': { name: 'Catar' }, 'RO': { name: 'Rumania' }, 'RU': { name: 'Rusia' }, 'RW': { name: 'Ruanda' }, 'KN': { name: 'San Cristóbal y Nieves' }, 'LC': { name: 'Santa Lucía' }, 'VC': { name: 'San Vicente y las Granadinas' }, 'WS': { name: 'Samoa' }, 'SM': { name: 'San Marino' }, 'ST': { name: 'Santo Tomé y Príncipe' }, 'SA': { name: 'Arabia Saudita' }, 'SN': { name: 'Senegal' }, 'RS': { name: 'Serbia' }, 'SC': { name: 'Seychelles' }, 'SL': { name: 'Sierra Leona' }, 'SG': { name: 'Singapur' }, 'SK': { name: 'Eslovaquia' }, 'SI': { name: 'Eslovenia' }, 'SB': { name: 'Islas Salomón' }, 'SO': { name: 'Somalia' }, 'ZA': { name: 'Sudáfrica' }, 'KR': { name: 'Corea del Sur' }, 'ES': { name: 'España' }, 'LK': { name: 'Sri Lanka' }, 'SD': { name: 'Sudán' }, 'SR': { name: 'Surinam' }, 'SZ': { name: 'Esuatini' }, 'SE': { name: 'Suecia' }, 'CH': { name: 'Suiza' }, 'SY': { name: 'Siria' }, 'TW': { name: 'Taiwán' }, 'TJ': { name: 'Tayikistán' }, 'TZ': { name: 'Tanzania' }, 'TH': { name: 'Tailandia' }, 'TL': { name: 'Timor Oriental' }, 'TG': { name: 'Togo' }, 'TO': { name: 'Tonga' }, 'TT': { name: 'Trinidad y Tobago' }, 'TN': { name: 'Túnez' }, 'TR': { name: 'Turquía' }, 'TM': { name: 'Turkmenistán' }, 'TV': { name: 'Tuvalu' }, 'UG': { name: 'Uganda' }, 'UA': { name: 'Ucrania' }, 'AE': { name: 'Emiratos Árabes Unidos' }, 'GB': { name: 'Reino Unido' }, 'US': { name: 'Estados Unidos' }, 'UY': { name: 'Uruguay' }, 'UZ': { name: 'Uzbekistán' }, 'VU': { name: 'Vanuatu' }, 'VE': { name: 'Venezuela' }, 'VN': { name: 'Vietnam' }, 'YE': { name: 'Yemen' }, 'ZM': { name: 'Zambia' }, 'ZW': { name: 'Zimbabue' } };
 
-        const CHOFERES = ["Juan Pérez", "Carlos Rodríguez", "Jorge Alvarado", "Ana Morales", "Luis Castillo"];
+        const CHOFERES = ["Pedro", "Fermín", "Manuel Alvarado", "Albán", "Chayo", "Alex Fila", "Alex Montero"];
 
         const ARRIVAL_FIELDS = [
             { label: "Fecha", key: "- Arrival Date", emoji: "📅", type: "date" },
@@ -875,7 +950,7 @@
         }
 
         function initChoferSelects() {
-            const selects = ["chofer_llegada", "subchofer_llegada", "chofer_salida", "subchofer_salida"];
+            const selects = ["chofer_llegada", "chofer_salida"];
             selects.forEach(id => {
                 const sel = document.getElementById(`input-meta-${id}`);
                 if (!sel) return;
@@ -1001,12 +1076,9 @@
                                 ${translateStatus(order.status)}
                             </div>
                         </td>
-                        <td class="text-right pr-6">
-                            <button onclick="viewOrder(${order.id})" class="text-gray-400 hover:text-[#002a3f] hover:bg-gray-100 p-2 rounded-lg transition-all" title="Ver detalle">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
+                        <td data-label="Acción" class="text-right pr-6">
+                            <button onclick="viewOrder(${order.id})" class="bg-[#002a3f] text-white px-4 py-2 rounded-lg font-bold uppercase text-xs hover:bg-[#ed4441] transition-all" title="Ver detalle">
+                                VER
                             </button>
                         </td>
                     </tr>`;
@@ -1028,6 +1100,8 @@
             const phone = o.billing.phone || "";
             const country = (o.billing.country || "").toUpperCase();
             const address = resolveAddress(o);
+            const addressOnlyLine1 = (o.shipping?.address_1 || o.billing?.address_1 || "");
+            const addressCity = (o.shipping?.city || o.billing?.city || "");
 
             originalValues = { name: fullName, email, phone, country, address, status: o.status };
 
@@ -1044,7 +1118,7 @@
             document.getElementById('input-email').value = email;
             document.getElementById('input-phone').value = phone;
             document.getElementById('input-country').value = country;
-            document.getElementById('input-address').value = address;
+            document.getElementById('input-address').value = addressOnlyLine1;
             document.getElementById('input-status').value = o.status;
 
             PASSENGER_EDIT_KEYS.forEach(k => {
@@ -1165,6 +1239,8 @@
             if (!currentOrderId) return;
             toggleLoader(true);
             const nameParts = document.getElementById('input-name').value.trim().split(' ');
+            const countryVal = document.getElementById('input-country').value;
+            const addressVal = document.getElementById('input-address').value.trim();
             
             let meta = [];
             const allMetaKeys = [...ARRIVAL_FIELDS.map(f=>f.key), ...DEPARTURE_FIELDS.map(f=>f.key), ...ASSIGN_KEYS];
@@ -1179,8 +1255,14 @@
                     first_name: nameParts[0] || "", last_name: nameParts.slice(1).join(' ') || "",
                     email: document.getElementById('input-email').value.trim().toLowerCase(),
                     phone: document.getElementById('input-phone').value.trim(),
-                    country: document.getElementById('input-country').value,
-                    address_1: document.getElementById('input-address').value.trim()
+                    country: countryVal,
+                    address_1: addressVal
+                },
+                shipping: {
+                    first_name: nameParts[0] || "", last_name: nameParts.slice(1).join(' ') || "",
+                    address_1: addressVal,
+                    city: "",
+                    country: countryVal
                 },
                 meta_data: meta
             };
