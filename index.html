@@ -537,22 +537,42 @@
 
         @media (max-width: 640px) {
             .modal-sidebar {
+                width: 100% !important;
+                border-right: none !important;
+                border-bottom: 1px solid #e2e8f0;
+            }
             .field-group-row { grid-template-columns: 1fr; gap: 10px; }
         }
-        
-        @media (max-width: 640px) {
-            .field-group-row { grid-template-columns: 1fr; gap: 10px; }
+
+        /* Indexing status (igual que en viajes) */
+        #indexing-status {
+            position: fixed;
+            top: 14px;
+            right: 150px;
+            background: rgba(0, 42, 63, 0.95);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            z-index: 120;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            display: none;
+            backdrop-filter: blur(4px);
+            align-items: center;
+            gap: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.3s ease;
         }
     </style>
 </head>
 <body>
 
-    <!-- Loader -->
-    <div id="global-loader" class="hidden fixed inset-0 bg-white/90 flex items-center justify-center z-[999]">
-        <div class="flex flex-col items-center">
-            <div class="w-10 h-10 border-4 border-gray-200 border-t-[#ed4441] rounded-full animate-spin mb-4"></div>
-            <p class="text-[12px] font-black uppercase tracking-widest text-[#002a3f]">Sincronizando...</p>
-        </div>
+    <!-- Indexing Status (reemplaza loader de reservas) -->
+    <div id="indexing-status">
+        <div id="status-icon" class="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+        <span id="indexing-text">Indexando...</span>
     </div>
 
     <!-- AQUÍ ESTÁ EL MENÚ CENTRALIZADO -->
@@ -562,7 +582,7 @@
         <!-- Dashboard Header -->
         <div class="mb-8 flex flex-col xl:flex-row items-start xl:items-end justify-between gap-6">
             <div class="space-y-4 w-full xl:w-auto">
-                <h2 class="text-2xl md:text-3xl font-bold text-[#002a3f] title-font">Gestión de Acciones</h2>
+                <h2 class="text-2xl md:text-3xl font-bold text-[#002a3f] title-font">Reservas</h2>
                 <div class="flex flex-wrap gap-3">
                     <div id="filter-pending" onclick="filterByStatus('pending')" class="status-summary-item bg-amber-50 border-amber-100 text-amber-600">
                         <span class="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span>
@@ -1416,7 +1436,25 @@
             }
             document.getElementById('pagination-controls').innerHTML = h;
         }
-        function toggleLoader(s) { document.getElementById('global-loader').classList.toggle('hidden', !s); }
+        function toggleLoader(show) {
+            const statusBar = document.getElementById('indexing-status');
+            const apiBadge = document.getElementById('api-status-badge');
+            const apiDot = document.getElementById('api-dot');
+            const apiLabel = apiBadge ? apiBadge.querySelector('span:last-child') : null;
+
+            // Ocultar el chip flotante para usar el badge como indicador
+            if (statusBar) statusBar.style.display = 'none';
+            if (!apiBadge || !apiDot || !apiLabel) return;
+
+            if (show) {
+                apiBadge.style.display = 'flex';
+                apiDot.className = 'w-2 h-2 border-2 border-white/40 border-t-white rounded-full animate-spin mr-2';
+                apiLabel.textContent = 'Indexando...';
+            } else {
+                apiDot.className = 'w-2 h-2 bg-green-400 rounded-full mr-2';
+                apiLabel.textContent = 'Online';
+            }
+        }
         function setAPIStatus(s) { 
             // Como el menú controla el estado visual, podemos enviar un evento personalizado si lo deseamos,
             // pero por simplicidad en este paso, la función queda vacía ya que el elemento #api-dot y #api-status-badge
