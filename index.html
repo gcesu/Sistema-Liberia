@@ -773,7 +773,7 @@
                                         </div>
                                         <div>
                                             <p class="meta-field-label">🔒 Notas Internas</p>
-                                            <textarea id="input-meta-notas_internas_llegada" oninput="checkForChanges()" rows="1" class="input-editable bg-white resize-none"></textarea>
+                                            <textarea id="input-meta-notas_internas_llegada" oninput="checkForChanges()" rows="2" class="input-editable bg-white resize-none h-16"></textarea>
                                         </div>
                                     </div>
                                 </div>
@@ -814,7 +814,7 @@
                                         </div>
                                         <div>
                                             <p class="meta-field-label">🔒 Notas Internas</p>
-                                            <textarea id="input-meta-notas_internas_salida" oninput="checkForChanges()" rows="1" class="input-editable bg-white resize-none"></textarea>
+                                            <textarea id="input-meta-notas_internas_salida" oninput="checkForChanges()" rows="2" class="input-editable bg-white resize-none h-16"></textarea>
                                         </div>
                                     </div>
                                 </div>
@@ -844,11 +844,11 @@
         // API Proxy - Las credenciales están protegidas en el servidor
         const API_PROXY = "woo-proxy.php";
 
-        // CALCULAR FECHA DE INICIO (Año actual - 1)
-        const currentYear = new Date().getFullYear();
-        const prevYear = currentYear - 1;
-        // Formato ISO8601 para WooCommerce: YYYY-MM-DDTHH:MM:SS
-        const START_DATE_FILTER = `${prevYear}-01-01T00:00:00`;
+        // CALCULAR FECHA DE INICIO (7 meses atrás)
+const startDate = new Date();
+startDate.setMonth(startDate.getMonth() - 7);
+// Formato ISO8601 para WooCommerce: YYYY-MM-DDTHH:MM:SS
+const START_DATE_FILTER = startDate.toISOString().split('.')[0];
 
         // --- UTILIDADES ---
         function formatDateShort(d) {
