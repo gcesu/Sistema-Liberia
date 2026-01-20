@@ -136,7 +136,7 @@ class AdminNavbar extends HTMLElement {
         <nav class="flex flex-col gap-6">
             <a href="index.html" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline">📅 Reservas</a>
             <a href="viajes.html" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline">🚐 Viajes</a>
-            <!-- <a href="choferes.html" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline">👤 Choferes</a> -->
+            <a href="choferes.html" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline">👤 Choferes</a>
         </nav>
       </div>
 
@@ -152,7 +152,7 @@ class AdminNavbar extends HTMLElement {
         <nav class="nav-links-desktop">
             <a href="index.html" class="nav-item">Reservas</a>
             <a href="viajes.html" class="nav-item">Viajes</a>
-            <!-- <a href="choferes.html" class="nav-item">Choferes</a> -->
+            <a href="choferes.html" class="nav-item">Choferes</a>
         </nav>
 
         <div class="ml-auto flex items-center gap-2 md:gap-4">
