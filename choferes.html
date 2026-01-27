@@ -8,6 +8,28 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <!-- VERIFICACIÓN DE SESIÓN (excepto si es acceso de chofer) -->
+    <script>
+        (async function checkAuth() {
+            // Si hay parámetro "chofer" en la URL, no requerir login
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('chofer')) {
+                return; // Permitir acceso sin login para choferes
+            }
+            
+            try {
+                const response = await fetch('api/check_session.php');
+                const data = await response.json();
+                if (!data.authenticated) {
+                    window.location.href = 'login.html';
+                }
+            } catch (error) {
+                console.error('Error verificando sesión:', error);
+                window.location.href = 'login.html';
+            }
+        })();
+    </script>
+    
     <script src="menu.js" defer></script>
 
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -876,7 +898,7 @@
                         applyFilters();
 
                         const progress = Math.min(100, Math.round((page / totalPages) * 100));
-                        updateProgressUI(progress, `Cargando datos... ${progress}%`);
+                        updateProgressUI(progress, `Indexando ${progress}%`);
 
                         if (page >= totalPages || orders.length < 100) keepFetching = false;
                         else page++;
@@ -1025,13 +1047,44 @@
             return `${dateObj.getDate().toString().padStart(2, '0')}/${months[dateObj.getMonth()]}/${dateObj.getFullYear()}`;
         }
 
-        function toggleIndexingUI(show) { document.getElementById('indexing-status').style.display = show ? 'flex' : 'none'; }
-        function updateProgressUI(percent, text) { document.getElementById('indexing-text').innerText = text; }
-        function showCompletionState() { 
-            document.getElementById('status-icon').className = "w-3 h-3 bg-green-500 rounded-full";
-            document.getElementById('indexing-text').innerText = "Datos Actualizados";
-            setTimeout(() => toggleIndexingUI(false), 2000);
-            
+        function toggleIndexingUI(show) {
+            const statusBar = document.getElementById('indexing-status');
+            const apiBadge = document.getElementById('api-status-badge');
+            const apiDot = document.getElementById('api-dot');
+            const apiLabel = apiBadge ? apiBadge.querySelector('span:last-child') : null;
+
+            // Ocultamos el chip flotante y reutilizamos el badge de "Online"
+            if (statusBar) statusBar.style.display = 'none';
+            if (!apiBadge || !apiDot || !apiLabel) return;
+
+            if (show) {
+                apiBadge.style.display = 'flex';
+                apiDot.className = 'w-2 h-2 border-2 border-white/40 border-t-white rounded-full animate-spin mr-2';
+                apiLabel.textContent = 'Indexando...';
+            } else {
+                apiDot.className = 'w-2 h-2 bg-green-400 rounded-full mr-2';
+                apiLabel.textContent = 'Online';
+            }
+        }
+
+        function updateProgressUI(percent, text) {
+            const textEl = document.getElementById('indexing-text');
+            if (textEl) textEl.innerText = text;
+
+            // Reflejar el mismo texto en el badge superior mientras indexa
+            const apiBadge = document.getElementById('api-status-badge');
+            const apiLabel = apiBadge ? apiBadge.querySelector('span:last-child') : null;
+            if (apiLabel) apiLabel.textContent = text;
+        }
+
+        function showCompletionState() {
+            const iconDiv = document.getElementById('status-icon');
+            const textSpan = document.getElementById('indexing-text');
+            if (iconDiv) iconDiv.className = "w-3 h-3 bg-green-500 rounded-full shadow-[0_0_10px_rgba(34,197,94,0.8)]";
+            if (textSpan) textSpan.innerText = "100% Indexado";
+            // Regresar el badge a estado Online
+            toggleIndexingUI(false);
+
             // Aplicar filtros si hay parámetros de URL
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('chofer')) {
@@ -1095,7 +1148,7 @@
                             <span class="trip-badge ${isArrival ? 'badge-arrival' : 'badge-departure'}">${isArrival ? 'Llegada' : 'Salida'}</span>
                         </td>
                         <td data-label="Ruta" class="font-semibold text-gray-600 text-sm">${trip.route}</td>
-                        <td data-label="Vuelo" class="font-mono text-sm text-gray-500">${trip.flight}</td>
+                        <td data-label="Vuelo" class="text-sm text-gray-500 font-semibold">${trip.flight}</td>
                         <td data-label="Chofer" class="text-sm font-semibold text-gray-700">${trip.driver && trip.driver.trim() !== '' ? trip.driver : 'No asignado'}</td>
                         <td data-label="Estatus">
                             <div class="status-pill status-${getTripStatusClass(trip.trip_status)}">

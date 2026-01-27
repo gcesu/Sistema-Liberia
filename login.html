@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Liberia Airport Shuttle</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&family=Oswald:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        :root {
+            --primary: #002a3f;
+            --secondary: #ffffff;
+            --accent: #ed4441;
+            --bg-light: #f1f5f9;
+        }
+
+        body {
+            font-family: 'Lato', sans-serif;
+            background: linear-gradient(135deg, #002a3f 0%, #004d73 50%, #006699 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1, h2, h3, .title-font {
+            font-family: 'Oswald', sans-serif;
+            text-transform: uppercase;
+        }
+
+        .login-container {
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+            overflow: hidden;
+            width: 100%;
+            max-width: 420px;
+            animation: slideUp 0.5s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .login-header {
+            background: var(--primary);
+            padding: 40px 30px;
+            text-align: center;
+        }
+
+        .login-logo {
+            height: 60px;
+            margin: 0 auto 15px auto;
+            display: block;
+        }
+
+        .login-title {
+            color: white;
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0;
+            letter-spacing: 2px;
+        }
+
+        .login-subtitle {
+            color: rgba(255,255,255,0.7);
+            font-size: 12px;
+            margin-top: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .login-body {
+            padding: 40px 30px;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: #64748b;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 14px 16px;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--primary);
+            background-color: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            outline: none;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+        }
+
+        .form-input:focus {
+            border-color: var(--accent);
+            background-color: white;
+            box-shadow: 0 0 0 4px rgba(237, 68, 65, 0.1);
+        }
+
+        .form-input::placeholder {
+            color: #94a3b8;
+            font-weight: 400;
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 16px;
+            font-size: 13px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: white;
+            background: linear-gradient(135deg, var(--accent) 0%, #c93a38 100%);
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(237, 68, 65, 0.3);
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(237, 68, 65, 0.4);
+        }
+
+        .btn-login:active {
+            transform: translateY(0);
+        }
+
+        .btn-login:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .error-message {
+            display: none;
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            text-align: center;
+            animation: shake 0.5s ease;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .login-footer {
+            text-align: center;
+            padding: 20px 30px 30px;
+            border-top: 1px solid #f1f5f9;
+        }
+
+        .login-footer-text {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        /* Loading spinner */
+        .spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .btn-login.loading .btn-text { display: none; }
+        .btn-login.loading .spinner { display: block; }
+
+        /* Password toggle */
+        .password-wrapper {
+            position: relative;
+        }
+
+        .password-wrapper .form-input {
+            padding-right: 50px;
+        }
+
+        .btn-toggle-password {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 5px;
+            color: #94a3b8;
+            transition: color 0.2s;
+        }
+
+        .btn-toggle-password:hover {
+            color: var(--primary);
+        }
+
+        .btn-toggle-password svg {
+            width: 20px;
+            height: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <img src="https://liberiaairportshuttle.com/wp-content/uploads/2024/11/Grupo.png" alt="Liberia Airport Shuttle" class="login-logo">
+            <h1 class="login-title title-font">Admin Shuttle</h1>
+            <p class="login-subtitle">Liberia Airport Shuttle</p>
+        </div>
+
+        <div class="login-body">
+            <div id="error-message" class="error-message">
+                Usuario o contraseña incorrectos
+            </div>
+
+            <form id="login-form" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label class="form-label" for="usuario">Usuario</label>
+                    <input 
+                        type="text" 
+                        id="usuario" 
+                        name="usuario" 
+                        class="form-input" 
+                        placeholder="Ingresa tu usuario"
+                        autocomplete="username"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="contrasena">Contraseña</label>
+                    <div class="password-wrapper">
+                        <input 
+                            type="password" 
+                            id="contrasena" 
+                            name="contrasena" 
+                            class="form-input" 
+                            placeholder="Ingresa tu contraseña"
+                            autocomplete="current-password"
+                            required
+                        >
+                        <button type="button" id="btn-toggle-password" class="btn-toggle-password" onclick="togglePassword()">
+                            <svg id="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                            <svg id="icon-eye-off" style="display:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                <line x1="1" y1="1" x2="23" y2="23"></line>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" id="btn-submit" class="btn-login">
+                    <span class="btn-text">Iniciar Sesión</span>
+                    <div class="spinner"></div>
+                </button>
+            </form>
+        </div>
+
+        <div class="login-footer">
+            <p class="login-footer-text">© 2024 Liberia Airport Shuttle</p>
+        </div>
+    </div>
+
+    <script>
+        async function handleLogin(e) {
+            e.preventDefault();
+            
+            const btn = document.getElementById('btn-submit');
+            const errorMsg = document.getElementById('error-message');
+            const usuario = document.getElementById('usuario').value.trim();
+            const contrasena = document.getElementById('contrasena').value;
+
+            // Ocultar error previo
+            errorMsg.classList.remove('show');
+            
+            // Mostrar loading
+            btn.classList.add('loading');
+            btn.disabled = true;
+
+            try {
+                const params = new URLSearchParams();
+                params.append('usuario', usuario);
+                params.append('contrasena', contrasena);
+
+                const response = await fetch('api/login.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: params
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Login exitoso - redirigir al panel
+                    window.location.href = 'index.html';
+                } else {
+                    // Error de login
+                    errorMsg.textContent = data.message || 'Usuario o contraseña incorrectos';
+                    errorMsg.classList.add('show');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                errorMsg.textContent = 'Error de conexión. Intenta nuevamente.';
+                errorMsg.classList.add('show');
+            } finally {
+                btn.classList.remove('loading');
+                btn.disabled = false;
+            }
+        }
+
+        // Focus en el primer campo al cargar
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('usuario').focus();
+        });
+
+        // Toggle password visibility
+        function togglePassword() {
+            const input = document.getElementById('contrasena');
+            const iconEye = document.getElementById('icon-eye');
+            const iconEyeOff = document.getElementById('icon-eye-off');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                iconEye.style.display = 'none';
+                iconEyeOff.style.display = 'block';
+            } else {
+                input.type = 'password';
+                iconEye.style.display = 'block';
+                iconEyeOff.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

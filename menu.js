@@ -135,8 +135,9 @@ class AdminNavbar extends HTMLElement {
         </div>
         <nav class="flex flex-col gap-6">
             <a href="index.html" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline">📅 Reservas</a>
-            <a href="viajes.html" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline">🚐 Viajes / Logística</a>
+            <a href="viajes.html" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline">🚐 Viajes</a>
             <a href="choferes.html" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline">👤 Choferes</a>
+            <a href="#" id="mobile-logout-btn" class="text-red-400 text-2xl font-bold border-b border-white/10 pb-4 no-underline">🚪 Cerrar Sesión</a>
         </nav>
       </div>
 
@@ -158,10 +159,13 @@ class AdminNavbar extends HTMLElement {
         <div class="ml-auto flex items-center gap-2 md:gap-4">
             <div id="api-status-badge" class="hidden sm:flex items-center bg-white/10 px-3 py-1.5 rounded-full">
                 <span id="api-dot" class="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
-                <span class="text-[10px] font-black uppercase tracking-widest text-white">Sistema OK</span>
+                <span class="text-[10px] font-black uppercase tracking-widest text-white">Online</span>
             </div>
             
             <button id="global-refresh-btn" class="btn-sync tracking-widest">Actualizar</button>
+            <button id="logout-btn" class="hidden lg:flex items-center gap-2 bg-white/10 hover:bg-red-500 px-3 py-1.5 rounded-full transition-all cursor-pointer border-none">
+                <span class="text-[10px] font-black uppercase tracking-widest text-white">Salir</span>
+            </button>
         </div>
       </header>
     `;
@@ -192,6 +196,24 @@ class AdminNavbar extends HTMLElement {
             window.location.reload();
         }
     });
+
+    // Logout buttons
+    const logoutBtn = this.querySelector('#logout-btn');
+    const mobileLogoutBtn = this.querySelector('#mobile-logout-btn');
+    
+    const handleLogout = async (e) => {
+        e.preventDefault();
+        try {
+            await fetch('api/logout.php');
+            window.location.href = 'login.html';
+        } catch (error) {
+            console.error('Error al cerrar sesión:', error);
+            window.location.href = 'login.html';
+        }
+    };
+
+    if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
+    if (mobileLogoutBtn) mobileLogoutBtn.addEventListener('click', handleLogout);
   }
 
   highlightActiveLink() {

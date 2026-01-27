@@ -9,6 +9,22 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <!-- VERIFICACIÓN DE SESIÓN -->
+    <script>
+        (async function checkAuth() {
+            try {
+                const response = await fetch('api/check_session.php');
+                const data = await response.json();
+                if (!data.authenticated) {
+                    window.location.href = 'login.html';
+                }
+            } catch (error) {
+                console.error('Error verificando sesión:', error);
+                window.location.href = 'login.html';
+            }
+        })();
+    </script>
+    
     <!-- CONEXIÓN AL MENÚ -->
     <script src="menu.js" defer></script>
 
@@ -537,22 +553,42 @@
 
         @media (max-width: 640px) {
             .modal-sidebar {
+                width: 100% !important;
+                border-right: none !important;
+                border-bottom: 1px solid #e2e8f0;
+            }
             .field-group-row { grid-template-columns: 1fr; gap: 10px; }
         }
-        
-        @media (max-width: 640px) {
-            .field-group-row { grid-template-columns: 1fr; gap: 10px; }
+
+        /* Indexing status (igual que en viajes) */
+        #indexing-status {
+            position: fixed;
+            top: 14px;
+            right: 150px;
+            background: rgba(0, 42, 63, 0.95);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            z-index: 120;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            display: none;
+            backdrop-filter: blur(4px);
+            align-items: center;
+            gap: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.3s ease;
         }
     </style>
 </head>
 <body>
 
-    <!-- Loader -->
-    <div id="global-loader" class="hidden fixed inset-0 bg-white/90 flex items-center justify-center z-[999]">
-        <div class="flex flex-col items-center">
-            <div class="w-10 h-10 border-4 border-gray-200 border-t-[#ed4441] rounded-full animate-spin mb-4"></div>
-            <p class="text-[12px] font-black uppercase tracking-widest text-[#002a3f]">Sincronizando...</p>
-        </div>
+    <!-- Indexing Status (reemplaza loader de reservas) -->
+    <div id="indexing-status">
+        <div id="status-icon" class="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+        <span id="indexing-text">Indexando...</span>
     </div>
 
     <!-- AQUÍ ESTÁ EL MENÚ CENTRALIZADO -->
@@ -562,7 +598,7 @@
         <!-- Dashboard Header -->
         <div class="mb-8 flex flex-col xl:flex-row items-start xl:items-end justify-between gap-6">
             <div class="space-y-4 w-full xl:w-auto">
-                <h2 class="text-2xl md:text-3xl font-bold text-[#002a3f] title-font">Gestión de Acciones</h2>
+                <h2 class="text-2xl md:text-3xl font-bold text-[#002a3f] title-font">Reservas</h2>
                 <div class="flex flex-wrap gap-3">
                     <div id="filter-pending" onclick="filterByStatus('pending')" class="status-summary-item bg-amber-50 border-amber-100 text-amber-600">
                         <span class="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span>
@@ -577,11 +613,11 @@
             <!-- Buscador Manual -->
             <div class="flex flex-col sm:flex-row gap-3 w-full xl:w-auto mt-4 xl:mt-0">
                 <div class="relative flex-1 md:w-80">
-                    <input type="text" id="search-input" oninput="handleSearchInput()" onkeydown="if(event.key==='Enter') refreshData(1)" placeholder="Buscar cliente, ID..." class="bg-white border border-gray-200 shadow-sm rounded-xl px-10 py-3 pr-10 text-sm w-full focus:ring-2 focus:ring-[#ed4441]/20 outline-none h-12">
+                    <input type="text" id="search-input" oninput="handleSearchInput()" onkeydown="if(event.key==='Enter') applyFilters()" placeholder="Buscar cliente, ID..." class="bg-white border border-gray-200 shadow-sm rounded-xl px-10 py-3 pr-10 text-sm w-full focus:ring-2 focus:ring-[#ed4441]/20 outline-none h-12">
                     <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg pointer-events-none">🔍</span>
                     <button id="btn-clear-search" onclick="clearSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 text-xl transition-all">&times;</button>
                 </div>
-                <button onclick="refreshData(1)" class="bg-[#002a3f] text-white px-6 h-12 rounded-xl font-bold uppercase text-[11px] tracking-widest hover:bg-[#ed4441] transition-all shadow-md">Buscar</button>
+                <button onclick="applyFilters()" class="bg-[#002a3f] text-white px-6 h-12 rounded-xl font-bold uppercase text-[11px] tracking-widest hover:bg-[#ed4441] transition-all shadow-md">Buscar</button>
             </div>
         </div>
 
@@ -753,7 +789,7 @@
                                         </div>
                                         <div>
                                             <p class="meta-field-label">🔒 Notas Internas</p>
-                                            <textarea id="input-meta-notas_internas_llegada" oninput="checkForChanges()" rows="1" class="input-editable bg-white resize-none"></textarea>
+                                            <textarea id="input-meta-notas_internas_llegada" oninput="checkForChanges()" rows="2" class="input-editable bg-white resize-none h-16"></textarea>
                                         </div>
                                     </div>
                                 </div>
@@ -794,7 +830,7 @@
                                         </div>
                                         <div>
                                             <p class="meta-field-label">🔒 Notas Internas</p>
-                                            <textarea id="input-meta-notas_internas_salida" oninput="checkForChanges()" rows="1" class="input-editable bg-white resize-none"></textarea>
+                                            <textarea id="input-meta-notas_internas_salida" oninput="checkForChanges()" rows="2" class="input-editable bg-white resize-none h-16"></textarea>
                                         </div>
                                     </div>
                                 </div>
@@ -824,11 +860,11 @@
         // API Proxy - Las credenciales están protegidas en el servidor
         const API_PROXY = "woo-proxy.php";
 
-        // CALCULAR FECHA DE INICIO (Año actual - 1)
-        const currentYear = new Date().getFullYear();
-        const prevYear = currentYear - 1;
-        // Formato ISO8601 para WooCommerce: YYYY-MM-DDTHH:MM:SS
-        const START_DATE_FILTER = `${prevYear}-01-01T00:00:00`;
+        // CALCULAR FECHA DE INICIO (7 meses atrás)
+const startDate = new Date();
+startDate.setMonth(startDate.getMonth() - 7);
+// Formato ISO8601 para WooCommerce: YYYY-MM-DDTHH:MM:SS
+const START_DATE_FILTER = startDate.toISOString().split('.')[0];
 
         // --- UTILIDADES ---
         function formatDateShort(d) {
@@ -924,7 +960,9 @@
 
         const PASSENGER_EDIT_KEYS = ["name", "email", "phone", "country", "address"];
 
-        let currentOrders = [];
+        let allOrders = [];  // Todas las órdenes indexadas
+        let currentFilteredOrders = [];  // Órdenes después de aplicar filtros
+        let currentOrders = [];  // Órdenes en la página actual (para compatibilidad con modal)
         let currentOrderId = null;
         let currentPage = 1;
         let totalPages = 1;
@@ -933,11 +971,21 @@
         let originalValues = {};
         let editingSections = { passenger: false, arrival: false, departure: false };
         let currentStatusFilter = "";
+        let isIndexing = false;
+        let indexingRunId = 0;
 
         window.onload = () => {
             initCountryDropdown();
             initChoferSelects();
-            refreshData(1);
+            startBackgroundIndexing();
+        };
+
+        window.refreshData = function(page = 1) {
+            // Reiniciar estado y forzar nueva indexación
+            allOrders = [];
+            currentFilteredOrders = [];
+            renderTable();
+            startBackgroundIndexing(true);
         };
 
         function initCountryDropdown() {
@@ -965,53 +1013,136 @@
 
         function getCountryDisplayName(code) { return code ? (COUNTRY_MAP[code.toUpperCase()]?.name || code.toUpperCase()) : 'N/A'; }
 
-        async function refreshData(page = 1) {
+        async function startBackgroundIndexing(force = false) {
+            if (isIndexing && !force) return;
+            if (force) indexingRunId++;
+            const runId = indexingRunId;
+            isIndexing = true;
             toggleLoader(true);
-            const searchQuery = document.getElementById('search-input').value.toLowerCase().trim();
+
+            let page = 1;
+            let totalPagesAPI = 1;
+            let keepFetching = true;
+
             try {
-                updateStats();
-                // Se agrega el parámetro &after= al endpoint para filtrar por fecha
-                let apiURL = `${API_PROXY}?per_page=${pageSize}&page=${page}&orderby=date&order=desc&after=${START_DATE_FILTER}`;
-                if (searchQuery) apiURL += `&search=${searchQuery}`;
-                if (currentStatusFilter) apiURL += `&status=${currentStatusFilter}`;
-                
-                const response = await fetch(apiURL, {
-                    method: 'GET',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-                if (!response.ok) throw new Error("API Offline");
-                
-                totalOrders = parseInt(response.headers.get('x-wp-total')) || 0;
-                totalPages = parseInt(response.headers.get('x-wp-totalpages')) || 1;
-                currentPage = page;
-                currentOrders = await response.json();
-                
-                renderTable();
-                updatePaginationUI();
-                setAPIStatus('online');
-            } catch (e) { setAPIStatus('error'); } finally { toggleLoader(false); }
+                while (keepFetching) {
+                    const response = await fetch(`${API_PROXY}?per_page=100&page=${page}&after=${START_DATE_FILTER}&orderby=date&order=desc`);
+
+                    if (!response.ok) throw new Error("Error API");
+                    if (runId !== indexingRunId) break;
+
+                    if (page === 1) {
+                        const totalHeader = response.headers.get('x-wp-totalpages');
+                        if (totalHeader) totalPagesAPI = parseInt(totalHeader);
+                    }
+
+                    const orders = await response.json();
+                    if (runId !== indexingRunId) break;
+
+                    if (Array.isArray(orders) && orders.length > 0) {
+                        allOrders = [...allOrders, ...orders];
+                        // Ordenar por fecha de creación (más recientes primero)
+                        allOrders.sort((a, b) => new Date(b.date_created) - new Date(a.date_created));
+
+                        applyFilters();
+
+                        const progress = Math.min(100, Math.round((page / totalPagesAPI) * 100));
+                        updateProgressUI(progress, `Indexando ${progress}%`);
+
+                        if (page >= totalPagesAPI || orders.length < 100) {
+                            keepFetching = false;
+                        } else {
+                            page++;
+                        }
+                    } else {
+                        keepFetching = false;
+                    }
+
+                    if (page > 50) keepFetching = false;
+                }
+
+                if (runId === indexingRunId) {
+                    showCompletionState();
+                    setAPIStatus('online');
+                }
+
+            } catch (error) {
+                console.error(error);
+                updateProgressUI(100, "Error de conexión");
+                setAPIStatus('error');
+                setTimeout(() => toggleLoader(false), 3000);
+            } finally {
+                if (runId === indexingRunId) {
+                    isIndexing = false;
+                }
+            }
         }
 
-        async function updateStats() {
-            const fetchCount = async (status, elementId) => {
-                try {
-                    // También filtramos el contador de estadísticas para que coincida con la lista
-                    const resp = await fetch(`${API_PROXY}?status=${status}&per_page=1&after=${START_DATE_FILTER}`);
-                    document.getElementById(elementId).innerText = resp.headers.get('x-wp-total') || 0;
-                } catch(e) {}
-            };
-            fetchCount('pending', 'stat-pending');
+        function applyFilters() {
+            const searchText = document.getElementById('search-input').value.toLowerCase().trim();
+            
+            let filtered = allOrders;
+
+            // Filtrar por estado
+            if (currentStatusFilter) {
+                filtered = filtered.filter(o => o.status === currentStatusFilter);
+            }
+
+            // Filtrar por búsqueda
+            if (searchText) {
+                filtered = filtered.filter(o => {
+                    const name = resolveName(o).toLowerCase();
+                    const id = o.id.toString();
+                    const hotel = (o.line_items?.[0]?.name || '').toLowerCase();
+                    return name.includes(searchText) || id.includes(searchText) || hotel.includes(searchText);
+                });
+            }
+
+            currentFilteredOrders = filtered;
+            totalOrders = filtered.length;
+            totalPages = Math.ceil(totalOrders / pageSize) || 1;
+            
+            // Asegurar que la página actual es válida
+            if (currentPage > totalPages) currentPage = 1;
+            
+            renderTable();
+            updatePaginationUI();
+            updateStats();
+        }
+
+        function goToPage(page) {
+            currentPage = page;
+            renderTable();
+            updatePaginationUI();
+        }
+
+        function updateProgressUI(percent, text) {
+            const apiBadge = document.getElementById('api-status-badge');
+            const apiLabel = apiBadge ? apiBadge.querySelector('span:last-child') : null;
+            if (apiLabel) apiLabel.textContent = text;
+        }
+
+        function showCompletionState() {
+            toggleLoader(false);
+            updateProgressUI(100, "Online");
+        }
+
+        function updateStats() {
+            // Contar pendientes desde los datos locales
+            const pendingCount = allOrders.filter(o => o.status === 'pending').length;
+            document.getElementById('stat-pending').innerText = pendingCount;
         }
 
         function filterByStatus(status) {
             currentStatusFilter = status;
+            currentPage = 1;  // Resetear a primera página al filtrar
             if(status === 'pending') {
                 document.getElementById('filter-pending').classList.add('active-filter');
             } else {
                 document.getElementById('filter-pending').classList.remove('active-filter');
             }
             document.getElementById('clear-filter-btn').classList.toggle('hidden', status === '');
-            refreshData(1);
+            applyFilters();
         }
 
         function formatTripTypeTable(order) {
@@ -1045,11 +1176,20 @@
         function renderTable() {
             const container = document.getElementById('full-rows');
             container.innerHTML = '';
-            if (currentOrders.length === 0) {
+            
+            // Obtener las órdenes de la página actual desde los datos filtrados
+            const startIndex = (currentPage - 1) * pageSize;
+            const endIndex = startIndex + pageSize;
+            const ordersToShow = currentFilteredOrders.slice(startIndex, endIndex);
+            
+            // Mantener currentOrders para compatibilidad con viewOrder
+            currentOrders = ordersToShow;
+            
+            if (ordersToShow.length === 0) {
                 container.innerHTML = `<tr><td colspan="6" class="text-center py-10 text-gray-400 font-bold uppercase text-xs">No se encontraron registros</td></tr>`;
                 return;
             }
-            currentOrders.forEach(order => {
+            ordersToShow.forEach(order => {
                 const name = resolveName(order);
                 const initials = getInitials(name);
                 
@@ -1086,7 +1226,9 @@
         }
 
         async function viewOrder(id) {
-            const o = currentOrders.find(x => x.id === id);
+            // Buscar primero en la página actual, luego en todos los datos
+            let o = currentOrders.find(x => x.id === id);
+            if (!o) o = allOrders.find(x => x.id === id);
             if (!o) return;
             currentOrderId = id;
             editingSections = { passenger: false, arrival: false, departure: false };
@@ -1410,13 +1552,31 @@
             document.getElementById('pagination-info').innerText = `${totalOrders} Reservas encontradas`;
             let h = '';
             if (totalPages > 1) {
-                if (currentPage > 1) h += `<button onclick="refreshData(${currentPage-1})" class="px-4 h-10 rounded-md bg-white border">Ant.</button>`;
-                for(let i=Math.max(1, currentPage-2); i<=Math.min(totalPages, currentPage+2); i++) h += `<button onclick="refreshData(${i})" class="w-10 h-10 rounded-md ${i===currentPage ? 'bg-[#002a3f] text-white' : 'bg-white border'}">${i}</button>`;
-                if (currentPage < totalPages) h += `<button onclick="refreshData(${currentPage+1})" class="px-4 h-10 rounded-md bg-white border">Sig.</button>`;
+                if (currentPage > 1) h += `<button onclick="goToPage(${currentPage-1})" class="px-4 h-10 rounded-md bg-white border">Ant.</button>`;
+                for(let i=Math.max(1, currentPage-2); i<=Math.min(totalPages, currentPage+2); i++) h += `<button onclick="goToPage(${i})" class="w-10 h-10 rounded-md ${i===currentPage ? 'bg-[#002a3f] text-white' : 'bg-white border'}">${i}</button>`;
+                if (currentPage < totalPages) h += `<button onclick="goToPage(${currentPage+1})" class="px-4 h-10 rounded-md bg-white border">Sig.</button>`;
             }
             document.getElementById('pagination-controls').innerHTML = h;
         }
-        function toggleLoader(s) { document.getElementById('global-loader').classList.toggle('hidden', !s); }
+        function toggleLoader(show) {
+            const statusBar = document.getElementById('indexing-status');
+            const apiBadge = document.getElementById('api-status-badge');
+            const apiDot = document.getElementById('api-dot');
+            const apiLabel = apiBadge ? apiBadge.querySelector('span:last-child') : null;
+
+            // Ocultar el chip flotante para usar el badge como indicador
+            if (statusBar) statusBar.style.display = 'none';
+            if (!apiBadge || !apiDot || !apiLabel) return;
+
+            if (show) {
+                apiBadge.style.display = 'flex';
+                apiDot.className = 'w-2 h-2 border-2 border-white/40 border-t-white rounded-full animate-spin mr-2';
+                apiLabel.textContent = 'Indexando...';
+            } else {
+                apiDot.className = 'w-2 h-2 bg-green-400 rounded-full mr-2';
+                apiLabel.textContent = 'Online';
+            }
+        }
         function setAPIStatus(s) { 
             // Como el menú controla el estado visual, podemos enviar un evento personalizado si lo deseamos,
             // pero por simplicidad en este paso, la función queda vacía ya que el elemento #api-dot y #api-status-badge
@@ -1441,8 +1601,17 @@
             }
         }
         function handleEmailInput() { const i = document.getElementById('input-email'); i.value = i.value.toLowerCase(); checkForChanges(); }
-        function handleSearchInput() { document.getElementById('btn-clear-search').classList.toggle('hidden', document.getElementById('search-input').value === ""); }
-        function clearSearch() { document.getElementById('search-input').value = ""; refreshData(1); }
+        function handleSearchInput() { 
+            document.getElementById('btn-clear-search').classList.toggle('hidden', document.getElementById('search-input').value === ""); 
+            currentPage = 1;
+            applyFilters();
+        }
+        function clearSearch() { 
+            document.getElementById('search-input').value = ""; 
+            document.getElementById('btn-clear-search').classList.add('hidden');
+            currentPage = 1;
+            applyFilters(); 
+        }
     </script>
 </body>
 </html>
