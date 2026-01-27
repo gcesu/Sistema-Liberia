@@ -8,6 +8,28 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <!-- VERIFICACIÓN DE SESIÓN (excepto si es acceso de chofer) -->
+    <script>
+        (async function checkAuth() {
+            // Si hay parámetro "chofer" en la URL, no requerir login
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('chofer')) {
+                return; // Permitir acceso sin login para choferes
+            }
+            
+            try {
+                const response = await fetch('api/check_session.php');
+                const data = await response.json();
+                if (!data.authenticated) {
+                    window.location.href = 'login.html';
+                }
+            } catch (error) {
+                console.error('Error verificando sesión:', error);
+                window.location.href = 'login.html';
+            }
+        })();
+    </script>
+    
     <script src="menu.js" defer></script>
 
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>

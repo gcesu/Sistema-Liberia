@@ -12,6 +12,22 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 
+    <!-- VERIFICACIÓN DE SESIÓN -->
+    <script>
+        (async function checkAuth() {
+            try {
+                const response = await fetch('api/check_session.php');
+                const data = await response.json();
+                if (!data.authenticated) {
+                    window.location.href = 'login.html';
+                }
+            } catch (error) {
+                console.error('Error verificando sesión:', error);
+                window.location.href = 'login.html';
+            }
+        })();
+    </script>
+
     <!-- CONEXIÓN AL MENÚ GLOBAL -->
     <script src="menu.js" defer></script>
 
