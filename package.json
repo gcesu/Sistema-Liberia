@@ -7,7 +7,14 @@
     "start": "node server.js",
     "dev": "node server.js"
   },
-  "keywords": ["woocommerce", "shuttle", "admin"],
+  "keywords": [
+    "woocommerce",
+    "shuttle",
+    "admin"
+  ],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "mysql2": "^3.16.2"
+  }
 }

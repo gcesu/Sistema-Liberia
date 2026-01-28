@@ -1,14 +1,17 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Shuttle - Liberia Airport Shuttle</title>
     <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&family=Oswald:wght@400;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&family=Oswald:wght@400;700&display=swap"
+        rel="stylesheet">
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
+
     <!-- VERIFICACIÓN DE SESIÓN -->
     <script>
         (async function checkAuth() {
@@ -24,7 +27,7 @@
             }
         })();
     </script>
-    
+
     <!-- CONEXIÓN AL MENÚ -->
     <script src="menu.js" defer></script>
 
@@ -47,7 +50,10 @@
             font-size: 15px;
         }
 
-        h1, h2, h3, .title-font {
+        h1,
+        h2,
+        h3,
+        .title-font {
             font-family: 'Oswald', sans-serif;
             text-transform: uppercase;
         }
@@ -60,17 +66,29 @@
         }
 
         @media (max-width: 768px) {
-            .main-container { padding: 12px; }
+            .main-container {
+                padding: 12px;
+            }
         }
 
         @media (min-width: 768px) {
-            .main-container { padding: 30px; }
+            .main-container {
+                padding: 30px;
+            }
         }
 
         @media (max-width: 640px) {
-            body { font-size: 14px; }
-            h2 { font-size: 1.25rem !important; }
-            .main-container { padding: 8px; }
+            body {
+                font-size: 14px;
+            }
+
+            h2 {
+                font-size: 1.25rem !important;
+            }
+
+            .main-container {
+                padding: 8px;
+            }
         }
 
         /* Font sizes responsivos para títulos */
@@ -82,17 +100,24 @@
 
         /* Responsive para botones del modal */
         @media (max-width: 768px) {
-            #btn-save, .px-6 { padding: 0.5rem 1rem !important; }
+
+            #btn-save,
+            .px-6 {
+                padding: 0.5rem 1rem !important;
+            }
         }
 
         @media (max-width: 640px) {
-            #btn-save, .px-6.py-2 { 
+
+            #btn-save,
+            .px-6.py-2 {
                 padding: 0.75rem !important;
                 font-size: 12px !important;
                 width: 100%;
             }
-            .p-4.border-t { 
-                flex-direction: column; 
+
+            .p-4.border-t {
+                flex-direction: column;
                 gap: 0.5rem !important;
             }
         }
@@ -106,9 +131,9 @@
             overflow: hidden;
         }
 
-        table { 
-            width: 100%; 
-            border-collapse: collapse; 
+        table {
+            width: 100%;
+            border-collapse: collapse;
         }
 
         thead th {
@@ -123,9 +148,9 @@
             letter-spacing: 1px;
         }
 
-        tbody tr { 
+        tbody tr {
             background: white;
-            border-bottom: 1px solid #e2e8f0; 
+            border-bottom: 1px solid #e2e8f0;
             transition: all 0.2s ease;
         }
 
@@ -133,33 +158,73 @@
             border-bottom: none;
         }
 
-        tbody tr:hover { 
-            background: #f8fafc; 
+        tbody tr:hover {
+            background: #f8fafc;
         }
-        
+
         @media (min-width: 768px) {
-            td { padding: 16px 20px; font-size: 15px; color: #334155; vertical-align: middle; }
+            td {
+                padding: 16px 20px;
+                font-size: 15px;
+                color: #334155;
+                vertical-align: middle;
+            }
         }
 
         @media (max-width: 768px) {
-            table { font-size: 13px; }
-            thead th { padding: 12px 10px; font-size: 10px; }
-            td { padding: 12px 10px; font-size: 13px; }
-            .client-avatar { width: 32px; height: 32px; font-size: 12px; margin-right: 8px; }
+            table {
+                font-size: 13px;
+            }
+
+            thead th {
+                padding: 12px 10px;
+                font-size: 10px;
+            }
+
+            td {
+                padding: 12px 10px;
+                font-size: 13px;
+            }
+
+            .client-avatar {
+                width: 32px;
+                height: 32px;
+                font-size: 12px;
+                margin-right: 8px;
+            }
         }
 
         @media (max-width: 640px) {
-            .table-wrapper { border: none; background: transparent; }
-            table, thead, tbody, th, td, tr { display: block; width: 100%; }
-            thead tr { position: absolute; top: -9999px; left: -9999px; }
+            .table-wrapper {
+                border: none;
+                background: transparent;
+            }
+
+            table,
+            thead,
+            tbody,
+            th,
+            td,
+            tr {
+                display: block;
+                width: 100%;
+            }
+
+            thead tr {
+                position: absolute;
+                top: -9999px;
+                left: -9999px;
+            }
+
             tr {
                 margin-bottom: 16px;
                 border: 1px solid #e2e8f0;
                 border-radius: 8px;
                 padding: 16px;
                 background: white;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
             }
+
             td {
                 border: none;
                 position: relative;
@@ -172,12 +237,14 @@
                 align-items: center;
                 border-bottom: 1px dashed #f1f5f9;
             }
-            td:last-child { 
-                border-bottom: none; 
+
+            td:last-child {
+                border-bottom: none;
                 margin-top: 12px;
                 padding-right: 0 !important;
                 text-align: left !important;
             }
+
             td:before {
                 content: attr(data-label);
                 display: inline-block;
@@ -217,16 +284,48 @@
             gap: 6px;
             letter-spacing: 0.5px;
         }
-        .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-        
-        .status-pill-clickable { cursor: pointer; }
-        .status-pill-clickable:hover { transform: scale(1.05); filter: brightness(0.9); }
 
-        .status-completed { background: #dcfce7; color: #166534; }
-        .status-processing { background: #fef9c3; color: #854d0e; }
-        .status-on-hold { background: #ffedd5; color: #9a3412; }
-        .status-pending { background: #fef3c7; color: #92400e; }
-        .status-cancelled, .status-failed { background: #fee2e2; color: #991b1b; }
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .status-pill-clickable {
+            cursor: pointer;
+        }
+
+        .status-pill-clickable:hover {
+            transform: scale(1.05);
+            filter: brightness(0.9);
+        }
+
+        .status-completed {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-processing {
+            background: #fef9c3;
+            color: #854d0e;
+        }
+
+        .status-on-hold {
+            background: #ffedd5;
+            color: #9a3412;
+        }
+
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-cancelled,
+        .status-failed {
+            background: #fee2e2;
+            color: #991b1b;
+        }
 
         .status-summary-item {
             display: flex;
@@ -242,20 +341,20 @@
             cursor: pointer;
             transition: all 0.2s;
             user-select: none;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
         }
 
         .status-summary-item:hover {
             transform: translateY(-2px);
             background: white;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
         }
 
         .status-summary-item.active-filter {
             border-color: var(--primary);
             background: white;
             color: var(--primary);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
         }
 
         #modal-box {
@@ -274,8 +373,14 @@
                 max-width: none !important;
                 border-radius: 0 !important;
             }
-            .passenger-info .meta-field-value { font-size: 16px; }
-            .meta-field-value { font-size: 13px; }
+
+            .passenger-info .meta-field-value {
+                font-size: 16px;
+            }
+
+            .meta-field-value {
+                font-size: 13px;
+            }
         }
 
         @media (min-width: 641px) and (max-width: 1023px) {
@@ -333,7 +438,8 @@
             background-color: white;
         }
 
-        #input-email, #display-email {
+        #input-email,
+        #display-email {
             text-transform: lowercase;
         }
 
@@ -370,7 +476,11 @@
         }
 
         @media (min-width: 768px) {
-            .btn-whatsapp, .btn-email { width: fit-content; }
+
+            .btn-whatsapp,
+            .btn-email {
+                width: fit-content;
+            }
         }
 
         .operation-card {
@@ -426,7 +536,7 @@
             padding: 25px;
             border-radius: 12px;
             margin-bottom: 20px;
-            box-shadow: 0 4px 12px rgba(0,42,63,0.15);
+            box-shadow: 0 4px 12px rgba(0, 42, 63, 0.15);
         }
 
         .route-point {
@@ -451,7 +561,7 @@
             text-align: center;
             line-height: 1.2;
         }
-        
+
         #route-separator-emoji {
             font-size: 28px;
         }
@@ -474,12 +584,15 @@
                 scrollbar-width: thin;
                 scrollbar-color: #cbd5e1 transparent;
             }
+
             .column-scroll::-webkit-scrollbar {
                 width: 6px;
             }
+
             .column-scroll::-webkit-scrollbar-track {
                 background: transparent;
             }
+
             .column-scroll::-webkit-scrollbar-thumb {
                 background-color: #cbd5e1;
                 border-radius: 20px;
@@ -497,10 +610,12 @@
             border-radius: 4px;
             transition: all 0.2s;
         }
+
         .btn-section-edit:hover {
             border-color: var(--primary);
             color: var(--primary);
         }
+
         .btn-section-edit.editing {
             background: var(--accent);
             border-color: var(--accent);
@@ -512,6 +627,7 @@
             flex-direction: column;
             gap: 2px;
         }
+
         .table-trip-route {
             display: flex;
             align-items: center;
@@ -520,6 +636,7 @@
             color: var(--primary);
             font-size: 14px;
         }
+
         .table-trip-label {
             font-size: 9px;
             font-weight: 900;
@@ -532,16 +649,30 @@
             background-color: white;
             border-right: 1px solid #f1f5f9;
         }
+
         .modal-main-content {
             background-color: #f8fafc;
         }
-        
+
+        /* En pantallas grandes: sidebar fijo, contenido con scroll */
+        @media (min-width: 1024px) {
+            .modal-sidebar {
+                overflow-y: auto;
+                max-height: calc(100vh - 180px);
+            }
+
+            .modal-main-content {
+                overflow-y: auto;
+                max-height: calc(100vh - 180px);
+            }
+        }
+
         .field-group-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 15px;
         }
-        
+
         /* Responsive para sidebar del modal */
         @media (max-width: 1023px) {
             .modal-sidebar {
@@ -557,7 +688,11 @@
                 border-right: none !important;
                 border-bottom: 1px solid #e2e8f0;
             }
-            .field-group-row { grid-template-columns: 1fr; gap: 10px; }
+
+            .field-group-row {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
         }
 
         /* Indexing status (igual que en viajes) */
@@ -573,16 +708,17 @@
             font-weight: 800;
             text-transform: uppercase;
             z-index: 120;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
             display: none;
             backdrop-filter: blur(4px);
             align-items: center;
             gap: 10px;
-            border: 1px solid rgba(255,255,255,0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             transition: all 0.3s ease;
         }
     </style>
 </head>
+
 <body>
 
     <!-- Indexing Status (reemplaza loader de reservas) -->
@@ -600,11 +736,13 @@
             <div class="space-y-4 w-full xl:w-auto">
                 <h2 class="text-2xl md:text-3xl font-bold text-[#002a3f] title-font">Reservas</h2>
                 <div class="flex flex-wrap gap-3">
-                    <div id="filter-pending" onclick="filterByStatus('pending')" class="status-summary-item bg-amber-50 border-amber-100 text-amber-600">
+                    <div id="filter-pending" onclick="filterByStatus('pending')"
+                        class="status-summary-item bg-amber-50 border-amber-100 text-amber-600">
                         <span class="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span>
                         <span id="stat-pending">0</span> PENDIENTES
                     </div>
-                    <div id="clear-filter-btn" onclick="filterByStatus('')" class="hidden status-summary-item bg-gray-100 border-gray-200 text-gray-500">
+                    <div id="clear-filter-btn" onclick="filterByStatus('')"
+                        class="hidden status-summary-item bg-gray-100 border-gray-200 text-gray-500">
                         &times; QUITAR FILTRO
                     </div>
                 </div>
@@ -613,11 +751,16 @@
             <!-- Buscador Manual -->
             <div class="flex flex-col sm:flex-row gap-3 w-full xl:w-auto mt-4 xl:mt-0">
                 <div class="relative flex-1 md:w-80">
-                    <input type="text" id="search-input" oninput="handleSearchInput()" onkeydown="if(event.key==='Enter') applyFilters()" placeholder="Buscar cliente, ID..." class="bg-white border border-gray-200 shadow-sm rounded-xl px-10 py-3 pr-10 text-sm w-full focus:ring-2 focus:ring-[#ed4441]/20 outline-none h-12">
-                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg pointer-events-none">🔍</span>
-                    <button id="btn-clear-search" onclick="clearSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 text-xl transition-all">&times;</button>
+                    <input type="text" id="search-input" oninput="handleSearchInput()"
+                        onkeydown="if(event.key==='Enter') applyFilters()" placeholder="Buscar cliente, ID..."
+                        class="bg-white border border-gray-200 shadow-sm rounded-xl px-10 py-3 pr-10 text-sm w-full focus:ring-2 focus:ring-[#ed4441]/20 outline-none h-12">
+                    <span
+                        class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg pointer-events-none">🔍</span>
+                    <button id="btn-clear-search" onclick="clearSearch()"
+                        class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 text-xl transition-all">&times;</button>
                 </div>
-                <button onclick="applyFilters()" class="bg-[#002a3f] text-white px-6 h-12 rounded-xl font-bold uppercase text-[11px] tracking-widest hover:bg-[#ed4441] transition-all shadow-md">Buscar</button>
+                <button onclick="applyFilters()"
+                    class="bg-[#002a3f] text-white px-6 h-12 rounded-xl font-bold uppercase text-[11px] tracking-widest hover:bg-[#ed4441] transition-all shadow-md">Buscar</button>
             </div>
         </div>
 
@@ -644,20 +787,30 @@
     </main>
 
     <!-- Modal Detalle Responsivo -->
-    <div id="order-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] hidden flex items-center justify-center p-0 md:p-4" onclick="closeModal()">
+    <div id="order-modal"
+        class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] hidden flex items-center justify-center p-0 md:p-4"
+        onclick="closeModal()">
         <div id="modal-box" onclick="event.stopPropagation()" class="shadow-2xl overflow-hidden md:rounded-[24px]">
             <!-- Header Modal -->
             <div class="px-6 md:px-8 py-4 border-b flex justify-between items-center bg-white">
                 <div class="flex flex-wrap items-center gap-4">
                     <h3 id="modal-title" class="text-xl md:text-2xl font-bold text-[#002a3f] title-font"></h3>
-                    
-                    <div id="status-display-container" onclick="toggleStatusEditQuick()" class="flex items-center gap-2 group cursor-pointer">
-                        <span id="det-status-pill" class="status-pill status-pill-clickable transition-all duration-300"></span>
-                        <svg class="w-4 h-4 text-gray-400 group-hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+
+                    <div id="status-display-container" onclick="toggleStatusEditQuick()"
+                        class="flex items-center gap-2 group cursor-pointer">
+                        <span id="det-status-pill"
+                            class="status-pill status-pill-clickable transition-all duration-300"></span>
+                        <svg class="w-4 h-4 text-gray-400 group-hover:text-gray-600" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z">
+                            </path>
+                        </svg>
                     </div>
 
                     <div id="status-edit-container" class="hidden">
-                        <select id="input-status" onchange="checkForChanges()" class="bg-white border-2 border-gray-200 rounded-lg px-3 py-1 text-sm font-bold uppercase outline-none focus:border-[#ed4441]">
+                        <select id="input-status" onchange="checkForChanges()"
+                            class="bg-white border-2 border-gray-200 rounded-lg px-3 py-1 text-sm font-bold uppercase outline-none focus:border-[#ed4441]">
                             <option value="pending">Pendiente</option>
                             <option value="processing">Procesando</option>
                             <option value="on-hold">Espera</option>
@@ -667,37 +820,45 @@
                         </select>
                     </div>
                 </div>
-                
-                <button onclick="closeModal()" class="text-3xl text-gray-300 hover:text-gray-600 transition">&times;</button>
+
+                <button onclick="closeModal()"
+                    class="text-3xl text-gray-300 hover:text-gray-600 transition">&times;</button>
             </div>
-            
-            <div class="flex-1 overflow-y-auto column-scroll flex flex-col lg:flex-row">
+
+            <div class="flex-1 lg:overflow-hidden overflow-y-auto column-scroll flex flex-col lg:flex-row">
                 <!-- Columna Izquierda: Cliente (Sidebar) -->
                 <div class="modal-sidebar w-full lg:w-[320px] lg:flex-shrink-0 border-r">
                     <div class="p-6 md:p-8">
                         <div class="flex justify-between items-center mb-6">
                             <h4 class="text-[11px] font-black text-gray-400 uppercase tracking-widest">Cliente</h4>
-                            <button id="btn-edit-passenger" onclick="togglePassengerEdit()" class="btn-section-edit">Editar</button>
+                            <button id="btn-edit-passenger" onclick="togglePassengerEdit()"
+                                class="btn-section-edit">Editar</button>
                         </div>
-                        
+
                         <div class="flex flex-col items-center mb-6">
-                            <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center text-3xl mb-3">👤</div>
-                            <div id="display-name" class="font-bold text-xl text-[#002a3f] text-center leading-tight"></div>
-                            <input type="text" id="input-name" oninput="checkForChanges()" class="hidden input-editable text-center mt-2" placeholder="Nombre completo">
+                            <div
+                                class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center text-3xl mb-3">
+                                👤</div>
+                            <div id="display-name" class="font-bold text-xl text-[#002a3f] text-center leading-tight">
+                            </div>
+                            <input type="text" id="input-name" oninput="checkForChanges()"
+                                class="hidden input-editable text-center mt-2" placeholder="Nombre completo">
                         </div>
 
                         <div class="space-y-6">
                             <div class="p-3 bg-gray-50 rounded-lg border border-gray-100">
                                 <p class="meta-field-label">📧 Correo</p>
                                 <div id="display-email" class="meta-field-value break-all"></div>
-                                <input type="email" id="input-email" oninput="handleEmailInput()" class="hidden input-editable" placeholder="ejemplo@correo.com">
+                                <input type="email" id="input-email" oninput="handleEmailInput()"
+                                    class="hidden input-editable" placeholder="ejemplo@correo.com">
                                 <a id="det-email-link" href="#" class="btn-email">Enviar Correo</a>
                             </div>
 
                             <div class="p-3 bg-gray-50 rounded-lg border border-gray-100">
                                 <p class="meta-field-label">📞 Teléfono</p>
                                 <div id="display-phone" class="meta-field-value"></div>
-                                <input type="text" id="input-phone" oninput="checkForChanges()" class="hidden input-editable" placeholder="+000 0000 0000">
+                                <input type="text" id="input-phone" oninput="checkForChanges()"
+                                    class="hidden input-editable" placeholder="+000 0000 0000">
                                 <a id="det-whatsapp-link" href="#" target="_blank" class="btn-whatsapp">WhatsApp</a>
                             </div>
 
@@ -712,7 +873,9 @@
                             <div class="p-3 bg-gray-50 rounded-lg border border-gray-100">
                                 <p class="meta-field-label">📍 Dirección</p>
                                 <div id="display-address" class="meta-field-value text-sm"></div>
-                                <textarea id="input-address" oninput="checkForChanges()" rows="2" class="hidden input-editable resize-none" placeholder="Dirección completa"></textarea>
+                                <textarea id="input-address" oninput="checkForChanges()" rows="2"
+                                    class="hidden input-editable resize-none"
+                                    placeholder="Dirección completa"></textarea>
                             </div>
                         </div>
                     </div>
@@ -728,7 +891,7 @@
                                 <span class="route-point-label" id="origin-label">Origen</span>
                                 <span class="route-point-name" id="origin-name">LIR Airport</span>
                             </div>
-                            
+
                             <div class="route-separator-container">
                                 <span id="route-separator-emoji">➡️</span>
                             </div>
@@ -739,7 +902,7 @@
                                 <span class="route-point-name" id="dest-name">Hotel Name</span>
                             </div>
                         </div>
-                        
+
                         <!-- Píldoras Resumen -->
                         <div class="flex flex-wrap gap-3 mb-8">
                             <div class="info-pill bg-white shadow-sm">
@@ -761,35 +924,42 @@
                                 <div class="operation-card-title">
                                     <span class="title-dot-arrival"></span> LLEGADA
                                 </div>
-                                <button id="btn-edit-arrival" onclick="toggleArrivalEdit()" class="btn-section-edit">Editar</button>
+                                <button id="btn-edit-arrival" onclick="toggleArrivalEdit()"
+                                    class="btn-section-edit">Editar</button>
                             </div>
                             <div class="operation-card-body space-y-5">
                                 <!-- Logística -->
                                 <div>
                                     <div id="arrival-fields-list" class="grid grid-cols-2 gap-4"></div>
                                 </div>
-                                
+
                                 <!-- Asignación -->
                                 <div class="bg-blue-50/50 -mx-5 -mb-5 p-5 border-t border-blue-100">
-                                    <div class="operation-section-label text-blue-400 border-blue-200">Asignación Operativa</div>
+                                    <div class="operation-section-label text-blue-400 border-blue-200">Asignación
+                                        Operativa</div>
                                     <div class="space-y-4">
                                         <div class="field-group-row">
                                             <div>
                                                 <p class="meta-field-label">🚐 Chofer</p>
-                                                <select id="input-meta-chofer_llegada" onchange="checkForChanges()" class="input-editable bg-white"></select>
+                                                <select id="input-meta-chofer_llegada" onchange="checkForChanges()"
+                                                    class="input-editable bg-white"></select>
                                             </div>
                                             <div>
                                                 <p class="meta-field-label">👥 Subchofer</p>
-                                                <input type="text" id="input-meta-subchofer_llegada" oninput="checkForChanges()" class="input-editable bg-white" placeholder="Nombre del subchofer">
+                                                <input type="text" id="input-meta-subchofer_llegada"
+                                                    oninput="checkForChanges()" class="input-editable bg-white"
+                                                    placeholder="Nombre del subchofer">
                                             </div>
                                         </div>
                                         <div>
                                             <p class="meta-field-label">📢 Nota Choferes</p>
-                                            <textarea id="input-meta-nota_choferes_llegada" oninput="checkForChanges()" rows="2" class="input-editable bg-white resize-none h-16"></textarea>
+                                            <textarea id="input-meta-nota_choferes_llegada" oninput="checkForChanges()"
+                                                rows="2" class="input-editable bg-white resize-none h-16"></textarea>
                                         </div>
                                         <div>
                                             <p class="meta-field-label">🔒 Notas Internas</p>
-                                            <textarea id="input-meta-notas_internas_llegada" oninput="checkForChanges()" rows="2" class="input-editable bg-white resize-none h-16"></textarea>
+                                            <textarea id="input-meta-notas_internas_llegada" oninput="checkForChanges()"
+                                                rows="2" class="input-editable bg-white resize-none h-16"></textarea>
                                         </div>
                                     </div>
                                 </div>
@@ -802,7 +972,8 @@
                                 <div class="operation-card-title">
                                     <span class="title-dot-departure"></span> SALIDA
                                 </div>
-                                <button id="btn-edit-departure" onclick="toggleDepartureEdit()" class="btn-section-edit">Editar</button>
+                                <button id="btn-edit-departure" onclick="toggleDepartureEdit()"
+                                    class="btn-section-edit">Editar</button>
                             </div>
                             <div class="operation-card-body space-y-5">
                                 <!-- Logística -->
@@ -812,25 +983,31 @@
 
                                 <!-- Asignación -->
                                 <div class="bg-orange-50/50 -mx-5 -mb-5 p-5 border-t border-orange-100">
-                                    <div class="operation-section-label text-orange-400 border-orange-200">Asignación Operativa</div>
+                                    <div class="operation-section-label text-orange-400 border-orange-200">Asignación
+                                        Operativa</div>
                                     <div class="space-y-4">
                                         <div class="field-group-row">
                                             <div>
                                                 <p class="meta-field-label">🚐 Chofer</p>
-                                                <select id="input-meta-chofer_salida" onchange="checkForChanges()" class="input-editable bg-white"></select>
+                                                <select id="input-meta-chofer_salida" onchange="checkForChanges()"
+                                                    class="input-editable bg-white"></select>
                                             </div>
                                             <div>
                                                 <p class="meta-field-label">👥 Subchofer</p>
-                                                <input type="text" id="input-meta-subchofer_salida" oninput="checkForChanges()" class="input-editable bg-white" placeholder="Nombre del subchofer">
+                                                <input type="text" id="input-meta-subchofer_salida"
+                                                    oninput="checkForChanges()" class="input-editable bg-white"
+                                                    placeholder="Nombre del subchofer">
                                             </div>
                                         </div>
                                         <div>
                                             <p class="meta-field-label">📢 Nota Choferes</p>
-                                            <textarea id="input-meta-nota_choferes_ida" oninput="checkForChanges()" rows="2" class="input-editable bg-white resize-none h-16"></textarea>
+                                            <textarea id="input-meta-nota_choferes_ida" oninput="checkForChanges()"
+                                                rows="2" class="input-editable bg-white resize-none h-16"></textarea>
                                         </div>
                                         <div>
                                             <p class="meta-field-label">🔒 Notas Internas</p>
-                                            <textarea id="input-meta-notas_internas_salida" oninput="checkForChanges()" rows="2" class="input-editable bg-white resize-none h-16"></textarea>
+                                            <textarea id="input-meta-notas_internas_salida" oninput="checkForChanges()"
+                                                rows="2" class="input-editable bg-white resize-none h-16"></textarea>
                                         </div>
                                     </div>
                                 </div>
@@ -850,27 +1027,30 @@
 
             <!-- Footer Modal -->
             <div class="p-4 border-t bg-white flex justify-end gap-3 rounded-b-xl">
-                <button onclick="saveOrderDetails()" id="btn-save" class="hidden px-6 py-2 bg-green-600 text-white rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-green-700 transition-all shadow-md">Guardar Cambios</button>
-                <button onclick="closeModal()" class="px-6 py-2 bg-gray-100 text-gray-600 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-gray-200 transition">Cerrar</button>
+                <button onclick="saveOrderDetails()" id="btn-save"
+                    class="hidden px-6 py-2 bg-green-600 text-white rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-green-700 transition-all shadow-md">Guardar
+                    Cambios</button>
+                <button onclick="closeModal()"
+                    class="px-6 py-2 bg-gray-100 text-gray-600 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-gray-200 transition">Cerrar</button>
             </div>
         </div>
     </div>
 
     <script>
-        // API Proxy - Las credenciales están protegidas en el servidor
-        const API_PROXY = "woo-proxy.php";
+        // API Local - Lee desde la base de datos MySQL
+        const API_PROXY = "api/reservas.php";
 
         // CALCULAR FECHA DE INICIO (7 meses atrás)
-const startDate = new Date();
-startDate.setMonth(startDate.getMonth() - 7);
-// Formato ISO8601 para WooCommerce: YYYY-MM-DDTHH:MM:SS
-const START_DATE_FILTER = startDate.toISOString().split('.')[0];
+        const startDate = new Date();
+        startDate.setMonth(startDate.getMonth() - 7);
+        // Formato ISO8601 para WooCommerce: YYYY-MM-DDTHH:MM:SS
+        const START_DATE_FILTER = startDate.toISOString().split('.')[0];
 
         // --- UTILIDADES ---
         function formatDateShort(d) {
             if (!d) return '---';
             let dateObj = new Date(d);
-            
+
             if (typeof d === 'string') {
                 const datePart = d.split('T')[0];
                 if (datePart.includes('-')) {
@@ -928,7 +1108,7 @@ const START_DATE_FILTER = startDate.toISOString().split('.')[0];
             if (country === 'CR') return `+506 ${raw.length === 8 ? `${raw.slice(0, 4)} ${raw.slice(4)}` : raw}`;
             return prefix ? `+${prefix} ${raw}` : raw;
         }
-        
+
         function getInitials(name) {
             if (!name) return "##";
             const parts = name.split(" ");
@@ -939,7 +1119,8 @@ const START_DATE_FILTER = startDate.toISOString().split('.')[0];
 
         const COUNTRY_MAP = { 'AF': { name: 'Afganistán' }, 'AL': { name: 'Albania' }, 'DZ': { name: 'Argelia' }, 'AD': { name: 'Andorra' }, 'AO': { name: 'Angola' }, 'AG': { name: 'Antigua y Barbuda' }, 'AR': { name: 'Argentina' }, 'AM': { name: 'Armenia' }, 'AU': { name: 'Australia' }, 'AT': { name: 'Austria' }, 'AZ': { name: 'Azerbaiyán' }, 'BS': { name: 'Bahamas' }, 'BH': { name: 'Baréin' }, 'BD': { name: 'Bangladés' }, 'BB': { name: 'Barbados' }, 'BY': { name: 'Bielorrusia' }, 'BE': { name: 'Bélgica' }, 'BZ': { name: 'Belice' }, 'BJ': { name: 'Benín' }, 'BT': { name: 'Bután' }, 'BO': { name: 'Bolivia' }, 'BA': { name: 'Bosnia y Herzegovina' }, 'BW': { name: 'Botsuana' }, 'BR': { name: 'Brasil' }, 'BN': { name: 'Brunéi' }, 'BG': { name: 'Bulgaria' }, 'BF': { name: 'Burkina Faso' }, 'BI': { name: 'Burundi' }, 'KH': { name: 'Camboya' }, 'CM': { name: 'Camerún' }, 'CA': { name: 'Canadá' }, 'CV': { name: 'Cabo Verde' }, 'CF': { name: 'República Centroafricana' }, 'TD': { name: 'Chad' }, 'CL': { name: 'Chile' }, 'CN': { name: 'China' }, 'CO': { name: 'Colombia' }, 'KM': { name: 'Comoras' }, 'CG': { name: 'Congo' }, 'CD': { name: 'Congo, República Democrática del' }, 'CR': { name: 'Costa Rica' }, 'HR': { name: 'Croacia' }, 'CU': { name: 'Cuba' }, 'CY': { name: 'Chipre' }, 'CZ': { name: 'República Checa' }, 'DK': { name: 'Dinamarca' }, 'DJ': { name: 'Yibuti' }, 'DM': { name: 'Dominica' }, 'DO': { name: 'República Dominicana' }, 'EC': { name: 'Ecuador' }, 'EG': { name: 'Egipto' }, 'SV': { name: 'El Salvador' }, 'GQ': { name: 'Guinea Ecuatorial' }, 'ER': { name: 'Eritrea' }, 'EE': { name: 'Estonia' }, 'ET': { name: 'Etiopía' }, 'FJ': { name: 'Fiyi' }, 'FI': { name: 'Finlandia' }, 'FR': { name: 'Francia' }, 'GA': { name: 'Gabón' }, 'GM': { name: 'Gambia' }, 'GE': { name: 'Georgia' }, 'DE': { name: 'Alemania' }, 'GH': { name: 'Ghana' }, 'GR': { name: 'Grecia' }, 'GD': { name: 'Granada' }, 'GT': { name: 'Guatemala' }, 'GN': { name: 'Guinea' }, 'GW': { name: 'Guinea-Bisáu' }, 'GY': { name: 'Guyana' }, 'HT': { name: 'Haití' }, 'HN': { name: 'Honduras' }, 'HU': { name: 'Hungría' }, 'IS': { name: 'Islandia' }, 'IN': { name: 'India' }, 'ID': { name: 'Indonesia' }, 'IR': { name: 'Irán' }, 'IQ': { name: 'Irak' }, 'IE': { name: 'Irlanda' }, 'IL': { name: 'Israel' }, 'IT': { name: 'Italia' }, 'JM': { name: 'Jamaica' }, 'JP': { name: 'Japón' }, 'JO': { name: 'Jordania' }, 'KZ': { name: 'Kazajistán' }, 'KE': { name: 'Kenia' }, 'KI': { name: 'Kiribati' }, 'KW': { name: 'Kuwait' }, 'KG': { name: 'Kirguistán' }, 'LA': { name: 'Laos' }, 'LV': { name: 'Letonia' }, 'LB': { name: 'Líbano' }, 'LS': { name: 'Lesoto' }, 'LR': { name: 'Liberia' }, 'LY': { name: 'Libia' }, 'LI': { name: 'Liechtenstein' }, 'LT': { name: 'Lituania' }, 'LU': { name: 'Luxemburgo' }, 'MK': { name: 'Macedonia del Norte' }, 'MG': { name: 'Madagascar' }, 'MW': { name: 'Malaui' }, 'MY': { name: 'Malasia' }, 'MV': { name: 'Maldivas' }, 'ML': { name: 'Malí' }, 'MT': { name: 'Malta' }, 'MH': { name: 'Islas Marshall' }, 'MR': { name: 'Mauritania' }, 'MU': { name: 'Mauricio' }, 'MX': { name: 'México' }, 'FM': { name: 'Micronesia' }, 'MD': { name: 'Moldavia' }, 'MC': { name: 'Mónaco' }, 'MN': { name: 'Mongolia' }, 'ME': { name: 'Montenegro' }, 'MA': { name: 'Marruecos' }, 'MZ': { name: 'Mozambique' }, 'MM': { name: 'Myanmar' }, 'NA': { name: 'Namibia' }, 'NR': { name: 'Nauru' }, 'NP': { name: 'Nepal' }, 'NL': { name: 'Países Bajos' }, 'NZ': { name: 'Nueva Zelanda' }, 'NI': { name: 'Nicaragua' }, 'NE': { name: 'Níger' }, 'NG': { name: 'Nigeria' }, 'KP': { name: 'Corea del Norte' }, 'NO': { name: 'Noruega' }, 'OM': { name: 'Omán' }, 'PK': { name: 'Pakistán' }, 'PW': { name: 'Palaos' }, 'PA': { name: 'Panamá' }, 'PG': { name: 'Papúa Nueva Guinea' }, 'PY': { name: 'Paraguay' }, 'PE': { name: 'Perú' }, 'PH': { name: 'Filipinas' }, 'PL': { name: 'Polonia' }, 'PT': { name: 'Portugal' }, 'QA': { name: 'Catar' }, 'RO': { name: 'Rumania' }, 'RU': { name: 'Rusia' }, 'RW': { name: 'Ruanda' }, 'KN': { name: 'San Cristóbal y Nieves' }, 'LC': { name: 'Santa Lucía' }, 'VC': { name: 'San Vicente y las Granadinas' }, 'WS': { name: 'Samoa' }, 'SM': { name: 'San Marino' }, 'ST': { name: 'Santo Tomé y Príncipe' }, 'SA': { name: 'Arabia Saudita' }, 'SN': { name: 'Senegal' }, 'RS': { name: 'Serbia' }, 'SC': { name: 'Seychelles' }, 'SL': { name: 'Sierra Leona' }, 'SG': { name: 'Singapur' }, 'SK': { name: 'Eslovaquia' }, 'SI': { name: 'Eslovenia' }, 'SB': { name: 'Islas Salomón' }, 'SO': { name: 'Somalia' }, 'ZA': { name: 'Sudáfrica' }, 'KR': { name: 'Corea del Sur' }, 'ES': { name: 'España' }, 'LK': { name: 'Sri Lanka' }, 'SD': { name: 'Sudán' }, 'SR': { name: 'Surinam' }, 'SZ': { name: 'Esuatini' }, 'SE': { name: 'Suecia' }, 'CH': { name: 'Suiza' }, 'SY': { name: 'Siria' }, 'TW': { name: 'Taiwán' }, 'TJ': { name: 'Tayikistán' }, 'TZ': { name: 'Tanzania' }, 'TH': { name: 'Tailandia' }, 'TL': { name: 'Timor Oriental' }, 'TG': { name: 'Togo' }, 'TO': { name: 'Tonga' }, 'TT': { name: 'Trinidad y Tobago' }, 'TN': { name: 'Túnez' }, 'TR': { name: 'Turquía' }, 'TM': { name: 'Turkmenistán' }, 'TV': { name: 'Tuvalu' }, 'UG': { name: 'Uganda' }, 'UA': { name: 'Ucrania' }, 'AE': { name: 'Emiratos Árabes Unidos' }, 'GB': { name: 'Reino Unido' }, 'US': { name: 'Estados Unidos' }, 'UY': { name: 'Uruguay' }, 'UZ': { name: 'Uzbekistán' }, 'VU': { name: 'Vanuatu' }, 'VE': { name: 'Venezuela' }, 'VN': { name: 'Vietnam' }, 'YE': { name: 'Yemen' }, 'ZM': { name: 'Zambia' }, 'ZW': { name: 'Zimbabue' } };
 
-        const CHOFERES = ["Pedro", "Fermín", "Manuel Alvarado", "Albán", "Chayo", "Alex Fila", "Alex Montero"];
+        // Choferes se cargan desde la BD
+        let CHOFERES = [];
 
         const ARRIVAL_FIELDS = [
             { label: "Fecha", key: "- Arrival Date", emoji: "📅", type: "date" },
@@ -974,13 +1155,26 @@ const START_DATE_FILTER = startDate.toISOString().split('.')[0];
         let isIndexing = false;
         let indexingRunId = 0;
 
-        window.onload = () => {
+        window.onload = async () => {
+            await loadChoferes();
             initCountryDropdown();
             initChoferSelects();
             startBackgroundIndexing();
         };
 
-        window.refreshData = function(page = 1) {
+        async function loadChoferes() {
+            try {
+                const response = await fetch('api/choferes.php');
+                if (response.ok) {
+                    const data = await response.json();
+                    CHOFERES = data.map(c => c.nombre);
+                }
+            } catch (err) {
+                console.error('Error cargando choferes:', err);
+            }
+        }
+
+        window.refreshData = function (page = 1) {
             // Reiniciar estado y forzar nueva indexación
             allOrders = [];
             currentFilteredOrders = [];
@@ -990,7 +1184,7 @@ const START_DATE_FILTER = startDate.toISOString().split('.')[0];
 
         function initCountryDropdown() {
             const select = document.getElementById('input-country');
-            Object.keys(COUNTRY_MAP).sort((a,b) => COUNTRY_MAP[a].name.localeCompare(COUNTRY_MAP[b].name)).forEach(code => {
+            Object.keys(COUNTRY_MAP).sort((a, b) => COUNTRY_MAP[a].name.localeCompare(COUNTRY_MAP[b].name)).forEach(code => {
                 const opt = document.createElement('option');
                 opt.value = code; opt.textContent = COUNTRY_MAP[code].name;
                 select.appendChild(opt);
@@ -1080,7 +1274,7 @@ const START_DATE_FILTER = startDate.toISOString().split('.')[0];
 
         function applyFilters() {
             const searchText = document.getElementById('search-input').value.toLowerCase().trim();
-            
+
             let filtered = allOrders;
 
             // Filtrar por estado
@@ -1101,10 +1295,10 @@ const START_DATE_FILTER = startDate.toISOString().split('.')[0];
             currentFilteredOrders = filtered;
             totalOrders = filtered.length;
             totalPages = Math.ceil(totalOrders / pageSize) || 1;
-            
+
             // Asegurar que la página actual es válida
             if (currentPage > totalPages) currentPage = 1;
-            
+
             renderTable();
             updatePaginationUI();
             updateStats();
@@ -1136,7 +1330,7 @@ const START_DATE_FILTER = startDate.toISOString().split('.')[0];
         function filterByStatus(status) {
             currentStatusFilter = status;
             currentPage = 1;  // Resetear a primera página al filtrar
-            if(status === 'pending') {
+            if (status === 'pending') {
                 document.getElementById('filter-pending').classList.add('active-filter');
             } else {
                 document.getElementById('filter-pending').classList.remove('active-filter');
@@ -1150,7 +1344,7 @@ const START_DATE_FILTER = startDate.toISOString().split('.')[0];
             const hotel = order.line_items?.[0]?.name || 'Hotel no especificado';
             const isRound = tripRaw.toLowerCase().includes('round');
             const hasArrival = deepScanMeta(order, "- Arrival Date") !== null;
-            
+
             let routeHTML = "";
             let label = "";
 
@@ -1176,15 +1370,15 @@ const START_DATE_FILTER = startDate.toISOString().split('.')[0];
         function renderTable() {
             const container = document.getElementById('full-rows');
             container.innerHTML = '';
-            
+
             // Obtener las órdenes de la página actual desde los datos filtrados
             const startIndex = (currentPage - 1) * pageSize;
             const endIndex = startIndex + pageSize;
             const ordersToShow = currentFilteredOrders.slice(startIndex, endIndex);
-            
+
             // Mantener currentOrders para compatibilidad con viewOrder
             currentOrders = ordersToShow;
-            
+
             if (ordersToShow.length === 0) {
                 container.innerHTML = `<tr><td colspan="6" class="text-center py-10 text-gray-400 font-bold uppercase text-xs">No se encontraron registros</td></tr>`;
                 return;
@@ -1192,7 +1386,7 @@ const START_DATE_FILTER = startDate.toISOString().split('.')[0];
             ordersToShow.forEach(order => {
                 const name = resolveName(order);
                 const initials = getInitials(name);
-                
+
                 container.innerHTML += `
                     <tr>
                         <td data-label="ID" class="pl-6 font-bold text-gray-400">#${order.id}</td>
@@ -1233,7 +1427,7 @@ const START_DATE_FILTER = startDate.toISOString().split('.')[0];
             currentOrderId = id;
             editingSections = { passenger: false, arrival: false, departure: false };
             document.body.style.overflow = 'hidden';
-            
+
             document.getElementById('modal-title').innerText = `Reserva #${o.id}`;
             document.getElementById('btn-save').classList.add('hidden');
 
@@ -1342,7 +1536,7 @@ const START_DATE_FILTER = startDate.toISOString().split('.')[0];
             const tripRaw = deepScanMeta(o, "- Type of Trip");
             const paxRaw = (deepScanMeta(o, "Passengers") || o.line_items?.[0]?.quantity || '1').toString().split('-')[0].trim();
             const tripTypeFormatted = translateTripType(o, tripRaw);
-            
+
             document.getElementById('general-service-info').classList.remove('hidden');
             document.getElementById('general-trip-type').innerText = tripTypeFormatted;
             document.getElementById('general-pax-value').innerText = paxRaw;
@@ -1383,9 +1577,9 @@ const START_DATE_FILTER = startDate.toISOString().split('.')[0];
             const nameParts = document.getElementById('input-name').value.trim().split(' ');
             const countryVal = document.getElementById('input-country').value;
             const addressVal = document.getElementById('input-address').value.trim();
-            
+
             let meta = [];
-            const allMetaKeys = [...ARRIVAL_FIELDS.map(f=>f.key), ...DEPARTURE_FIELDS.map(f=>f.key), ...ASSIGN_KEYS];
+            const allMetaKeys = [...ARRIVAL_FIELDS.map(f => f.key), ...DEPARTURE_FIELDS.map(f => f.key), ...ASSIGN_KEYS];
             allMetaKeys.forEach(k => {
                 const inp = document.getElementById(`input-meta-${k}`);
                 if (inp) meta.push({ key: k, value: inp.value });
@@ -1420,7 +1614,7 @@ const START_DATE_FILTER = startDate.toISOString().split('.')[0];
                 const idx = currentOrders.findIndex(o => o.id === currentOrderId);
                 if (idx !== -1) currentOrders[idx] = updated;
                 viewOrder(currentOrderId);
-                updateStats(); 
+                updateStats();
             } catch (e) { console.error(e); } finally { toggleLoader(false); }
         }
 
@@ -1442,8 +1636,8 @@ const START_DATE_FILTER = startDate.toISOString().split('.')[0];
             const btn = document.getElementById('btn-edit-arrival');
             btn.innerText = editingSections.arrival ? "Cancelar" : "Editar";
             btn.classList.toggle('editing', editingSections.arrival);
-            
-            const keys = ARRIVAL_FIELDS.map(f=>f.key);
+
+            const keys = ARRIVAL_FIELDS.map(f => f.key);
             keys.forEach(k => {
                 document.getElementById(`display-meta-${k}`)?.classList.toggle('hidden', editingSections.arrival);
                 document.getElementById(`input-meta-${k}`)?.classList.toggle('hidden', !editingSections.arrival);
@@ -1456,8 +1650,8 @@ const START_DATE_FILTER = startDate.toISOString().split('.')[0];
             const btn = document.getElementById('btn-edit-departure');
             btn.innerText = editingSections.departure ? "Cancelar" : "Editar";
             btn.classList.toggle('editing', editingSections.departure);
-            
-            const keys = DEPARTURE_FIELDS.map(f=>f.key);
+
+            const keys = DEPARTURE_FIELDS.map(f => f.key);
             keys.forEach(k => {
                 document.getElementById(`display-meta-${k}`)?.classList.toggle('hidden', editingSections.departure);
                 document.getElementById(`input-meta-${k}`)?.classList.toggle('hidden', !editingSections.departure);
@@ -1475,8 +1669,8 @@ const START_DATE_FILTER = startDate.toISOString().split('.')[0];
             let changed = false;
             PASSENGER_EDIT_KEYS.forEach(k => { if (document.getElementById(`input-${k}`)?.value.trim() !== originalValues[k]) changed = true; });
             if (document.getElementById('input-status').value !== originalValues.status) changed = true;
-            
-            const allMetaKeys = [...ARRIVAL_FIELDS.map(f=>f.key), ...DEPARTURE_FIELDS.map(f=>f.key), ...ASSIGN_KEYS];
+
+            const allMetaKeys = [...ARRIVAL_FIELDS.map(f => f.key), ...DEPARTURE_FIELDS.map(f => f.key), ...ASSIGN_KEYS];
             for (const k of allMetaKeys) {
                 const inp = document.getElementById(`input-meta-${k}`);
                 if (inp) {
@@ -1494,7 +1688,7 @@ const START_DATE_FILTER = startDate.toISOString().split('.')[0];
         function renderPaymentInfo(o) {
             const container = document.getElementById('payment-breakdown-list');
             container.innerHTML = '';
-            
+
             const addRow = (label, value, isBold = false, isAccent = false, isDiscount = false) => {
                 const numVal = parseFloat(value);
                 if (value === undefined || value === null || value === "" || isNaN(numVal) || numVal === 0) return;
@@ -1529,7 +1723,7 @@ const START_DATE_FILTER = startDate.toISOString().split('.')[0];
         }
 
         function closeModal() { document.getElementById('order-modal').classList.add('hidden'); document.body.style.overflow = ''; }
-        
+
         function deepScanMeta(o, k) {
             const clean = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
             const t = clean(k);
@@ -1541,7 +1735,7 @@ const START_DATE_FILTER = startDate.toISOString().split('.')[0];
         function resolveAddress(o) { return (o.shipping?.address_1 || o.billing?.address_1 || "") + (o.shipping?.city ? ', ' + o.shipping.city : ''); }
         function resolveName(o) { const n = `${o.billing?.first_name || ''} ${o.billing?.last_name || ''}`.trim(); return n.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ') || `Reserva #${o.id}`; }
         function translateStatus(s) { const map = { 'pending': 'Pendiente', 'processing': 'Procesando', 'on-hold': 'Espera', 'completed': 'Completado', 'cancelled': 'Cancelado', 'failed': 'Fallido' }; return map[s] || s; }
-        
+
         function translateTripType(o, raw) {
             if (!raw) return 'No especificado';
             if (raw.toLowerCase().includes('round')) return 'Ida y Vuelta';
@@ -1552,9 +1746,9 @@ const START_DATE_FILTER = startDate.toISOString().split('.')[0];
             document.getElementById('pagination-info').innerText = `${totalOrders} Reservas encontradas`;
             let h = '';
             if (totalPages > 1) {
-                if (currentPage > 1) h += `<button onclick="goToPage(${currentPage-1})" class="px-4 h-10 rounded-md bg-white border">Ant.</button>`;
-                for(let i=Math.max(1, currentPage-2); i<=Math.min(totalPages, currentPage+2); i++) h += `<button onclick="goToPage(${i})" class="w-10 h-10 rounded-md ${i===currentPage ? 'bg-[#002a3f] text-white' : 'bg-white border'}">${i}</button>`;
-                if (currentPage < totalPages) h += `<button onclick="goToPage(${currentPage+1})" class="px-4 h-10 rounded-md bg-white border">Sig.</button>`;
+                if (currentPage > 1) h += `<button onclick="goToPage(${currentPage - 1})" class="px-4 h-10 rounded-md bg-white border">Ant.</button>`;
+                for (let i = Math.max(1, currentPage - 2); i <= Math.min(totalPages, currentPage + 2); i++) h += `<button onclick="goToPage(${i})" class="w-10 h-10 rounded-md ${i === currentPage ? 'bg-[#002a3f] text-white' : 'bg-white border'}">${i}</button>`;
+                if (currentPage < totalPages) h += `<button onclick="goToPage(${currentPage + 1})" class="px-4 h-10 rounded-md bg-white border">Sig.</button>`;
             }
             document.getElementById('pagination-controls').innerHTML = h;
         }
@@ -1577,23 +1771,23 @@ const START_DATE_FILTER = startDate.toISOString().split('.')[0];
                 apiLabel.textContent = 'Online';
             }
         }
-        function setAPIStatus(s) { 
+        function setAPIStatus(s) {
             // Como el menú controla el estado visual, podemos enviar un evento personalizado si lo deseamos,
             // pero por simplicidad en este paso, la función queda vacía ya que el elemento #api-dot y #api-status-badge
             // ahora viven dentro del Shadow DOM o template del menú y no son accesibles directamente por ID desde aquí
             // a menos que modifiquemos menu.js para exponer un método público.
-            
+
             // FIX: Para mantener la funcionalidad visual del punto verde/rojo,
             // vamos a intentar acceder al componente.
             const navbar = document.querySelector('admin-navbar');
-            if(navbar) {
+            if (navbar) {
                 const badge = navbar.querySelector('#api-status-badge');
                 const dot = navbar.querySelector('#api-dot'); // Esto no funcionará si no están en el DOM principal
                 // Dado que menu.js inyecta el HTML directamente (no shadow DOM), sí podemos acceder a ellos si el componente ya se renderizó.
-                
+
                 const dotEl = document.getElementById('api-dot');
                 const badgeEl = document.getElementById('api-status-badge');
-                
+
                 if (dotEl && badgeEl) {
                     dotEl.className = `w-2 h-2 rounded-full mr-2 ${s === 'online' ? 'bg-green-400' : 'bg-red-500'}`;
                     badgeEl.classList.remove('hidden');
@@ -1601,17 +1795,18 @@ const START_DATE_FILTER = startDate.toISOString().split('.')[0];
             }
         }
         function handleEmailInput() { const i = document.getElementById('input-email'); i.value = i.value.toLowerCase(); checkForChanges(); }
-        function handleSearchInput() { 
-            document.getElementById('btn-clear-search').classList.toggle('hidden', document.getElementById('search-input').value === ""); 
+        function handleSearchInput() {
+            document.getElementById('btn-clear-search').classList.toggle('hidden', document.getElementById('search-input').value === "");
             currentPage = 1;
             applyFilters();
         }
-        function clearSearch() { 
-            document.getElementById('search-input').value = ""; 
+        function clearSearch() {
+            document.getElementById('search-input').value = "";
             document.getElementById('btn-clear-search').classList.add('hidden');
             currentPage = 1;
-            applyFilters(); 
+            applyFilters();
         }
     </script>
 </body>
+
 </html>
