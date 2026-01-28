@@ -1,14 +1,17 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Liberia Airport Shuttle</title>
     <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&family=Oswald:wght@400;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&family=Oswald:wght@400;700&display=swap"
+        rel="stylesheet">
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
+
     <style>
         :root {
             --primary: #002a3f;
@@ -28,7 +31,10 @@
             padding: 20px;
         }
 
-        h1, h2, h3, .title-font {
+        h1,
+        h2,
+        h3,
+        .title-font {
             font-family: 'Oswald', sans-serif;
             text-transform: uppercase;
         }
@@ -48,6 +54,7 @@
                 opacity: 0;
                 transform: translateY(30px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -75,7 +82,7 @@
         }
 
         .login-subtitle {
-            color: rgba(255,255,255,0.7);
+            color: rgba(255, 255, 255, 0.7);
             font-size: 12px;
             margin-top: 8px;
             text-transform: uppercase;
@@ -170,9 +177,19 @@
         }
 
         @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            25% {
+                transform: translateX(-5px);
+            }
+
+            75% {
+                transform: translateX(5px);
+            }
         }
 
         .error-message.show {
@@ -195,7 +212,7 @@
             display: none;
             width: 20px;
             height: 20px;
-            border: 3px solid rgba(255,255,255,0.3);
+            border: 3px solid rgba(255, 255, 255, 0.3);
             border-top-color: white;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
@@ -203,11 +220,18 @@
         }
 
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
-        .btn-login.loading .btn-text { display: none; }
-        .btn-login.loading .spinner { display: block; }
+        .btn-login.loading .btn-text {
+            display: none;
+        }
+
+        .btn-login.loading .spinner {
+            display: block;
+        }
 
         /* Password toggle */
         .password-wrapper {
@@ -241,10 +265,12 @@
         }
     </style>
 </head>
+
 <body>
     <div class="login-container">
         <div class="login-header">
-            <img src="https://liberiaairportshuttle.com/wp-content/uploads/2024/11/Grupo.png" alt="Liberia Airport Shuttle" class="login-logo">
+            <img src="https://liberiaairportshuttle.com/wp-content/uploads/2024/11/Grupo.png"
+                alt="Liberia Airport Shuttle" class="login-logo">
             <h1 class="login-title title-font">Admin Shuttle</h1>
             <p class="login-subtitle">Liberia Airport Shuttle</p>
         </div>
@@ -257,36 +283,26 @@
             <form id="login-form" onsubmit="handleLogin(event)">
                 <div class="form-group">
                     <label class="form-label" for="usuario">Usuario</label>
-                    <input 
-                        type="text" 
-                        id="usuario" 
-                        name="usuario" 
-                        class="form-input" 
-                        placeholder="Ingresa tu usuario"
-                        autocomplete="username"
-                        required
-                    >
+                    <input type="text" id="usuario" name="usuario" class="form-input" placeholder="Ingresa tu usuario"
+                        autocomplete="username" required>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label" for="contrasena">Contraseña</label>
                     <div class="password-wrapper">
-                        <input 
-                            type="password" 
-                            id="contrasena" 
-                            name="contrasena" 
-                            class="form-input" 
-                            placeholder="Ingresa tu contraseña"
-                            autocomplete="current-password"
-                            required
-                        >
-                        <button type="button" id="btn-toggle-password" class="btn-toggle-password" onclick="togglePassword()">
+                        <input type="password" id="contrasena" name="contrasena" class="form-input"
+                            placeholder="Ingresa tu contraseña" autocomplete="current-password" required>
+                        <button type="button" id="btn-toggle-password" class="btn-toggle-password"
+                            onclick="togglePassword()">
                             <svg id="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                                 <circle cx="12" cy="12" r="3"></circle>
                             </svg>
-                            <svg id="icon-eye-off" style="display:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                            <svg id="icon-eye-off" style="display:none" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2">
+                                <path
+                                    d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24">
+                                </path>
                                 <line x1="1" y1="1" x2="23" y2="23"></line>
                             </svg>
                         </button>
@@ -301,14 +317,15 @@
         </div>
 
         <div class="login-footer">
-            <p class="login-footer-text">© 2024 Liberia Airport Shuttle</p>
+            <p class="login-footer-text">© <span id="copyright-year"></span> Liberia Airport Shuttle</p>
+            <script>document.getElementById('copyright-year').textContent = new Date().getFullYear();</script>
         </div>
     </div>
 
     <script>
         async function handleLogin(e) {
             e.preventDefault();
-            
+
             const btn = document.getElementById('btn-submit');
             const errorMsg = document.getElementById('error-message');
             const usuario = document.getElementById('usuario').value.trim();
@@ -316,7 +333,7 @@
 
             // Ocultar error previo
             errorMsg.classList.remove('show');
-            
+
             // Mostrar loading
             btn.classList.add('loading');
             btn.disabled = true;
@@ -337,6 +354,10 @@
                 const data = await response.json();
 
                 if (data.success) {
+                    // Guardar token en sessionStorage (expira al cerrar pestaña)
+                    if (data.token) {
+                        sessionStorage.setItem('session_token', data.token);
+                    }
                     // Login exitoso - redirigir al panel
                     window.location.href = 'index.html';
                 } else {
@@ -364,7 +385,7 @@
             const input = document.getElementById('contrasena');
             const iconEye = document.getElementById('icon-eye');
             const iconEyeOff = document.getElementById('icon-eye-off');
-            
+
             if (input.type === 'password') {
                 input.type = 'text';
                 iconEye.style.display = 'none';
@@ -377,4 +398,5 @@
         }
     </script>
 </body>
+
 </html>

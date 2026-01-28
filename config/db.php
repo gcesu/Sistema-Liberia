@@ -7,8 +7,12 @@
 // Cargar variables de entorno
 require_once __DIR__ . '/env.php';
 
-// Obtener credenciales desde variables de entorno
-$host = env('DB_HOST', 'localhost');
+// Detectar ambiente automáticamente
+// En producción (Bluehost) usamos localhost
+// En desarrollo local (Windows) usamos la IP del servidor
+$isProduction = (PHP_OS_FAMILY !== 'Windows');
+$host = $isProduction ? 'localhost' : env('DB_HOST', 'localhost');
+
 $dbname = env('DB_NAME');
 $username = env('DB_USER');
 $password = env('DB_PASS');

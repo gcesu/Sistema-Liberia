@@ -20,9 +20,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Verificar contraseña con bcrypt
     if ($user && password_verify($contrasena, $user['contrasena'])) {
+        // Generar token único de sesión
+        $token = bin2hex(random_bytes(32));
+
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['usuario'] = $user['usuario'];
-        echo json_encode(['success' => true, 'message' => 'Login exitoso']);
+        $_SESSION['session_token'] = $token;
+
+        echo json_encode([
+            'success' => true,
+            'message' => 'Login exitoso',
+            'token' => $token
+        ]);
     } else {
         echo json_encode(['success' => false, 'message' => 'Usuario o contraseña incorrectos']);
     }

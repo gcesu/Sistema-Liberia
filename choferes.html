@@ -20,10 +20,20 @@
                 return; // Permitir acceso sin login para choferes
             }
 
+            // Verificar si hay token en sessionStorage (expira al cerrar pestaña)
+            const token = sessionStorage.getItem('session_token');
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+
             try {
-                const response = await fetch('api/check_session.php');
+                const response = await fetch('api/check_session.php', {
+                    headers: { 'X-Session-Token': token }
+                });
                 const data = await response.json();
                 if (!data.authenticated) {
+                    sessionStorage.removeItem('session_token');
                     window.location.href = 'login.html';
                 }
             } catch (error) {

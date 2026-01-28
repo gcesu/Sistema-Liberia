@@ -36,9 +36,18 @@ if (!WOO_CONSUMER_KEY || !WOO_CONSUMER_SECRET) {
 
 const PORT = 3000;
 
+// Detectar ambiente automáticamente
+// En producción (servidor Linux Bluehost) usamos localhost
+// En desarrollo local (Windows) usamos la IP del servidor
+const isProduction = process.platform !== 'win32' || process.env.NODE_ENV === 'production';
+const DB_HOST = isProduction ? 'localhost' : (process.env.DB_HOST || 'localhost');
+
+console.log(`🔧 Ambiente: ${isProduction ? 'PRODUCCIÓN' : 'DESARROLLO LOCAL'}`);
+console.log(`🔧 DB Host: ${DB_HOST}`);
+
 // Configuración de MySQL (desde .env)
 const DB_CONFIG = {
-    host: process.env.DB_HOST || 'localhost',
+    host: DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASS,
     database: process.env.DB_NAME
@@ -510,6 +519,14 @@ async function saveOrderToDB(order) {
         return null;
     };
 
+    // Buscar dirección en múltiples lugares
+    let direccion = order.billing?.address_1 || '';
+    if (!direccion) direccion = order.shipping?.address_1 || '';
+    if (!direccion) direccion = meta('_shipping_address_1') || '';
+    if (!direccion) direccion = meta('_billing_address_1') || '';
+    if (!direccion) direccion = meta('shipping_address_1') || '';
+    if (!direccion) direccion = meta('billing_address_1') || '';
+
     const data = {
         id: order.id,
         status: order.status,
@@ -518,7 +535,7 @@ async function saveOrderToDB(order) {
         cliente_email: order.billing.email || '',
         cliente_telefono: order.billing.phone || '',
         cliente_pais: order.billing.country || '',
-        cliente_direccion: order.billing.address_1 || '',
+        cliente_direccion: direccion,
         tipo_viaje: meta('- Type of Trip'),
         pasajeros: parseInt(meta('Passengers')) || 1,
         hotel_nombre: order.line_items?.[0]?.name || '',
