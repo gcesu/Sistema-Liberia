@@ -1065,7 +1065,7 @@
                             client: clientName,
                             type: 'arrival',
                             dateStr: formatDateStandard(parsedDate),
-                            time: rawTime || '--:--',
+                            time: formatTime12H(rawTime),
                             route: `Aeropuerto LIR ➝ ${hotel}`,
                             flight: findMetaValue(order, ["- Arrival Flight Number"]) || '--',
                             raw_date: parsedDate,
@@ -1093,7 +1093,7 @@
                             client: clientName,
                             type: 'departure',
                             dateStr: formatDateStandard(parsedDate),
-                            time: rawTime || '--:--',
+                            time: formatTime12H(rawTime),
                             route: `${hotel} ➝ Aeropuerto LIR`,
                             flight: findMetaValue(order, ["- Departure Flight Number"]) || '--',
                             raw_date: parsedDate,
@@ -1174,6 +1174,20 @@
         function formatDateStandard(dateObj) {
             const months = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
             return `${dateObj.getDate().toString().padStart(2, '0')}/${months[dateObj.getMonth()]}/${dateObj.getFullYear()}`;
+        }
+
+        // Función para formatear hora a 12H (HH:MM AM/PM)
+        function formatTime12H(timeStr) {
+            if (!timeStr || timeStr === '--:--' || timeStr === '---') return '--:--';
+            const parts = timeStr.split(':');
+            if (parts.length < 2) return timeStr;
+            let hours = parseInt(parts[0], 10);
+            const minutes = parts[1].padStart(2, '0');
+            if (isNaN(hours)) return timeStr;
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            if (hours === 0) hours = 12;
+            return `${hours}:${minutes} ${ampm}`;
         }
 
         function toggleIndexingUI(show) {

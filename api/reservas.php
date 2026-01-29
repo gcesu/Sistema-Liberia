@@ -6,6 +6,7 @@
 
 session_start();
 require_once '../config/db.php';
+require_once '../config/env.php';
 
 // Headers
 header('Content-Type: application/json');
@@ -193,11 +194,59 @@ if ($method === 'PUT') {
         $stmt->execute([$id]);
         $reserva = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        echo json_encode(transformarReservaParaFrontend($reserva));
+        // Sincronizar con WooCommerce
+        $wooResult = syncToWooCommerce($id, $input);
+
+        $response = transformarReservaParaFrontend($reserva);
+        $response['woo_sync'] = $wooResult;
+
+        echo json_encode($response);
 
     } catch (Exception $e) {
         http_response_code(500);
         echo json_encode(['error' => 'Error al actualizar: ' . $e->getMessage()]);
+    }
+    exit;
+}
+
+// ═══════════════════════════════════════════════════
+// DELETE - Eliminar reserva
+// ═══════════════════════════════════════════════════
+if ($method === 'DELETE') {
+    $id = isset($_GET['order_id']) ? intval($_GET['order_id']) : 0;
+
+    if (!$id) {
+        http_response_code(400);
+        echo json_encode(['error' => 'ID de orden requerido']);
+        exit;
+    }
+
+    try {
+        // Verificar que la reserva existe
+        $stmt = $pdo->prepare("SELECT id FROM reservas WHERE id = ?");
+        $stmt->execute([$id]);
+        if (!$stmt->fetch()) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Reserva no encontrada']);
+            exit;
+        }
+
+        // Eliminar de la base de datos local
+        $stmt = $pdo->prepare("DELETE FROM reservas WHERE id = ?");
+        $stmt->execute([$id]);
+
+        // Intentar eliminar de WooCommerce (mover a trash)
+        $wooResult = deleteFromWooCommerce($id);
+
+        echo json_encode([
+            'success' => true,
+            'message' => "Reserva #$id eliminada",
+            'woo_sync' => $wooResult
+        ]);
+
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Error al eliminar: ' . $e->getMessage()]);
     }
     exit;
 }
@@ -316,5 +365,109 @@ function buildMetaData($r)
     }
 
     return $meta;
+}
+
+/**
+ * Sincroniza los cambios con WooCommerce
+ */
+function syncToWooCommerce($orderId, $input)
+{
+    $wooUrl = env('WOO_SITE_URL');
+    $consumerKey = env('WOO_CONSUMER_KEY');
+    $consumerSecret = env('WOO_CONSUMER_SECRET');
+
+    if (!$wooUrl || !$consumerKey || !$consumerSecret) {
+        return ['success' => false, 'error' => 'Credenciales no configuradas'];
+    }
+
+    // Construir payload para WooCommerce
+    $wooData = [];
+
+    // Status
+    if (isset($input['status'])) {
+        $wooData['status'] = $input['status'];
+    }
+
+    // Billing
+    if (isset($input['billing'])) {
+        $wooData['billing'] = $input['billing'];
+    }
+
+    // Meta data
+    if (isset($input['meta_data']) && is_array($input['meta_data'])) {
+        $wooData['meta_data'] = $input['meta_data'];
+    }
+
+    if (empty($wooData)) {
+        return ['success' => true, 'message' => 'Sin cambios para WooCommerce'];
+    }
+
+    // Enviar a WooCommerce
+    $apiUrl = "$wooUrl/wp-json/wc/v3/orders/$orderId";
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $apiUrl);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
+    curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+    curl_setopt($ch, CURLOPT_USERPWD, "$consumerKey:$consumerSecret");
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($wooData));
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $error = curl_error($ch);
+    curl_close($ch);
+
+    if ($error) {
+        return ['success' => false, 'error' => $error];
+    }
+
+    if ($httpCode >= 200 && $httpCode < 300) {
+        return ['success' => true, 'http_code' => $httpCode];
+    } else {
+        return ['success' => false, 'http_code' => $httpCode, 'response' => substr($response, 0, 200)];
+    }
+}
+
+/**
+ * Elimina una orden de WooCommerce (la mueve a trash)
+ */
+function deleteFromWooCommerce($orderId)
+{
+    $wooUrl = env('WOO_SITE_URL');
+    $consumerKey = env('WOO_CONSUMER_KEY');
+    $consumerSecret = env('WOO_CONSUMER_SECRET');
+
+    if (!$wooUrl || !$consumerKey || !$consumerSecret) {
+        return ['success' => false, 'error' => 'Credenciales no configuradas'];
+    }
+
+    // DELETE mueve la orden a trash (no la elimina permanentemente)
+    $apiUrl = "$wooUrl/wp-json/wc/v3/orders/$orderId";
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $apiUrl);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
+    curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+    curl_setopt($ch, CURLOPT_USERPWD, "$consumerKey:$consumerSecret");
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $error = curl_error($ch);
+    curl_close($ch);
+
+    if ($error) {
+        return ['success' => false, 'error' => $error];
+    }
+
+    if ($httpCode >= 200 && $httpCode < 300) {
+        return ['success' => true, 'http_code' => $httpCode];
+    } else {
+        return ['success' => false, 'http_code' => $httpCode, 'response' => substr($response, 0, 200)];
+    }
 }
 ?>

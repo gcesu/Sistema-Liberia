@@ -1696,7 +1696,7 @@
               client: clientName,
               type: "arrival",
               dateStr: formatDateStandard(parsedDate),
-              time: rawTime || "--:--",
+              time: formatTime12H(rawTime),
               route: `Aeropuerto LIR ➝ ${hotel}`,
               flight: findMetaValue(order, ARRIVAL_FLIGHT_KEYS) || "--",
               raw_date: fullDate,
@@ -1728,7 +1728,7 @@
               client: clientName,
               type: "departure",
               dateStr: formatDateStandard(parsedDate),
-              time: rawTime || "--:--",
+              time: formatTime12H(rawTime),
               route: `${hotel} ➝ Aeropuerto LIR`,
               flight: findMetaValue(order, DEPARTURE_FLIGHT_KEYS) || "--",
               raw_date: fullDate,
@@ -1848,6 +1848,26 @@
       const month = months[dateObj.getMonth()];
       const year = dateObj.getFullYear();
       return `${day}/${month}/${year}`;
+    }
+
+    // Función para formatear hora a 12H (HH:MM AM/PM)
+    function formatTime12H(timeStr) {
+      if (!timeStr || timeStr === "--:--" || timeStr === "---") return "--:--";
+
+      // Extraer horas y minutos (puede venir como HH:MM:SS o HH:MM)
+      const parts = timeStr.split(":");
+      if (parts.length < 2) return timeStr;
+
+      let hours = parseInt(parts[0], 10);
+      const minutes = parts[1].padStart(2, "0");
+
+      if (isNaN(hours)) return timeStr;
+
+      const ampm = hours >= 12 ? "PM" : "AM";
+      hours = hours % 12;
+      if (hours === 0) hours = 12;
+
+      return `${hours}:${minutes} ${ampm}`;
     }
 
     function toggleIndexingUI(show) {
