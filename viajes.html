@@ -735,6 +735,89 @@
       }
     }
 
+    /* Tablets en orientación vertical (iPad portrait) - misma vista que móviles */
+    @media (min-width: 641px) and (max-width: 1024px) and (orientation: portrait) {
+      .table-wrapper {
+        border: none;
+        background: transparent;
+      }
+
+      table,
+      thead,
+      tbody,
+      th,
+      td,
+      tr {
+        display: block;
+        width: 100%;
+      }
+
+      thead tr {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+      }
+
+      tr {
+        margin-bottom: 16px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 16px;
+        background: white;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      }
+
+      td {
+        border: none;
+        position: relative;
+        padding-left: 0 !important;
+        text-align: left;
+        font-size: 14px;
+        padding: 8px 0 !important;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px dashed #f1f5f9;
+      }
+
+      td:last-child {
+        border-bottom: none;
+        margin-top: 12px;
+        padding-right: 0 !important;
+        text-align: left !important;
+      }
+
+      td:before {
+        content: attr(data-label);
+        display: inline-block;
+        font-weight: 800;
+        text-transform: uppercase;
+        font-size: 10px;
+        color: #94a3b8;
+        margin-right: 10px;
+        min-width: 70px;
+        flex-shrink: 0;
+      }
+
+      .client-avatar {
+        width: 32px;
+        height: 32px;
+        font-size: 12px;
+        margin-right: 8px;
+      }
+
+      .filter-container {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+        padding: 16px;
+      }
+
+      .filter-container .input-group {
+        width: 100% !important;
+      }
+    }
+
     /* Responsive para filtros */
     @media (max-width: 768px) {
       .filter-container {
@@ -1141,6 +1224,10 @@
                 <span class="text-gray-400 text-[10px] uppercase font-bold">Pax:</span>
                 <span id="trip-general-pax-value" class="font-bold text-[#002a3f]"></span>
               </div>
+              <div id="trip-hotel-pill" class="info-pill bg-white shadow-sm hidden">
+                <span class="text-gray-400 text-[10px] uppercase font-bold">Hotel:</span>
+                <span id="trip-general-hotel-value" class="font-bold text-[#002a3f]"></span>
+              </div>
               <div class="info-pill bg-white shadow-sm">
                 <span class="text-gray-400 text-[10px] uppercase font-bold">Proximidad:</span>
                 <span id="trip-general-relative" class="font-bold text-[#002a3f]"></span>
@@ -1480,6 +1567,13 @@
       if (parts.length > 1)
         initials += parts[parts.length - 1].substring(0, 1).toUpperCase();
       return initials;
+    }
+
+    function capitalizeName(name) {
+      if (!name) return "";
+      return name.toLowerCase().split(" ").map(word =>
+        word.charAt(0).toUpperCase() + word.slice(1)
+      ).join(" ");
     }
 
     window.refreshData = function (page = 1) {
@@ -1971,7 +2065,7 @@
                         <td data-label="Cliente">
                             <div class="flex items-center">
                                 <div class="client-avatar">${initials}</div>
-                                <span class="font-bold text-[#002a3f] text-base">${trip.client}</span>
+                                <span class="font-bold text-[#002a3f] text-base">${capitalizeName(trip.client)}</span>
                             </div>
                         </td>
                         <td data-label="Fecha / Hora">
@@ -2041,8 +2135,8 @@
         .getElementById("trip-status-edit-container")
         .classList.add("hidden");
 
-      const fullName = `${trip.client}`;
-      const email = trip.email || "";
+      const fullName = capitalizeName(trip.client);
+      const email = (trip.email || "").toLowerCase();
       const phone = trip.phone || "";
       const country = (order.billing?.country || "").toUpperCase();
       const addressOnlyLine1 =
@@ -2109,8 +2203,23 @@
       document.getElementById("trip-dest-icon").innerText = isArrival
         ? "🏨"
         : "🛫";
-      document.getElementById("trip-route-separator-emoji").innerText =
-        isArrival ? "➡️" : "⬅️";
+      document.getElementById("trip-route-separator-emoji").innerText = "➡️";
+
+      // Hotel Name Logic
+      const zoneName = order.line_items?.[0]?.name || 'Hotel no especificado';
+      const hotelManual = findMetaValue(order, ["hotel_manual"]) || "";
+      // Mantenemos zoneName para origen/destino principal
+      const displayHotelName = zoneName;
+
+      // Update Origin/Dest based on Trip Type
+      if (trip.type === 'arrival') {
+        document.getElementById("trip-origin-name").innerText = "Aeropuerto LIR";
+        document.getElementById("trip-dest-name").innerText = displayHotelName;
+      } else {
+        document.getElementById("trip-origin-name").innerText = displayHotelName;
+        document.getElementById("trip-dest-name").innerText = "Aeropuerto LIR";
+      }
+
       document.getElementById("trip-origin-label").innerText = isArrival
         ? "Origen"
         : "Origen";
@@ -2118,13 +2227,21 @@
         ? "Destino"
         : "Destino";
 
-      document.getElementById("trip-general-trip-type").innerText = isArrival
-        ? "Llegada"
-        : "Salida";
-      document.getElementById("trip-general-pax-value").innerText =
-        trip.pax || "1";
-      document.getElementById("trip-general-relative").innerText =
-        getRelativeTime(trip.raw_date);
+
+
+      // Populate Pills
+      document.getElementById("trip-general-trip-type").innerText = isArrival ? "Llegada" : "Salida";
+      document.getElementById("trip-general-pax-value").innerText = trip.pax || "1";
+      document.getElementById("trip-general-relative").innerText = getRelativeTime(trip.raw_date);
+
+      // Hotel Pill Logic
+      const hotelPill = document.getElementById("trip-hotel-pill");
+      if (hotelManual) {
+        document.getElementById("trip-general-hotel-value").innerText = hotelManual;
+        hotelPill.classList.remove("hidden");
+      } else {
+        hotelPill.classList.add("hidden");
+      }
 
       // Tarjeta de logística
       document.getElementById("trip-card-title").innerText = isArrival
@@ -2160,12 +2277,16 @@
         "trip-logistics-fields-list",
       );
       logisticsContainer.innerHTML = "";
+      const fechaLabel = isArrival ? "Fecha" : "Fecha de Recogida";
+      const horaLabel = isArrival ? "Hora" : "Hora de Recogida";
       logisticsContainer.innerHTML += `
-                <div><p class="meta-field-label">Fecha</p><p class="meta-field-value">${trip.dateStr}</p></div>
-                <div><p class="meta-field-label">Hora</p><p class="meta-field-value">${trip.time || "--:--"}</p></div>
+                <div><p class="meta-field-label">${fechaLabel}</p><p class="meta-field-value">${trip.dateStr}</p></div>
+                <div><p class="meta-field-label">${horaLabel}</p><p class="meta-field-value">${trip.time || "--:--"}</p></div>
                 <div><p class="meta-field-label">Vuelo</p><p class="meta-field-value">${trip.flight || "--"}</p></div>
                 <div><p class="meta-field-label">Ruta</p><p class="meta-field-value">${trip.route}</p></div>
             `;
+
+
 
       // Asignación
       const assign = resolveAssignment(trip);
@@ -2189,6 +2310,17 @@
       tripOriginalValues[codriverKey] = codriverVal;
       tripOriginalValues[driverNotesKey] = notesVal;
       tripOriginalValues[internalNotesKey] = internalVal;
+
+      // Inicializar select de choferes
+      const choferSelect = document.getElementById("trip-input-meta-chofer");
+      if (choferSelect) {
+        choferSelect.innerHTML = '<option value="">No asignado</option>';
+        CHOFERES.forEach((c) => {
+          const opt = document.createElement("option");
+          opt.value = opt.textContent = c;
+          choferSelect.appendChild(opt);
+        });
+      }
 
       document.getElementById("trip-input-meta-chofer").value = driverVal;
       document.getElementById("trip-input-meta-subchofer").value =
@@ -2238,16 +2370,7 @@
         statusViajeSelect.appendChild(option);
       });
 
-      // Inicializar select de choferes
-      const choferSelect = document.getElementById("trip-input-meta-chofer");
-      if (choferSelect) {
-        choferSelect.innerHTML = '<option value="">No asignado</option>';
-        CHOFERES.forEach((c) => {
-          const opt = document.createElement("option");
-          opt.value = opt.textContent = c;
-          choferSelect.appendChild(opt);
-        });
-      }
+
 
       const statusViajeValFinal =
         findMetaValue(order, [statusKeyViaje]) || "";
@@ -2480,8 +2603,17 @@
     async function tripSaveDetails() {
       if (!currentTripId || !currentTripOrder.id) return;
 
-      const loader = document.getElementById("trip-btn-save");
-      loader.classList.add("hidden");
+
+      const btnSave = document.getElementById("trip-btn-save");
+      const originalBtnText = btnSave.innerHTML;
+      btnSave.disabled = true;
+      btnSave.innerHTML = `
+          <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg> Guardando...
+      `;
+      // loader.classList.add("hidden");
 
       const statusViajeVal = document.getElementById(
         "trip-input-status-viaje",
@@ -2561,6 +2693,20 @@
         if (!resp.ok) throw new Error("Error guardando cambios");
         const updated = await resp.json();
 
+        // Actualizar en allTrips
+        const allTripIndex = allTrips.findIndex(
+          (t) => t.id === currentTripId,
+        );
+        if (allTripIndex !== -1) {
+          allTrips[allTripIndex].order = updated;
+          allTrips[allTripIndex].client =
+            `${updated.billing.first_name} ${updated.billing.last_name}`.trim();
+          allTrips[allTripIndex].email = updated.billing.email || "";
+          allTrips[allTripIndex].phone = updated.billing.phone || "";
+          allTrips[allTripIndex].order_status = updated.status;
+          allTrips[allTripIndex].trip_status = statusViajeVal;
+        }
+
         const tripIndex = currentFilteredTrips.findIndex(
           (t) => t.id === currentTripId,
         );
@@ -2572,6 +2718,10 @@
           currentFilteredTrips[tripIndex].email = updated.billing.email || "";
           currentFilteredTrips[tripIndex].phone = updated.billing.phone || "";
           currentFilteredTrips[tripIndex].order_status = updated.status;
+          currentFilteredTrips[tripIndex].trip_status = statusViajeVal;
+
+          // Re-renderizar tabla
+          renderTrips(currentFilteredTrips);
 
           // Reabrir el modal con los datos actualizados
           openTripDetail(tripIndex);
@@ -2579,6 +2729,10 @@
       } catch (e) {
         console.error("Error guardando viaje:", e);
         alert("Error al guardar los cambios");
+      } finally {
+        btnSave.disabled = false;
+        btnSave.innerHTML = originalBtnText;
+        tripCheckForChanges();
       }
     }
 

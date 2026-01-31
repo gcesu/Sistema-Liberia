@@ -155,6 +155,7 @@ if ($method === 'PUT') {
             'subchofer_llegada' => 'llegada_subchofer',
             'nota_choferes_llegada' => 'llegada_nota_choferes',
             'notas_internas_llegada' => 'llegada_notas_internas',
+            'status_llegada' => 'llegada_status',
             '- Departure Date' => 'salida_fecha',
             '- Pick-up Time at Hotel' => 'salida_hora',
             '- Departure Flight Number' => 'salida_vuelo',
@@ -162,6 +163,10 @@ if ($method === 'PUT') {
             'subchofer_salida' => 'salida_subchofer',
             'nota_choferes_ida' => 'salida_nota_choferes',
             'notas_internas_salida' => 'salida_notas_internas',
+            'status_salida' => 'salida_status',
+            'privacy_show_email' => 'privacy_show_email',
+            'privacy_show_phone' => 'privacy_show_phone',
+            'hotel_name' => 'hotel_manual',
         ];
 
         foreach ($input['meta_data'] as $meta) {
@@ -340,6 +345,9 @@ function buildMetaData($r)
     if ($r['llegada_notas_internas']) {
         $meta[] = ['key' => 'notas_internas_llegada', 'value' => $r['llegada_notas_internas']];
     }
+    if (isset($r['llegada_status']) && $r['llegada_status']) {
+        $meta[] = ['key' => 'status_llegada', 'value' => $r['llegada_status']];
+    }
 
     // Salida
     if ($r['salida_fecha']) {
@@ -362,6 +370,18 @@ function buildMetaData($r)
     }
     if ($r['salida_notas_internas']) {
         $meta[] = ['key' => 'notas_internas_salida', 'value' => $r['salida_notas_internas']];
+    }
+    if (isset($r['salida_status']) && $r['salida_status']) {
+        $meta[] = ['key' => 'status_salida', 'value' => $r['salida_status']];
+    }
+
+    // Privacidad
+    $meta[] = ['key' => 'privacy_show_email', 'value' => isset($r['privacy_show_email']) ? $r['privacy_show_email'] : '0'];
+    $meta[] = ['key' => 'privacy_show_phone', 'value' => isset($r['privacy_show_phone']) ? $r['privacy_show_phone'] : '0'];
+
+    // Hotel Manual
+    if (!empty($r['hotel_manual'])) {
+        $meta[] = ['key' => 'hotel_manual', 'value' => $r['hotel_manual']];
     }
 
     return $meta;
@@ -395,7 +415,13 @@ function syncToWooCommerce($orderId, $input)
 
     // Meta data
     if (isset($input['meta_data']) && is_array($input['meta_data'])) {
-        $wooData['meta_data'] = $input['meta_data'];
+        // Filtramos hotel_name porque es solo local
+        $wooMeta = array_filter($input['meta_data'], function ($m) {
+            return ($m['key'] ?? '') !== 'hotel_name';
+        });
+        if (!empty($wooMeta)) {
+            $wooData['meta_data'] = array_values($wooMeta);
+        }
     }
 
     if (empty($wooData)) {

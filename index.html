@@ -268,6 +268,78 @@
             }
         }
 
+        /* Tablets en orientación vertical (iPad portrait) - misma vista que móviles */
+        @media (min-width: 641px) and (max-width: 1024px) and (orientation: portrait) {
+            .table-wrapper {
+                border: none;
+                background: transparent;
+            }
+
+            table,
+            thead,
+            tbody,
+            th,
+            td,
+            tr {
+                display: block;
+                width: 100%;
+            }
+
+            thead tr {
+                position: absolute;
+                top: -9999px;
+                left: -9999px;
+            }
+
+            tr {
+                margin-bottom: 16px;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 16px;
+                background: white;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            }
+
+            td {
+                border: none;
+                position: relative;
+                padding-left: 0 !important;
+                text-align: left;
+                font-size: 14px;
+                padding: 8px 0 !important;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 1px dashed #f1f5f9;
+            }
+
+            td:last-child {
+                border-bottom: none;
+                margin-top: 12px;
+                padding-right: 0 !important;
+                text-align: left !important;
+            }
+
+            td:before {
+                content: attr(data-label);
+                display: inline-block;
+                font-weight: 800;
+                text-transform: uppercase;
+                font-size: 10px;
+                color: #94a3b8;
+                margin-right: 10px;
+                min-width: 70px;
+                flex-shrink: 0;
+            }
+
+            .client-avatar {
+                width: 32px;
+                height: 32px;
+                font-size: 12px;
+                margin-right: 8px;
+            }
+        }
+
         .client-avatar {
             width: 40px;
             height: 40px;
@@ -849,10 +921,10 @@
             <div class="space-y-4 w-full xl:w-auto">
                 <h2 class="text-2xl md:text-3xl font-bold text-[#002a3f] title-font">Reservas</h2>
                 <div class="flex flex-wrap gap-3">
-                    <div id="filter-pending" onclick="filterByStatus('pending')"
-                        class="status-summary-item bg-amber-50 border-amber-100 text-amber-600">
-                        <span class="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span>
-                        <span id="stat-pending">0</span> PENDIENTES
+                    <div id="filter-processing" onclick="filterByStatus('processing')"
+                        class="status-summary-item bg-yellow-50 border-yellow-100 text-yellow-600">
+                        <span class="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></span>
+                        <span id="stat-processing">0</span> PROCESANDO
                     </div>
                     <div id="clear-filter-btn" onclick="filterByStatus('')"
                         class="hidden status-summary-item bg-gray-100 border-gray-200 text-gray-500">
@@ -965,6 +1037,10 @@
                                 <input type="email" id="input-email" oninput="handleEmailInput()"
                                     class="hidden input-editable" placeholder="ejemplo@correo.com">
                                 <a id="det-email-link" href="#" class="btn-email">Enviar Correo</a>
+                                <div class="privacy-control">
+                                    <input type="checkbox" id="privacy-show-email" class="privacy-checkbox">
+                                    <label for="privacy-show-email">Mostrar al chofer</label>
+                                </div>
                             </div>
 
                             <div class="p-3 bg-gray-50 rounded-lg border border-gray-100">
@@ -973,6 +1049,10 @@
                                 <input type="text" id="input-phone" oninput="checkForChanges()"
                                     class="hidden input-editable" placeholder="+000 0000 0000">
                                 <a id="det-whatsapp-link" href="#" target="_blank" class="btn-whatsapp">WhatsApp</a>
+                                <div class="privacy-control">
+                                    <input type="checkbox" id="privacy-show-phone" class="privacy-checkbox">
+                                    <label for="privacy-show-phone">Mostrar al chofer</label>
+                                </div>
                             </div>
 
                             <div class="p-3 bg-gray-50 rounded-lg border border-gray-100">
@@ -1025,6 +1105,12 @@
                             <div class="info-pill bg-white shadow-sm">
                                 <span class="text-gray-400 text-[10px] uppercase font-bold">Pax:</span>
                                 <span id="general-pax-value" class="font-bold text-[#002a3f]"></span>
+                            </div>
+                            <div class="info-pill bg-white shadow-sm flex items-center gap-2">
+                                <span class="text-gray-400 text-[10px] uppercase font-bold">Hotel:</span>
+                                <input type="text" id="input-hotel-name-edit" oninput="checkForChanges()"
+                                    class="font-bold text-[#002a3f] bg-transparent outline-none border-b border-transparent focus:border-blue-300 transition-colors w-40 text-sm placeholder-gray-300"
+                                    placeholder="Nombre del Hotel">
                             </div>
                         </div>
                     </div>
@@ -1460,18 +1546,18 @@
         }
 
         function updateStats() {
-            // Contar pendientes desde los datos locales
-            const pendingCount = allOrders.filter(o => o.status === 'pending').length;
-            document.getElementById('stat-pending').innerText = pendingCount;
+            // Contar procesando desde los datos locales
+            const processingCount = allOrders.filter(o => o.status === 'processing').length;
+            document.getElementById('stat-processing').innerText = processingCount;
         }
 
         function filterByStatus(status) {
             currentStatusFilter = status;
             currentPage = 1;  // Resetear a primera página al filtrar
-            if (status === 'pending') {
-                document.getElementById('filter-pending').classList.add('active-filter');
+            if (status === 'processing') {
+                document.getElementById('filter-processing').classList.add('active-filter');
             } else {
-                document.getElementById('filter-pending').classList.remove('active-filter');
+                document.getElementById('filter-processing').classList.remove('active-filter');
             }
             document.getElementById('clear-filter-btn').classList.toggle('hidden', status === '');
             applyFilters();
@@ -1577,7 +1663,13 @@
             const addressOnlyLine1 = (o.shipping?.address_1 || o.billing?.address_1 || "");
             const addressCity = (o.shipping?.city || o.billing?.city || "");
 
-            originalValues = { name: fullName, email, phone, country, address, status: o.status };
+
+
+            // Hotel Logic
+            const zoneName = o.line_items?.[0]?.name || '';
+            const hotelManual = findMetaValue(o, ["hotel_manual"]) || "";
+
+            originalValues = { name: fullName, email, phone, country, address, status: o.status, hotel_name: hotelManual };
 
             document.getElementById('display-name').innerText = fullName;
             document.getElementById('display-email').innerText = email;
@@ -1587,6 +1679,27 @@
 
             document.getElementById('det-email-link').href = `mailto:${email}`;
             document.getElementById('det-whatsapp-link').href = `https://wa.me/${phone.replace(/\D/g, '')}`;
+
+            // Privacy Controls
+            // Privacy Controls
+            const showEmail = String(findMetaValue(o, ["privacy_show_email"])) === "1";
+            const showPhone = String(findMetaValue(o, ["privacy_show_phone"])) === "1";
+
+            // Guardar valores originales de privacidad
+            originalValues.privacy_show_email = showEmail;
+            originalValues.privacy_show_phone = showPhone;
+
+            const emailCheck = document.getElementById('privacy-show-email');
+            const phoneCheck = document.getElementById('privacy-show-phone');
+
+            if (emailCheck) {
+                emailCheck.checked = showEmail;
+                emailCheck.onclick = () => checkForChanges();
+            }
+            if (phoneCheck) {
+                phoneCheck.checked = showPhone;
+                phoneCheck.onclick = () => checkForChanges();
+            }
 
             document.getElementById('input-name').value = fullName;
             document.getElementById('input-email').value = email;
@@ -1670,7 +1783,15 @@
         }
 
         function renderGeneralInfo(o) {
-            const hotelName = o.line_items?.[0]?.name || 'Hotel no especificado';
+            const zoneName = o.line_items?.[0]?.name || 'Hotel no especificado';
+            const hotelManual = findMetaValue(o, ["hotel_manual"]) || "";
+
+            // El input muestra el manual (o vacío)
+            document.getElementById('input-hotel-name-edit').value = hotelManual;
+
+            // Para mostrar en el banner azul (Origen/Destino), SIEMPRE la zona
+            const displayHotelName = zoneName;
+
             const tripRaw = deepScanMeta(o, "- Type of Trip");
             const paxRaw = (deepScanMeta(o, "Passengers") || o.line_items?.[0]?.quantity || '1').toString().split('-')[0].trim();
             const tripTypeFormatted = translateTripType(o, tripRaw);
@@ -1692,25 +1813,77 @@
                 originIconEl.innerText = "✈️";
                 originNameEl.innerText = "Aeropuerto LIR";
                 destIconEl.innerText = "🏨";
-                destNameEl.innerText = hotelName;
+                destNameEl.innerText = displayHotelName;
                 separatorEmojiEl.innerText = "🔄";
             } else if (isToHotel) {
                 originIconEl.innerText = "🛬";
                 originNameEl.innerText = "Aeropuerto LIR";
                 destIconEl.innerText = "🏨";
-                destNameEl.innerText = hotelName;
+                destNameEl.innerText = displayHotelName;
                 separatorEmojiEl.innerText = "➡️";
             } else {
                 originIconEl.innerText = "🏨";
-                originNameEl.innerText = hotelName;
+                originNameEl.innerText = displayHotelName;
                 destIconEl.innerText = "🛫";
                 destNameEl.innerText = "Aeropuerto LIR";
                 separatorEmojiEl.innerText = "➡️";
             }
         }
 
+        async function savePrivacySettings(orderId) {
+            const showEmail = document.getElementById('privacy-show-email').checked;
+            const showPhone = document.getElementById('privacy-show-phone').checked;
+
+            const payload = {
+                meta_data: [
+                    { key: 'privacy_show_email', value: showEmail ? "1" : "0" },
+                    { key: 'privacy_show_phone', value: showPhone ? "1" : "0" }
+                ]
+            };
+
+            // Optimistic update
+            const orderIndex = allOrders.findIndex(o => o.id === orderId);
+            if (orderIndex !== -1) {
+                // Update local meta data
+                updateOrAddMeta(allOrders[orderIndex], 'privacy_show_email', showEmail ? "1" : "0");
+                updateOrAddMeta(allOrders[orderIndex], 'privacy_show_phone', showPhone ? "1" : "0");
+            }
+
+            try {
+                await fetch(`${API_PROXY}?order_id=${orderId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                console.log("Privacidad actualizada");
+            } catch (e) {
+                console.error("Error guardando privacidad", e);
+                alert("Error al guardar preferencia de privacidad");
+            }
+        }
+
+        function updateOrAddMeta(order, key, value) {
+            const existing = order.meta_data.find(m => m.key === key);
+            if (existing) {
+                existing.value = value;
+            } else {
+                order.meta_data.push({ key, value });
+            }
+        }
+
         async function saveOrderDetails() {
             if (!currentOrderId) return;
+
+            const btnSave = document.getElementById('btn-save');
+            const originalBtnText = btnSave.innerHTML;
+            btnSave.disabled = true;
+            btnSave.innerHTML = `
+                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg> Guardando...
+            `;
+
             toggleLoader(true);
             const nameParts = document.getElementById('input-name').value.trim().split(' ');
             const countryVal = document.getElementById('input-country').value;
@@ -1722,6 +1895,15 @@
                 const inp = document.getElementById(`input-meta-${k}`);
                 if (inp) meta.push({ key: k, value: inp.value });
             });
+
+            // Agregar settings de privacidad
+            const showEmail = document.getElementById('privacy-show-email').checked;
+            const showPhone = document.getElementById('privacy-show-phone').checked;
+            meta.push({ key: 'privacy_show_email', value: showEmail ? "1" : "0" });
+            meta.push({ key: 'privacy_show_phone', value: showPhone ? "1" : "0" });
+
+            // Agregar hotel name
+            meta.push({ key: 'hotel_name', value: document.getElementById('input-hotel-name-edit').value });
 
             const payload = {
                 status: document.getElementById('input-status').value,
@@ -1749,11 +1931,29 @@
                 });
                 if (!resp.ok) throw new Error("Error");
                 const updated = await resp.json();
+
+                // Actualizar todos los arrays locales
+                const idxAll = allOrders.findIndex(o => o.id === currentOrderId);
+                if (idxAll !== -1) allOrders[idxAll] = updated;
+
+                const idxFiltered = currentFilteredOrders.findIndex(o => o.id === currentOrderId);
+                if (idxFiltered !== -1) currentFilteredOrders[idxFiltered] = updated;
+
                 const idx = currentOrders.findIndex(o => o.id === currentOrderId);
                 if (idx !== -1) currentOrders[idx] = updated;
+
+                // Re-renderizar tabla para reflejar cambios
+                renderTable();
+
                 viewOrder(currentOrderId);
                 updateStats();
-            } catch (e) { console.error(e); } finally { toggleLoader(false); }
+            } catch (e) {
+                console.error(e);
+            } finally {
+                toggleLoader(false);
+                btnSave.disabled = false;
+                btnSave.innerHTML = originalBtnText;
+            }
         }
 
         function togglePassengerEdit() {
@@ -1820,6 +2020,16 @@
                     }
                 }
             }
+
+            // Check Privacy Changes
+            const showEmail = document.getElementById('privacy-show-email').checked;
+            const showPhone = document.getElementById('privacy-show-phone').checked;
+            if (showEmail !== originalValues.privacy_show_email) changed = true;
+            if (showPhone !== originalValues.privacy_show_phone) changed = true;
+
+            // Check Hotel Name
+            if (document.getElementById('input-hotel-name-edit').value !== originalValues.hotel_name) changed = true;
+
             document.getElementById('btn-save').classList.toggle('hidden', !changed);
         }
 
@@ -1909,6 +2119,20 @@
                 console.error('Error eliminando orden:', err);
                 alert('Error de conexión al eliminar la reserva.');
             }
+        }
+
+        function findMetaValue(order, targetKeys) {
+            const clean = k => k.toLowerCase().trim();
+            const targets = targetKeys.map(k => clean(k));
+            for (let m of order.meta_data) {
+                if (targets.includes(clean(m.key)) || (m.label && targets.includes(clean(m.label)))) return m.value;
+            }
+            if (order.line_items?.[0]?.meta_data) {
+                for (let m of order.line_items[0].meta_data) {
+                    if (targets.includes(clean(m.key)) || (m.display_key && targets.includes(clean(m.display_key)))) return m.value;
+                }
+            }
+            return null;
         }
 
         function deepScanMeta(o, k) {

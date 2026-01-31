@@ -644,6 +644,82 @@
             }
         }
 
+        /* Tablets en orientación vertical (iPad portrait) - misma vista que móviles */
+        @media (min-width: 641px) and (max-width: 1024px) and (orientation: portrait) {
+            .table-wrapper {
+                border: none;
+                background: transparent;
+            }
+
+            table,
+            thead,
+            tbody,
+            th,
+            td,
+            tr {
+                display: block;
+                width: 100%;
+            }
+
+            thead tr {
+                position: absolute;
+                top: -9999px;
+                left: -9999px;
+            }
+
+            tr {
+                margin-bottom: 16px;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 16px;
+                background: white;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            }
+
+            td {
+                border: none;
+                position: relative;
+                padding-left: 0 !important;
+                text-align: left;
+                font-size: var(--font-sm);
+                padding: 8px 0 !important;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 1px dashed #f1f5f9;
+            }
+
+            td:last-child {
+                border-bottom: none;
+                margin-top: 12px;
+                padding-right: 0 !important;
+                text-align: left !important;
+            }
+
+            td:before {
+                content: attr(data-label);
+                display: inline-block;
+                font-weight: 800;
+                text-transform: uppercase;
+                font-size: var(--font-xxxs);
+                color: #94a3b8;
+                margin-right: 10px;
+                min-width: 70px;
+                flex-shrink: 0;
+            }
+
+            .filter-container {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+                padding: 16px;
+            }
+
+            .filter-container .input-group {
+                width: 100% !important;
+            }
+        }
+
         /* Responsive: filtros en móvil */
         @media (max-width: 768px) {
             .filter-container {
@@ -695,7 +771,8 @@
     <main class="w-full px-4 md:px-8">
 
         <div class="mt-6 md:mt-8 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <h2 class="text-2xl md:text-3xl font-bold text-[#002a3f] title-font">Cronograma de Choferes</h2>
+            <h2 class="text-2xl md:text-3xl font-bold text-[#002a3f] title-font">Cronograma de Choferes <span
+                    class="text-sm font-normal text-gray-400">v1.2</span></h2>
         </div>
 
         <div class="filter-container shadow-sm">
@@ -857,6 +934,10 @@
                                 <span class="text-gray-400 text-[10px] uppercase font-bold">Pax:</span>
                                 <span id="trip-general-pax-value" class="font-bold text-[#002a3f]"></span>
                             </div>
+                            <div id="trip-hotel-pill" class="info-pill bg-white shadow-sm hidden">
+                                <span class="text-gray-400 text-[10px] uppercase font-bold">Hotel:</span>
+                                <span id="trip-general-hotel-value" class="font-bold text-[#002a3f]"></span>
+                            </div>
                             <div class="info-pill bg-white shadow-sm">
                                 <span class="text-gray-400 text-[10px] uppercase font-bold">Proximidad:</span>
                                 <span id="trip-general-relative" class="font-bold text-[#002a3f]"></span>
@@ -937,6 +1018,13 @@
             let initials = parts[0].substring(0, 1).toUpperCase();
             if (parts.length > 1) initials += parts[parts.length - 1].substring(0, 1).toUpperCase();
             return initials;
+        }
+
+        function capitalizeName(name) {
+            if (!name) return "";
+            return name.toLowerCase().split(" ").map(word =>
+                word.charAt(0).toUpperCase() + word.slice(1)
+            ).join(" ");
         }
 
         window.refreshData = function () {
@@ -1057,7 +1145,7 @@
                     if (parsedDate) {
                         const rawTime = findMetaValue(order, ["- Arrival Time"]);
                         const driver = findMetaValue(order, ["chofer_llegada"]) || "";
-                        const tripStatus = findMetaValue(order, ["status_llegada"]) || "";
+                        const tripStatus = (findMetaValue(order, ["status_llegada"]) || "").trim();
                         batchTrips.push({
                             id: order.id,
                             order_status: order.status,
@@ -1085,7 +1173,7 @@
                     if (parsedDate) {
                         const rawTime = findMetaValue(order, ["- Pick-up Time at Hotel"]);
                         const driver = findMetaValue(order, ["chofer_salida"]) || "";
-                        const tripStatus = findMetaValue(order, ["status_salida"]) || "";
+                        const tripStatus = (findMetaValue(order, ["status_salida"]) || "").trim();
                         batchTrips.push({
                             id: order.id,
                             order_status: order.status,
@@ -1240,7 +1328,12 @@
             const typeFilter = document.getElementById('filter-type').value;
             const driverFilter = document.getElementById('filter-driver').value;
             const searchText = document.getElementById('search-text').value.toLowerCase();
-            let filtered = allTrips;
+
+            // Filtro estricto: Solo mostrar viajes confirmados o contactados
+            const ALLOWED_STATUSES = ['confirmado', 'contactado_whatsapp', 'contactado_email'];
+            console.log('Aplicando filtros. Total antes:', allTrips.length);
+            let filtered = allTrips.filter(t => ALLOWED_STATUSES.includes(t.trip_status));
+            console.log('Total después de filtro estricto:', filtered.length);
 
             if (range.length === 2) {
                 const start = range[0]; start.setHours(0, 0, 0, 0);
@@ -1278,7 +1371,7 @@
                         <td data-label="Cliente">
                             <div class="flex items-center">
                                 <div class="client-avatar">${getInitials(trip.client)}</div>
-                                <span class="font-bold text-[#002a3f] text-base">${trip.client}</span>
+                                <span class="font-bold text-[#002a3f] text-base">${capitalizeName(trip.client)}</span>
                             </div>
                         </td>
                         <td data-label="Fecha / Hora">
@@ -1342,8 +1435,12 @@
             const order = trip.order || {};
             const isArrival = trip.type === 'arrival';
             const hotel = trip.hotel || 'Hotel no especificado';
-            const originName = isArrival ? 'Aeropuerto LIR' : hotel;
-            const destName = isArrival ? hotel : 'Aeropuerto LIR';
+            const hotelManual = findMetaValue(order, ["hotel_manual"]) || "";
+            // Mantenemos el hotel (zona) original para el display principal
+            const displayHotelName = hotel;
+
+            const originName = isArrival ? 'Aeropuerto LIR' : displayHotelName;
+            const destName = isArrival ? displayHotelName : 'Aeropuerto LIR';
 
             const statusKeyViaje = isArrival ? 'status_llegada' : 'status_salida';
             const statusViajeVal = findMetaValue(order, [statusKeyViaje]) || '';
@@ -1357,33 +1454,70 @@
             statusEl.innerText = translateStatus(statusReservaVal);
             statusEl.className = `status-pill status-${statusReservaVal}`;
 
-            const fullName = `${trip.client}`;
-            const email = trip.email || '';
+            const fullName = capitalizeName(trip.client);
+            const email = (trip.email || '').toLowerCase();
             const phone = trip.phone || '';
             const country = (order.billing?.country || "").toUpperCase();
             const addressOnlyLine1 = (order.shipping?.address_1 || order.billing?.address_1 || "");
 
             document.getElementById('trip-display-name').innerText = fullName;
-            document.getElementById('trip-display-email').innerText = email || '---';
-            document.getElementById('trip-display-phone').innerHTML = phone ? `<a href="tel:${phone}" class="hover:text-accent">${phone}</a>` : '---';
             document.getElementById('trip-display-country').innerText = country && COUNTRY_MAP[country] ? COUNTRY_MAP[country].name : (country || '---');
             document.getElementById('trip-display-address').innerText = addressOnlyLine1 || '---';
 
-            document.getElementById('trip-det-email-link').href = `mailto:${email}`;
-            document.getElementById('trip-det-whatsapp-link').href = `https://wa.me/${phone.replace(/\D/g, '')}`;
+            // Privacy Check
+            const showEmail = String(findMetaValue(order, ["privacy_show_email"])) === "1";
+            const showPhone = String(findMetaValue(order, ["privacy_show_phone"])) === "1";
+
+            // Email Display Logic
+            const emailEl = document.getElementById('trip-display-email');
+            const emailBtn = document.getElementById('trip-det-email-link');
+            if (!showEmail) {
+                emailEl.innerText = 'Privado';
+                emailEl.classList.add('text-gray-400', 'italic');
+                emailBtn.classList.add('hidden');
+            } else {
+                emailEl.innerText = email || '---';
+                emailEl.classList.remove('text-gray-400', 'italic');
+                emailBtn.classList.remove('hidden');
+                emailBtn.href = `mailto:${email}`;
+            }
+
+            // Phone Display Logic
+            const phoneEl = document.getElementById('trip-display-phone');
+            const whatsappBtn = document.getElementById('trip-det-whatsapp-link');
+            if (!showPhone) {
+                phoneEl.innerText = 'Privado';
+                phoneEl.classList.add('text-gray-400', 'italic');
+                whatsappBtn.classList.add('hidden');
+            } else {
+                phoneEl.innerHTML = phone ? `<a href="tel:${phone}" class="hover:text-accent">${phone}</a>` : '---';
+                phoneEl.classList.remove('text-gray-400', 'italic');
+                whatsappBtn.classList.remove('hidden');
+                whatsappBtn.href = `https://wa.me/${phone.replace(/\D/g, '')}`;
+            }
 
             // Ruta
             document.getElementById('trip-origin-name').innerText = originName;
             document.getElementById('trip-dest-name').innerText = destName;
             document.getElementById('trip-origin-icon').innerText = isArrival ? '🛬' : '🏨';
             document.getElementById('trip-dest-icon').innerText = isArrival ? '🏨' : '🛫';
-            document.getElementById('trip-route-separator-emoji').innerText = isArrival ? '➡️' : '⬅️';
+            document.getElementById('trip-route-separator-emoji').innerText = '➡️';
             document.getElementById('trip-origin-label').innerText = isArrival ? 'Origen' : 'Origen';
             document.getElementById('trip-dest-label').innerText = isArrival ? 'Destino' : 'Destino';
 
             document.getElementById('trip-general-trip-type').innerText = isArrival ? 'Llegada' : 'Salida';
             document.getElementById('trip-general-pax-value').innerText = trip.pax || '1';
+            document.getElementById('trip-general-pax-value').innerText = trip.pax || '1';
             document.getElementById('trip-general-relative').innerText = getRelativeTime(trip.raw_date);
+
+            // Hotel Pill Logic
+            const hotelPill = document.getElementById('trip-hotel-pill');
+            if (hotelManual) {
+                document.getElementById('trip-general-hotel-value').innerText = hotelManual;
+                hotelPill.classList.remove('hidden');
+            } else {
+                hotelPill.classList.add('hidden');
+            }
 
             // Tarjeta de logística
             document.getElementById('trip-card-title').innerText = isArrival ? 'Llegada' : 'Salida';
@@ -1411,12 +1545,16 @@
 
             const logisticsContainer = document.getElementById('trip-logistics-fields-list');
             logisticsContainer.innerHTML = '';
+            const fechaLabel = isArrival ? 'Fecha' : 'Fecha de Recogida';
+            const horaLabel = isArrival ? 'Hora' : 'Hora de Recogida';
             logisticsContainer.innerHTML += `
-                <div><p class="meta-field-label">Fecha</p><p class="meta-field-value">${trip.dateStr}</p></div>
-                <div><p class="meta-field-label">Hora</p><p class="meta-field-value">${trip.time || '--:--'}</p></div>
+                <div><p class="meta-field-label">${fechaLabel}</p><p class="meta-field-value">${trip.dateStr}</p></div>
+                <div><p class="meta-field-label">${horaLabel}</p><p class="meta-field-value">${trip.time || '--:--'}</p></div>
                 <div><p class="meta-field-label">Vuelo</p><p class="meta-field-value">${trip.flight || '--'}</p></div>
                 <div><p class="meta-field-label">Ruta</p><p class="meta-field-value">${trip.route}</p></div>
             `;
+
+
 
             // Asignación
             const assign = resolveAssignment(trip);
