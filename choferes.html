@@ -23,7 +23,7 @@
             // Verificar si hay token en sessionStorage (expira al cerrar pestaña)
             const token = sessionStorage.getItem('session_token');
             if (!token) {
-                window.location.href = 'login.html';
+                window.location.href = '/login';
                 return;
             }
 
@@ -34,11 +34,11 @@
                 const data = await response.json();
                 if (!data.authenticated) {
                     sessionStorage.removeItem('session_token');
-                    window.location.href = 'login.html';
+                    window.location.href = '/login';
                 }
             } catch (error) {
                 console.error('Error verificando sesión:', error);
-                window.location.href = 'login.html';
+                window.location.href = '/login';
             }
         })();
     </script>

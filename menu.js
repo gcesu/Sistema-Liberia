@@ -134,9 +134,9 @@ class AdminNavbar extends HTMLElement {
             <button id="close-mobile-btn" class="text-white text-4xl">&times;</button>
         </div>
         <nav class="flex flex-col gap-6">
-            <a href="index.html" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline">📅 Reservas</a>
-            <a href="viajes.html" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline">🚐 Viajes</a>
-            <a href="choferes.html" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline">👤 Choferes</a>
+            <a href="/reservas" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline">📅 Reservas</a>
+            <a href="/viajes" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline">🚐 Viajes</a>
+            <a href="/choferes" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline">👤 Choferes</a>
             <a href="#" id="mobile-logout-btn" class="text-red-400 text-2xl font-bold border-b border-white/10 pb-4 no-underline">🚪 Cerrar Sesión</a>
         </nav>
       </div>
@@ -146,14 +146,14 @@ class AdminNavbar extends HTMLElement {
             <span></span><span></span><span></span>
         </button>
         
-        <a href="index.html" class="flex items-center">
+        <a href="/reservas" class="flex items-center">
             <img src="https://liberiaairportshuttle.com/wp-content/uploads/2024/11/Grupo.png" alt="Logo" class="h-6 md:h-8">
         </a>
         
         <nav class="nav-links-desktop">
-            <a href="index.html" class="nav-item">Reservas</a>
-            <a href="viajes.html" class="nav-item">Viajes</a>
-            <a href="choferes.html" class="nav-item">Choferes</a>
+            <a href="/reservas" class="nav-item">Reservas</a>
+            <a href="/viajes" class="nav-item">Viajes</a>
+            <a href="/choferes" class="nav-item">Choferes</a>
         </nav>
 
         <div class="ml-auto flex items-center gap-2 md:gap-4">
@@ -309,11 +309,11 @@ class AdminNavbar extends HTMLElement {
             try {
                 sessionStorage.removeItem('session_token');
                 await fetch('api/logout.php');
-                window.location.href = 'login.html';
+                window.location.href = '/login';
             } catch (error) {
                 console.error('Error al cerrar sesión:', error);
                 sessionStorage.removeItem('session_token');
-                window.location.href = 'login.html';
+                window.location.href = '/login';
             }
         };
 
@@ -337,9 +337,10 @@ class AdminNavbar extends HTMLElement {
 
         links.forEach(link => {
             const href = link.getAttribute('href');
-            if ((currentPath === '/' || currentPath.endsWith('index.html')) && href === 'index.html') {
+            // Check for reservas/index page
+            if ((currentPath === '/' || currentPath === '/reservas' || currentPath.endsWith('index.html')) && (href === '/reservas' || href === 'index.html')) {
                 link.classList.add('active');
-            } else if (href !== '#' && (currentPath.includes(href) || (currentPath === '/' && href === 'index.html'))) {
+            } else if (href !== '#' && currentPath === href) {
                 link.classList.add('active');
             }
         });
