@@ -375,9 +375,9 @@ function buildMetaData($r)
         $meta[] = ['key' => 'status_salida', 'value' => $r['salida_status']];
     }
 
-    // Privacidad
-    $meta[] = ['key' => 'privacy_show_email', 'value' => isset($r['privacy_show_email']) ? $r['privacy_show_email'] : '0'];
-    $meta[] = ['key' => 'privacy_show_phone', 'value' => isset($r['privacy_show_phone']) ? $r['privacy_show_phone'] : '0'];
+    // Privacidad - solo enviar "1" si explícitamente es "1", sino "0"
+    $meta[] = ['key' => 'privacy_show_email', 'value' => (isset($r['privacy_show_email']) && $r['privacy_show_email'] === '1') ? '1' : '0'];
+    $meta[] = ['key' => 'privacy_show_phone', 'value' => (isset($r['privacy_show_phone']) && $r['privacy_show_phone'] === '1') ? '1' : '0'];
 
     // Hotel Manual
     if (!empty($r['hotel_manual'])) {

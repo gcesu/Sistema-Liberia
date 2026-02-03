@@ -1739,12 +1739,13 @@
                     const val = deepScanMeta(o, key);
                     originalValues[key] = val || "";
                     if (val !== null) {
-                        const display = f.type === 'date' ? formatDateShort(val) : (f.type === 'time' ? formatTime12h(val) : val);
+                        const display = f.type === 'date' ? formatDateShort(val) : (f.type === 'time' ? formatTime12h(val) : (f.key.includes('Flight') ? val.toUpperCase() : val));
+                        const flightClass = f.key.includes('Flight') ? 'uppercase' : '';
                         container.innerHTML += `
                             <div>
                                 <p class="meta-field-label text-gray-400">${f.label}</p>
                                 <p id="display-meta-${key}" class="meta-field-value text-base">${display}</p>
-                                <input type="${f.type}" id="input-meta-${key}" oninput="checkForChanges()" value="${normalizeForInput(val, f.type)}" class="hidden input-editable mt-1">
+                                <input type="${f.type}" id="input-meta-${key}" oninput="checkForChanges()" value="${normalizeForInput(val, f.type)}" class="hidden input-editable mt-1 ${flightClass}">
                             </div>`;
                     }
                 });

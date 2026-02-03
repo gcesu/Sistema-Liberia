@@ -1165,6 +1165,11 @@
                   <input type="email" id="trip-input-email" oninput="tripHandleEmailInput()"
                     class="hidden input-editable" placeholder="ejemplo@correo.com" />
                   <a id="trip-det-email-link" href="#" class="btn-email">Enviar Correo</a>
+                  <div class="privacy-control">
+                    <input type="checkbox" id="trip-privacy-show-email" class="privacy-checkbox"
+                      onclick="tripCheckForChanges()">
+                    <label for="trip-privacy-show-email">Mostrar al chofer</label>
+                  </div>
                 </div>
 
                 <div class="p-3 bg-gray-50 rounded-lg border border-gray-100">
@@ -1173,6 +1178,11 @@
                   <input type="text" id="trip-input-phone" oninput="tripCheckForChanges()" class="hidden input-editable"
                     placeholder="+000 0000 0000" />
                   <a id="trip-det-whatsapp-link" href="#" target="_blank" class="btn-whatsapp">WhatsApp</a>
+                  <div class="privacy-control">
+                    <input type="checkbox" id="trip-privacy-show-phone" class="privacy-checkbox"
+                      onclick="tripCheckForChanges()">
+                    <label for="trip-privacy-show-phone">Mostrar al chofer</label>
+                  </div>
                 </div>
 
                 <div class="p-3 bg-gray-50 rounded-lg border border-gray-100">
@@ -2080,7 +2090,7 @@
                             </span>
                         </td>
                         <td data-label="Ruta" class="font-semibold text-gray-600 text-sm">${trip.route}</td>
-                        <td data-label="Vuelo" class="text-sm text-gray-500 font-semibold">${trip.flight}</td>
+                        <td data-label="Vuelo" class="text-sm text-gray-500 font-semibold">${(trip.flight || '').toUpperCase()}</td>
                         <td data-label="Estatus">
                             <div class="status-pill status-${getTripStatusClass(trip.trip_status)}">
                                 <span class="status-dot"></span>
@@ -2151,6 +2161,15 @@
       };
       tripOriginalValues["status_reserva"] = statusReservaVal;
       tripOriginalValues["status_viaje"] = statusViajeVal;
+
+      // Privacy settings
+      const privacyShowEmail = findMetaValue(order, ["privacy_show_email"]);
+      const privacyShowPhone = findMetaValue(order, ["privacy_show_phone"]);
+      tripOriginalValues["privacy_show_email"] = String(privacyShowEmail) === "1";
+      tripOriginalValues["privacy_show_phone"] = String(privacyShowPhone) === "1";
+
+      document.getElementById("trip-privacy-show-email").checked = tripOriginalValues["privacy_show_email"];
+      document.getElementById("trip-privacy-show-phone").checked = tripOriginalValues["privacy_show_phone"];
 
       document.getElementById("trip-display-name").innerText = fullName;
       document.getElementById("trip-display-email").innerText = email;
@@ -2282,7 +2301,7 @@
       logisticsContainer.innerHTML += `
                 <div><p class="meta-field-label">${fechaLabel}</p><p class="meta-field-value">${trip.dateStr}</p></div>
                 <div><p class="meta-field-label">${horaLabel}</p><p class="meta-field-value">${trip.time || "--:--"}</p></div>
-                <div><p class="meta-field-label">Vuelo</p><p class="meta-field-value">${trip.flight || "--"}</p></div>
+                <div><p class="meta-field-label">Vuelo</p><p class="meta-field-value">${(trip.flight || "--").toUpperCase()}</p></div>
                 <div><p class="meta-field-label">Ruta</p><p class="meta-field-value">${trip.route}</p></div>
             `;
 
@@ -2586,6 +2605,18 @@
         });
       }
 
+      // Verificar cambios en checkboxes de privacidad
+      if (!hasChanges) {
+        const showEmailChecked = document.getElementById("trip-privacy-show-email").checked;
+        const showPhoneChecked = document.getElementById("trip-privacy-show-phone").checked;
+        if (showEmailChecked !== tripOriginalValues["privacy_show_email"]) {
+          hasChanges = true;
+        }
+        if (showPhoneChecked !== tripOriginalValues["privacy_show_phone"]) {
+          hasChanges = true;
+        }
+      }
+
       document
         .getElementById("trip-btn-save")
         .classList.toggle(
@@ -2646,6 +2677,15 @@
             : "notas_internas_salida",
           value: document.getElementById("trip-input-meta-notas_internas")
             .value,
+        },
+        // Privacy settings
+        {
+          key: "privacy_show_email",
+          value: document.getElementById("trip-privacy-show-email").checked ? "1" : "0",
+        },
+        {
+          key: "privacy_show_phone",
+          value: document.getElementById("trip-privacy-show-phone").checked ? "1" : "0",
         },
       ];
 

@@ -100,10 +100,23 @@ if (!$order || !isset($order['id'])) {
     exit;
 }
 
-logWebhook("Procesando orden #{$order['id']} - Status: {$order['status']}");
+// Detectar si es una eliminación
+$isDeleted = strpos($wcTopic, 'deleted') !== false || strpos($wcTopic, 'trashed') !== false;
+$isRestored = strpos($wcTopic, 'restored') !== false;
+
+logWebhook("Procesando orden #{$order['id']} - Status: {$order['status']} - Topic: $wcTopic");
 
 try {
-    // Guardar la orden en la BD
+    // Manejar eliminación de orden
+    if ($isDeleted) {
+        deleteOrderFromDB($pdo, $order['id']);
+        logWebhook("Orden #{$order['id']} eliminada de la BD local");
+        http_response_code(200);
+        echo json_encode(['success' => true, 'order_id' => $order['id'], 'action' => 'deleted']);
+        exit;
+    }
+
+    // Guardar/actualizar la orden en la BD
     saveOrderToDB($pdo, $order);
 
     // Actualizar timestamp de última sincronización
@@ -139,6 +152,16 @@ function updateLastSync($pdo)
         ON DUPLICATE KEY UPDATE valor = NOW(), updated_at = NOW()
     ");
     $stmt->execute();
+}
+
+/**
+ * Elimina una orden de la BD local
+ */
+function deleteOrderFromDB($pdo, $orderId)
+{
+    $stmt = $pdo->prepare("DELETE FROM reservas WHERE id = ?");
+    $stmt->execute([$orderId]);
+    return $stmt->rowCount() > 0;
 }
 
 /**

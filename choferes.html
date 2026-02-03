@@ -830,7 +830,7 @@
                         <th>Ruta (Origen ➝ Destino)</th>
                         <th>Vuelo</th>
                         <th>Chofer</th>
-                        <th>Estatus</th>
+                        <th>Notas</th>
                         <th class="pr-6 text-right">Acción</th>
                     </tr>
                 </thead>
@@ -1158,6 +1158,7 @@
                             flight: findMetaValue(order, ["- Arrival Flight Number"]) || '--',
                             raw_date: parsedDate,
                             driver: driver,
+                            driverNotes: findMetaValue(order, ["nota_choferes_llegada"]) || '',
                             hotel,
                             pax,
                             email,
@@ -1186,6 +1187,7 @@
                             flight: findMetaValue(order, ["- Departure Flight Number"]) || '--',
                             raw_date: parsedDate,
                             driver: driver,
+                            driverNotes: findMetaValue(order, ["nota_choferes_ida"]) || '',
                             hotel,
                             pax,
                             email,
@@ -1384,13 +1386,10 @@
                             <span class="trip-badge ${isArrival ? 'badge-arrival' : 'badge-departure'}">${isArrival ? 'Llegada' : 'Salida'}</span>
                         </td>
                         <td data-label="Ruta" class="font-semibold text-gray-600 text-sm">${trip.route}</td>
-                        <td data-label="Vuelo" class="text-sm text-gray-500 font-semibold">${trip.flight}</td>
+                        <td data-label="Vuelo" class="text-sm text-gray-500 font-semibold">${(trip.flight || '').toUpperCase()}</td>
                         <td data-label="Chofer" class="text-sm font-semibold text-gray-700">${trip.driver && trip.driver.trim() !== '' ? trip.driver : 'No asignado'}</td>
-                        <td data-label="Estatus">
-                            <div class="status-pill status-${getTripStatusClass(trip.trip_status)}">
-                                <span class="status-dot"></span>
-                                ${translateTripStatus(trip.trip_status)}
-                            </div>
+                        <td data-label="Notas" class="text-sm text-gray-600 font-semibold max-w-xs truncate" title="${trip.driverNotes || ''}">
+                            ${trip.driverNotes || '--'}
                         </td>
                         <td data-label="Acción" class="pr-6 text-right">
                             <button onclick="openTripDetail(${idx})" class="bg-[#002a3f] text-white px-4 py-2 rounded-lg font-bold uppercase text-xs hover:bg-[#ed4441] transition-all" title="Ver detalle">
@@ -1550,7 +1549,7 @@
             logisticsContainer.innerHTML += `
                 <div><p class="meta-field-label">${fechaLabel}</p><p class="meta-field-value">${trip.dateStr}</p></div>
                 <div><p class="meta-field-label">${horaLabel}</p><p class="meta-field-value">${trip.time || '--:--'}</p></div>
-                <div><p class="meta-field-label">Vuelo</p><p class="meta-field-value">${trip.flight || '--'}</p></div>
+                <div><p class="meta-field-label">Vuelo</p><p class="meta-field-value">${(trip.flight || '--').toUpperCase()}</p></div>
                 <div><p class="meta-field-label">Ruta</p><p class="meta-field-value">${trip.route}</p></div>
             `;
 
