@@ -1,13 +1,16 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vista de Choferes - Admin Shuttle</title>
-    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&family=Oswald:wght@400;700&display=swap" rel="stylesheet">
-    
+    <link
+        href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&family=Oswald:wght@400;700&display=swap"
+        rel="stylesheet">
+
     <script src="https://cdn.tailwindcss.com"></script>
-    
+
     <!-- VERIFICACIÓN DE SESIÓN (excepto si es acceso de chofer) -->
     <script>
         (async function checkAuth() {
@@ -16,11 +19,21 @@
             if (urlParams.has('chofer')) {
                 return; // Permitir acceso sin login para choferes
             }
-            
+
+            // Verificar si hay token en sessionStorage (expira al cerrar pestaña)
+            const token = sessionStorage.getItem('session_token');
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+
             try {
-                const response = await fetch('api/check_session.php');
+                const response = await fetch('api/check_session.php', {
+                    headers: { 'X-Session-Token': token }
+                });
                 const data = await response.json();
                 if (!data.authenticated) {
+                    sessionStorage.removeItem('session_token');
                     window.location.href = 'login.html';
                 }
             } catch (error) {
@@ -29,7 +42,7 @@
             }
         })();
     </script>
-    
+
     <script src="menu.js" defer></script>
 
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -58,11 +71,14 @@
             padding-bottom: 40px;
         }
 
-        h1, h2, h3, .title-font {
+        h1,
+        h2,
+        h3,
+        .title-font {
             font-family: 'Oswald', sans-serif;
             text-transform: uppercase;
         }
-        
+
         #indexing-status {
             position: fixed;
             bottom: 20px;
@@ -75,12 +91,12 @@
             font-weight: 800;
             text-transform: uppercase;
             z-index: 98;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
             display: none;
             backdrop-filter: blur(4px);
             align-items: center;
             gap: 10px;
-            border: 1px solid rgba(255,255,255,0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             transition: all 0.3s ease;
         }
 
@@ -92,9 +108,9 @@
             overflow-x: auto;
         }
 
-        table { 
-            width: 100%; 
-            border-collapse: collapse; 
+        table {
+            width: 100%;
+            border-collapse: collapse;
         }
 
         thead th {
@@ -110,21 +126,21 @@
             white-space: nowrap;
         }
 
-        tbody tr { 
+        tbody tr {
             background: white;
-            border-bottom: 1px solid #e2e8f0; 
+            border-bottom: 1px solid #e2e8f0;
             transition: all 0.2s ease;
         }
 
-        tbody tr:hover { 
-            background: #f8fafc; 
+        tbody tr:hover {
+            background: #f8fafc;
         }
-        
-        td { 
-            padding: 16px 20px; 
-            font-size: var(--font-base); 
-            color: #334155; 
-            vertical-align: middle; 
+
+        td {
+            padding: 16px 20px;
+            font-size: var(--font-base);
+            color: #334155;
+            vertical-align: middle;
         }
 
         .client-avatar {
@@ -153,13 +169,39 @@
             gap: 6px;
             letter-spacing: 0.5px;
         }
-        .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-        
-        .status-completed { background: #dcfce7; color: #166534; }
-        .status-processing { background: #fef9c3; color: #854d0e; }
-        .status-on-hold { background: #ffedd5; color: #9a3412; }
-        .status-pending { background: #fef3c7; color: #92400e; }
-        .status-cancelled, .status-failed { background: #fee2e2; color: #991b1b; }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .status-completed {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-processing {
+            background: #fef9c3;
+            color: #854d0e;
+        }
+
+        .status-on-hold {
+            background: #ffedd5;
+            color: #9a3412;
+        }
+
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-cancelled,
+        .status-failed {
+            background: #fee2e2;
+            color: #991b1b;
+        }
 
         .trip-badge {
             font-size: var(--font-xxxs);
@@ -169,15 +211,30 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-        .badge-arrival { background: #f1f5f9; color: #0f172a; border: 1px solid #e2e8f0; }
-        .badge-departure { background: #fff7ed; color: #9a3412; border: 1px solid #ffedd5; }
-        
+
+        .badge-arrival {
+            background: #f1f5f9;
+            color: #0f172a;
+            border: 1px solid #e2e8f0;
+        }
+
+        .badge-departure {
+            background: #fff7ed;
+            color: #9a3412;
+            border: 1px solid #ffedd5;
+        }
+
         .date-cell {
             display: flex;
             flex-direction: column;
             line-height: 1.2;
         }
-        .date-day { font-weight: 800; color: var(--primary); font-size: var(--font-base); }
+
+        .date-day {
+            font-weight: 800;
+            color: var(--primary);
+            font-size: var(--font-base);
+        }
 
         /* Modal */
         .modal-overlay {
@@ -341,7 +398,7 @@
             padding: 22px;
             border-radius: 12px;
             margin-bottom: 20px;
-            box-shadow: 0 4px 12px rgba(0,42,63,0.15);
+            box-shadow: 0 4px 12px rgba(0, 42, 63, 0.15);
         }
 
         .route-point {
@@ -391,9 +448,20 @@
             scrollbar-width: thin;
             scrollbar-color: #cbd5e1 transparent;
         }
-        .column-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
-        .column-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
-        .column-scroll::-webkit-scrollbar-track { background: transparent; }
+
+        .column-scroll::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        .column-scroll::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 8px;
+        }
+
+        .column-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
 
         .title-dot-arrival {
             width: 8px;
@@ -450,7 +518,12 @@
             border: none;
             cursor: pointer;
         }
-        .date-day { font-weight: 800; color: var(--primary); font-size: var(--font-base); }
+
+        .date-day {
+            font-weight: 800;
+            color: var(--primary);
+            font-size: var(--font-base);
+        }
 
         .filter-container {
             background: white;
@@ -483,7 +556,11 @@
             transition: all 0.2s;
             background: #f8fafc;
         }
-        .custom-input:focus { border-color: var(--primary); background: white; }
+
+        .custom-input:focus {
+            border-color: var(--primary);
+            background: white;
+        }
 
         .btn-action {
             background-color: var(--primary);
@@ -497,21 +574,43 @@
             height: 42px;
             transition: background 0.2s;
         }
-        .btn-action:hover { background-color: var(--accent); }
+
+        .btn-action:hover {
+            background-color: var(--accent);
+        }
 
         /* Responsive: tabla en móvil */
         @media (max-width: 640px) {
-            .table-wrapper { border: none; background: transparent; }
-            table, thead, tbody, th, td, tr { display: block; width: 100%; }
-            thead tr { position: absolute; top: -9999px; left: -9999px; }
+            .table-wrapper {
+                border: none;
+                background: transparent;
+            }
+
+            table,
+            thead,
+            tbody,
+            th,
+            td,
+            tr {
+                display: block;
+                width: 100%;
+            }
+
+            thead tr {
+                position: absolute;
+                top: -9999px;
+                left: -9999px;
+            }
+
             tr {
                 margin-bottom: 16px;
                 border: 1px solid #e2e8f0;
                 border-radius: 8px;
                 padding: 16px;
                 background: white;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
             }
+
             td {
                 border: none;
                 position: relative;
@@ -524,12 +623,14 @@
                 align-items: center;
                 border-bottom: 1px dashed #f1f5f9;
             }
-            td:last-child { 
-                border-bottom: none; 
+
+            td:last-child {
+                border-bottom: none;
                 margin-top: 12px;
                 padding-right: 0 !important;
                 text-align: left !important;
             }
+
             td:before {
                 content: attr(data-label);
                 display: inline-block;
@@ -543,6 +644,82 @@
             }
         }
 
+        /* Tablets en orientación vertical (iPad portrait) - misma vista que móviles */
+        @media (min-width: 641px) and (max-width: 1024px) and (orientation: portrait) {
+            .table-wrapper {
+                border: none;
+                background: transparent;
+            }
+
+            table,
+            thead,
+            tbody,
+            th,
+            td,
+            tr {
+                display: block;
+                width: 100%;
+            }
+
+            thead tr {
+                position: absolute;
+                top: -9999px;
+                left: -9999px;
+            }
+
+            tr {
+                margin-bottom: 16px;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 16px;
+                background: white;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            }
+
+            td {
+                border: none;
+                position: relative;
+                padding-left: 0 !important;
+                text-align: left;
+                font-size: var(--font-sm);
+                padding: 8px 0 !important;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 1px dashed #f1f5f9;
+            }
+
+            td:last-child {
+                border-bottom: none;
+                margin-top: 12px;
+                padding-right: 0 !important;
+                text-align: left !important;
+            }
+
+            td:before {
+                content: attr(data-label);
+                display: inline-block;
+                font-weight: 800;
+                text-transform: uppercase;
+                font-size: var(--font-xxxs);
+                color: #94a3b8;
+                margin-right: 10px;
+                min-width: 70px;
+                flex-shrink: 0;
+            }
+
+            .filter-container {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+                padding: 16px;
+            }
+
+            .filter-container .input-group {
+                width: 100% !important;
+            }
+        }
+
         /* Responsive: filtros en móvil */
         @media (max-width: 768px) {
             .filter-container {
@@ -551,9 +728,20 @@
                 gap: 12px;
                 padding: 16px;
             }
-            .filter-container .input-group { width: 100% !important; }
-            .filter-container .btn-action { width: 100%; margin-top: 0; }
-            .filter-container .ml-auto { margin-left: 0 !important; margin-top: 12px; }
+
+            .filter-container .input-group {
+                width: 100% !important;
+            }
+
+            .filter-container .btn-action {
+                width: 100%;
+                margin-top: 0;
+            }
+
+            .filter-container .ml-auto {
+                margin-left: 0 !important;
+                margin-top: 12px;
+            }
         }
 
         /* Responsive: sidebar del modal */
@@ -563,11 +751,14 @@
                 border-right: none !important;
                 border-bottom: 1px solid #e2e8f0;
             }
-            .flex.lg\:flex-row { flex-direction: column !important; }
-        }
 
+            .flex.lg\:flex-row {
+                flex-direction: column !important;
+            }
+        }
     </style>
 </head>
+
 <body>
 
     <div id="indexing-status">
@@ -578,17 +769,18 @@
     <admin-navbar></admin-navbar>
 
     <main class="w-full px-4 md:px-8">
-        
-           <div class="mt-6 md:mt-8 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-               <h2 class="text-2xl md:text-3xl font-bold text-[#002a3f] title-font">Cronograma de Choferes</h2>
-           </div>
+
+        <div class="mt-6 md:mt-8 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <h2 class="text-2xl md:text-3xl font-bold text-[#002a3f] title-font">Cronograma de Choferes <span
+                    class="text-sm font-normal text-gray-400">v1.2</span></h2>
+        </div>
 
         <div class="filter-container shadow-sm">
             <div class="w-full md:w-64 input-group">
                 <label>Rango de Fechas</label>
                 <input type="text" id="date-range" class="custom-input" placeholder="Seleccionar rango...">
             </div>
-            
+
             <div class="w-full md:w-48 input-group">
                 <label>Tipo de Viaje</label>
                 <select id="filter-type" class="custom-input">
@@ -615,11 +807,12 @@
 
             <div class="w-full md:w-64 input-group">
                 <label>Buscar</label>
-                <input type="text" id="search-text" oninput="applyFilters()" class="custom-input" placeholder="Cliente, Hotel, ID...">
+                <input type="text" id="search-text" oninput="applyFilters()" class="custom-input"
+                    placeholder="Cliente, Hotel, ID...">
             </div>
 
             <button onclick="applyFilters()" class="btn-action w-full md:w-auto mt-4 md:mt-0">Actualizar Vista</button>
-            
+
             <div class="ml-auto flex flex-col items-end">
                 <span class="text-xs text-gray-400 font-bold uppercase">Total Viajes</span>
                 <span class="text-2xl font-black text-[#002a3f]" id="total-trips-count">0</span>
@@ -637,14 +830,14 @@
                         <th>Ruta (Origen ➝ Destino)</th>
                         <th>Vuelo</th>
                         <th>Chofer</th>
-                        <th>Estatus</th>
+                        <th>Notas</th>
                         <th class="pr-6 text-right">Acción</th>
                     </tr>
                 </thead>
                 <tbody id="trips-body"></tbody>
             </table>
         </div>
-        
+
         <div id="empty-state" class="hidden py-12 text-center">
             <div class="text-4xl mb-4">📭</div>
             <h3 class="text-gray-500 font-bold text-lg">No hay servicios programados</h3>
@@ -652,17 +845,21 @@
         </div>
 
         <!-- Modal Detalle Viaje (Solo Lectura) -->
-        <div id="trip-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] hidden flex items-center justify-center p-0 md:p-4" onclick="closeTripModal()">
-            <div id="trip-modal-box" onclick="event.stopPropagation()" class="shadow-2xl overflow-hidden md:rounded-[24px]">
+        <div id="trip-modal"
+            class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] hidden flex items-center justify-center p-0 md:p-4"
+            onclick="closeTripModal()">
+            <div id="trip-modal-box" onclick="event.stopPropagation()"
+                class="shadow-2xl overflow-hidden md:rounded-[24px]">
                 <!-- Header Modal -->
                 <div class="px-6 md:px-8 py-4 border-b flex justify-between items-center bg-white">
                     <div class="flex flex-wrap items-center gap-4">
                         <h3 id="trip-modal-title" class="text-xl md:text-2xl font-bold text-[#002a3f] title-font"></h3>
                         <span id="trip-det-status-pill" class="status-pill"></span>
                     </div>
-                    <button onclick="closeTripModal()" class="text-3xl text-gray-300 hover:text-gray-600 transition">&times;</button>
+                    <button onclick="closeTripModal()"
+                        class="text-3xl text-gray-300 hover:text-gray-600 transition">&times;</button>
                 </div>
-                
+
                 <div class="flex-1 overflow-y-auto column-scroll flex flex-col lg:flex-row">
                     <!-- Columna Izquierda: Cliente (Sidebar) -->
                     <div class="modal-sidebar w-full lg:w-[320px] lg:flex-shrink-0 border-r">
@@ -670,10 +867,13 @@
                             <div class="flex justify-between items-center mb-6">
                                 <h4 class="text-[11px] font-black text-gray-400 uppercase tracking-widest">Cliente</h4>
                             </div>
-                            
+
                             <div class="flex flex-col items-center mb-6">
-                                <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center text-3xl mb-3">👤</div>
-                                <div id="trip-display-name" class="font-bold text-xl text-[#002a3f] text-center leading-tight"></div>
+                                <div
+                                    class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center text-3xl mb-3">
+                                    👤</div>
+                                <div id="trip-display-name"
+                                    class="font-bold text-xl text-[#002a3f] text-center leading-tight"></div>
                             </div>
 
                             <div class="space-y-6">
@@ -686,7 +886,8 @@
                                 <div class="p-3 bg-gray-50 rounded-lg border border-gray-100">
                                     <p class="meta-field-label">📞 Teléfono</p>
                                     <div id="trip-display-phone" class="meta-field-value"></div>
-                                    <a id="trip-det-whatsapp-link" href="#" target="_blank" class="btn-whatsapp">WhatsApp</a>
+                                    <a id="trip-det-whatsapp-link" href="#" target="_blank"
+                                        class="btn-whatsapp">WhatsApp</a>
                                 </div>
 
                                 <div class="p-3 bg-gray-50 rounded-lg border border-gray-100">
@@ -711,7 +912,7 @@
                                 <span class="route-point-label" id="trip-origin-label">Origen</span>
                                 <span class="route-point-name" id="trip-origin-name">LIR Airport</span>
                             </div>
-                            
+
                             <div class="route-separator-container">
                                 <span id="trip-route-separator-emoji">➡️</span>
                             </div>
@@ -722,7 +923,7 @@
                                 <span class="route-point-name" id="trip-dest-name">Hotel Name</span>
                             </div>
                         </div>
-                        
+
                         <!-- Píldoras Resumen -->
                         <div class="flex flex-wrap gap-3 mb-8">
                             <div class="info-pill bg-white shadow-sm">
@@ -733,6 +934,10 @@
                                 <span class="text-gray-400 text-[10px] uppercase font-bold">Pax:</span>
                                 <span id="trip-general-pax-value" class="font-bold text-[#002a3f]"></span>
                             </div>
+                            <div id="trip-hotel-pill" class="info-pill bg-white shadow-sm hidden">
+                                <span class="text-gray-400 text-[10px] uppercase font-bold">Hotel:</span>
+                                <span id="trip-general-hotel-value" class="font-bold text-[#002a3f]"></span>
+                            </div>
                             <div class="info-pill bg-white shadow-sm">
                                 <span class="text-gray-400 text-[10px] uppercase font-bold">Proximidad:</span>
                                 <span id="trip-general-relative" class="font-bold text-[#002a3f]"></span>
@@ -741,26 +946,30 @@
 
                         <!-- Estatus del Viaje (Llegada/Salida) -->
                         <div class="mb-8 p-4 bg-gray-50 rounded-lg border-2 border-gray-200">
-                            <label class="text-xs font-bold text-gray-500 uppercase tracking-widest block mb-2">Estatus del Viaje</label>
+                            <label class="text-xs font-bold text-gray-500 uppercase tracking-widest block mb-2">Estatus
+                                del Viaje</label>
                             <div class="flex items-center gap-4">
-                                <span id="trip-status-viaje-pill" class="inline-block px-3 py-1 rounded-full text-white text-sm font-bold bg-blue-500"></span>
+                                <span id="trip-status-viaje-pill"
+                                    class="inline-block px-3 py-1 rounded-full text-white text-sm font-bold bg-blue-500"></span>
                             </div>
                         </div>
 
                         <!-- Tarjeta de Viaje -->
                         <div class="operation-card" id="trip-operation-card">
                             <div class="operation-card-header">
-                                <div class="operation-card-title" id="trip-card-title"><span id="trip-title-dot" class="title-dot-arrival"></span>VIAJE</div>
+                                <div class="operation-card-title" id="trip-card-title"><span id="trip-title-dot"
+                                        class="title-dot-arrival"></span>VIAJE</div>
                             </div>
                             <div class="operation-card-body space-y-5">
                                 <!-- Logística -->
                                 <div>
                                     <div id="trip-logistics-fields-list" class="grid grid-cols-2 gap-4"></div>
                                 </div>
-                                
+
                                 <!-- Asignación -->
                                 <div class="-mx-5 -mb-5 p-5 border-t" id="trip-assign-section">
-                                    <div class="operation-section-label" id="trip-assign-label">Asignación Operativa</div>
+                                    <div class="operation-section-label" id="trip-assign-label">Asignación Operativa
+                                    </div>
                                     <div class="space-y-4">
                                         <div class="field-group-row">
                                             <div>
@@ -785,7 +994,8 @@
 
                 <!-- Footer Modal -->
                 <div class="p-4 border-t bg-white flex justify-end gap-3 rounded-b-xl">
-                    <button onclick="closeTripModal()" class="px-6 py-2 bg-gray-100 text-gray-600 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-gray-200 transition">Cerrar</button>
+                    <button onclick="closeTripModal()"
+                        class="px-6 py-2 bg-gray-100 text-gray-600 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-gray-200 transition">Cerrar</button>
                 </div>
             </div>
         </div>
@@ -793,12 +1003,12 @@
     </main>
 
     <script>
-        const API_PROXY = "woo-proxy.php";
+        const API_PROXY = "api/reservas.php";
         const currentYear = new Date().getFullYear();
         const prevYear = currentYear - 1;
         const START_DATE_FILTER = `${prevYear}-01-01T00:00:00`;
-        
-        let allTrips = []; 
+
+        let allTrips = [];
         let datePicker;
         let isIndexing = false;
 
@@ -810,8 +1020,15 @@
             return initials;
         }
 
-        window.refreshData = function() {
-            allTrips = []; 
+        function capitalizeName(name) {
+            if (!name) return "";
+            return name.toLowerCase().split(" ").map(word =>
+                word.charAt(0).toUpperCase() + word.slice(1)
+            ).join(" ");
+        }
+
+        window.refreshData = function () {
+            allTrips = [];
             startBackgroundIndexing();
         };
 
@@ -840,15 +1057,15 @@
                 const filterContainer = document.querySelector('.filter-container');
                 const title = document.querySelector('h2');
                 const main = document.querySelector('main');
-                
+
                 if (navbar) navbar.style.display = 'none';
                 if (filterContainer) filterContainer.style.display = 'none';
                 if (title) title.style.display = 'none';
                 if (main) main.style.paddingTop = '20px';
-                
+
                 // Convertir parámetro URL al nombre real del chofer
                 const realDriverName = mapUrlParamToDriverName(choferParam);
-                
+
                 // Establecer el valor del filtro de chofer
                 const driverSelect = document.getElementById('filter-driver');
                 if (driverSelect) {
@@ -857,13 +1074,13 @@
             }
 
             initDatePicker();
-            startBackgroundIndexing(); 
+            startBackgroundIndexing();
         };
 
         function initDatePicker() {
             datePicker = flatpickr("#date-range", {
                 mode: "range",
-                dateFormat: "d/M/Y", 
+                dateFormat: "d/M/Y",
                 defaultDate: [new Date(), new Date()],
                 locale: "es",
                 onChange: () => applyFilters()
@@ -871,26 +1088,26 @@
         }
 
         async function startBackgroundIndexing() {
-            if(isIndexing) return;
+            if (isIndexing) return;
             isIndexing = true;
             toggleIndexingUI(true);
-            
+
             let page = 1;
-            let totalPages = 1; 
+            let totalPages = 1;
             let keepFetching = true;
-            
+
             try {
-                while(keepFetching) {
+                while (keepFetching) {
                     const response = await fetch(`${API_PROXY}?per_page=100&page=${page}&after=${START_DATE_FILTER}&orderby=date&order=desc`);
                     if (!response.ok) throw new Error("Error API");
-                    
+
                     if (page === 1) {
                         const totalHeader = response.headers.get('x-wp-totalpages');
                         if (totalHeader) totalPages = parseInt(totalHeader);
                     }
 
                     const orders = await response.json();
-                    
+
                     if (Array.isArray(orders) && orders.length > 0) {
                         const newTrips = processBatch(orders);
                         allTrips = [...allTrips, ...newTrips];
@@ -928,7 +1145,7 @@
                     if (parsedDate) {
                         const rawTime = findMetaValue(order, ["- Arrival Time"]);
                         const driver = findMetaValue(order, ["chofer_llegada"]) || "";
-                        const tripStatus = findMetaValue(order, ["status_llegada"]) || "";
+                        const tripStatus = (findMetaValue(order, ["status_llegada"]) || "").trim();
                         batchTrips.push({
                             id: order.id,
                             order_status: order.status,
@@ -936,11 +1153,12 @@
                             client: clientName,
                             type: 'arrival',
                             dateStr: formatDateStandard(parsedDate),
-                            time: rawTime || '--:--',
+                            time: formatTime12H(rawTime),
                             route: `Aeropuerto LIR ➝ ${hotel}`,
                             flight: findMetaValue(order, ["- Arrival Flight Number"]) || '--',
                             raw_date: parsedDate,
                             driver: driver,
+                            driverNotes: findMetaValue(order, ["nota_choferes_llegada"]) || '',
                             hotel,
                             pax,
                             email,
@@ -956,7 +1174,7 @@
                     if (parsedDate) {
                         const rawTime = findMetaValue(order, ["- Pick-up Time at Hotel"]);
                         const driver = findMetaValue(order, ["chofer_salida"]) || "";
-                        const tripStatus = findMetaValue(order, ["status_salida"]) || "";
+                        const tripStatus = (findMetaValue(order, ["status_salida"]) || "").trim();
                         batchTrips.push({
                             id: order.id,
                             order_status: order.status,
@@ -964,11 +1182,12 @@
                             client: clientName,
                             type: 'departure',
                             dateStr: formatDateStandard(parsedDate),
-                            time: rawTime || '--:--',
+                            time: formatTime12H(rawTime),
                             route: `${hotel} ➝ Aeropuerto LIR`,
                             flight: findMetaValue(order, ["- Departure Flight Number"]) || '--',
                             raw_date: parsedDate,
                             driver: driver,
+                            driverNotes: findMetaValue(order, ["nota_choferes_ida"]) || '',
                             hotel,
                             pax,
                             email,
@@ -1010,14 +1229,14 @@
         }
 
         const COUNTRY_MAP = { 'AF': { name: 'Afganistán' }, 'AL': { name: 'Albania' }, 'DZ': { name: 'Argelia' }, 'AD': { name: 'Andorra' }, 'AO': { name: 'Angola' }, 'AG': { name: 'Antigua y Barbuda' }, 'AR': { name: 'Argentina' }, 'AM': { name: 'Armenia' }, 'AU': { name: 'Australia' }, 'AT': { name: 'Austria' }, 'AZ': { name: 'Azerbaiyán' }, 'BS': { name: 'Bahamas' }, 'BH': { name: 'Baréin' }, 'BD': { name: 'Bangladés' }, 'BB': { name: 'Barbados' }, 'BY': { name: 'Bielorrusia' }, 'BE': { name: 'Bélgica' }, 'BZ': { name: 'Belice' }, 'BJ': { name: 'Benín' }, 'BT': { name: 'Bután' }, 'BO': { name: 'Bolivia' }, 'BA': { name: 'Bosnia y Herzegovina' }, 'BW': { name: 'Botsuana' }, 'BR': { name: 'Brasil' }, 'BN': { name: 'Brunéi' }, 'BG': { name: 'Bulgaria' }, 'BF': { name: 'Burkina Faso' }, 'BI': { name: 'Burundi' }, 'KH': { name: 'Camboya' }, 'CM': { name: 'Camerún' }, 'CA': { name: 'Canadá' }, 'CV': { name: 'Cabo Verde' }, 'CF': { name: 'República Centroafricana' }, 'TD': { name: 'Chad' }, 'CL': { name: 'Chile' }, 'CN': { name: 'China' }, 'CO': { name: 'Colombia' }, 'KM': { name: 'Comoras' }, 'CG': { name: 'Congo' }, 'CD': { name: 'Congo, República Democrática del' }, 'CR': { name: 'Costa Rica' }, 'HR': { name: 'Croacia' }, 'CU': { name: 'Cuba' }, 'CY': { name: 'Chipre' }, 'CZ': { name: 'República Checa' }, 'DK': { name: 'Dinamarca' }, 'DJ': { name: 'Yibuti' }, 'DM': { name: 'Dominica' }, 'DO': { name: 'República Dominicana' }, 'EC': { name: 'Ecuador' }, 'EG': { name: 'Egipto' }, 'SV': { name: 'El Salvador' }, 'GQ': { name: 'Guinea Ecuatorial' }, 'ER': { name: 'Eritrea' }, 'EE': { name: 'Estonia' }, 'ET': { name: 'Etiopía' }, 'FJ': { name: 'Fiyi' }, 'FI': { name: 'Finlandia' }, 'FR': { name: 'Francia' }, 'GA': { name: 'Gabón' }, 'GM': { name: 'Gambia' }, 'GE': { name: 'Georgia' }, 'DE': { name: 'Alemania' }, 'GH': { name: 'Ghana' }, 'GR': { name: 'Grecia' }, 'GD': { name: 'Granada' }, 'GT': { name: 'Guatemala' }, 'GN': { name: 'Guinea' }, 'GW': { name: 'Guinea-Bisáu' }, 'GY': { name: 'Guyana' }, 'HT': { name: 'Haití' }, 'HN': { name: 'Honduras' }, 'HU': { name: 'Hungría' }, 'IS': { name: 'Islandia' }, 'IN': { name: 'India' }, 'ID': { name: 'Indonesia' }, 'IR': { name: 'Irán' }, 'IQ': { name: 'Irak' }, 'IE': { name: 'Irlanda' }, 'IL': { name: 'Israel' }, 'IT': { name: 'Italia' }, 'JM': { name: 'Jamaica' }, 'JP': { name: 'Japón' }, 'JO': { name: 'Jordania' }, 'KZ': { name: 'Kazajistán' }, 'KE': { name: 'Kenia' }, 'KI': { name: 'Kiribati' }, 'KW': { name: 'Kuwait' }, 'KG': { name: 'Kirguistán' }, 'LA': { name: 'Laos' }, 'LV': { name: 'Letonia' }, 'LB': { name: 'Líbano' }, 'LS': { name: 'Lesoto' }, 'LR': { name: 'Liberia' }, 'LY': { name: 'Libia' }, 'LI': { name: 'Liechtenstein' }, 'LT': { name: 'Lituania' }, 'LU': { name: 'Luxemburgo' }, 'MK': { name: 'Macedonia del Norte' }, 'MG': { name: 'Madagascar' }, 'MW': { name: 'Malaui' }, 'MY': { name: 'Malasia' }, 'MV': { name: 'Maldivas' }, 'ML': { name: 'Malí' }, 'MT': { name: 'Malta' }, 'MH': { name: 'Islas Marshall' }, 'MR': { name: 'Mauritania' }, 'MU': { name: 'Mauricio' }, 'MX': { name: 'México' }, 'FM': { name: 'Micronesia' }, 'MD': { name: 'Moldavia' }, 'MC': { name: 'Mónaco' }, 'MN': { name: 'Mongolia' }, 'ME': { name: 'Montenegro' }, 'MA': { name: 'Marruecos' }, 'MZ': { name: 'Mozambique' }, 'MM': { name: 'Myanmar' }, 'NA': { name: 'Namibia' }, 'NR': { name: 'Nauru' }, 'NP': { name: 'Nepal' }, 'NL': { name: 'Países Bajos' }, 'NZ': { name: 'Nueva Zelanda' }, 'NI': { name: 'Nicaragua' }, 'NE': { name: 'Níger' }, 'NG': { name: 'Nigeria' }, 'KP': { name: 'Corea del Norte' }, 'NO': { name: 'Noruega' }, 'OM': { name: 'Omán' }, 'PK': { name: 'Pakistán' }, 'PW': { name: 'Palaos' }, 'PA': { name: 'Panamá' }, 'PG': { name: 'Papúa Nueva Guinea' }, 'PY': { name: 'Paraguay' }, 'PE': { name: 'Perú' }, 'PH': { name: 'Filipinas' }, 'PL': { name: 'Polonia' }, 'PT': { name: 'Portugal' }, 'QA': { name: 'Catar' }, 'RO': { name: 'Rumania' }, 'RU': { name: 'Rusia' }, 'RW': { name: 'Ruanda' }, 'KN': { name: 'San Cristóbal y Nieves' }, 'LC': { name: 'Santa Lucía' }, 'VC': { name: 'San Vicente y las Granadinas' }, 'WS': { name: 'Samoa' }, 'SM': { name: 'San Marino' }, 'ST': { name: 'Santo Tomé y Príncipe' }, 'SA': { name: 'Arabia Saudita' }, 'SN': { name: 'Senegal' }, 'RS': { name: 'Serbia' }, 'SC': { name: 'Seychelles' }, 'SL': { name: 'Sierra Leona' }, 'SG': { name: 'Singapur' }, 'SK': { name: 'Eslovaquia' }, 'SI': { name: 'Eslovenia' }, 'SB': { name: 'Islas Salomón' }, 'SO': { name: 'Somalia' }, 'ZA': { name: 'Sudáfrica' }, 'KR': { name: 'Corea del Sur' }, 'ES': { name: 'España' }, 'LK': { name: 'Sri Lanka' }, 'SD': { name: 'Sudán' }, 'SR': { name: 'Surinam' }, 'SZ': { name: 'Esuatini' }, 'SE': { name: 'Suecia' }, 'CH': { name: 'Suiza' }, 'SY': { name: 'Siria' }, 'TW': { name: 'Taiwán' }, 'TJ': { name: 'Tayikistán' }, 'TZ': { name: 'Tanzania' }, 'TH': { name: 'Tailandia' }, 'TL': { name: 'Timor Oriental' }, 'TG': { name: 'Togo' }, 'TO': { name: 'Tonga' }, 'TT': { name: 'Trinidad y Tobago' }, 'TN': { name: 'Túnez' }, 'TR': { name: 'Turquía' }, 'TM': { name: 'Turkmenistán' }, 'TV': { name: 'Tuvalu' }, 'UG': { name: 'Uganda' }, 'UA': { name: 'Ucrania' }, 'AE': { name: 'Emiratos Árabes Unidos' }, 'GB': { name: 'Reino Unido' }, 'US': { name: 'Estados Unidos' }, 'UY': { name: 'Uruguay' }, 'UZ': { name: 'Uzbekistán' }, 'VU': { name: 'Vanuatu' }, 'VE': { name: 'Venezuela' }, 'VN': { name: 'Vietnam' }, 'YE': { name: 'Yemen' }, 'ZM': { name: 'Zambia' }, 'ZW': { name: 'Zimbabue' } };
-        
+
         const TRIP_STATUS_OPTIONS = {
             'confirmado': 'Confirmado',
             'cancelado': 'Cancelado',
             'contactado_whatsapp': 'Contactado Por WhatsApp',
             'contactado_email': 'Contactado Por Email'
         };
-        
+
         let currentFilteredTrips = [];
 
         function findMetaValue(order, targetKeys) {
@@ -1037,7 +1256,7 @@
         function parseFlexibleDate(dateStr) {
             if (!dateStr) return null;
             let s = dateStr.toString().trim();
-            if (s.match(/^\d{4}-\d{2}-\d{2}/)) return new Date(s.substring(0, 10) + 'T12:00:00'); 
+            if (s.match(/^\d{4}-\d{2}-\d{2}/)) return new Date(s.substring(0, 10) + 'T12:00:00');
             const d = new Date(s.replace(/ de /gi, ' ').replace(/ del /gi, ' '));
             return isNaN(d.getTime()) ? null : d;
         }
@@ -1045,6 +1264,20 @@
         function formatDateStandard(dateObj) {
             const months = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
             return `${dateObj.getDate().toString().padStart(2, '0')}/${months[dateObj.getMonth()]}/${dateObj.getFullYear()}`;
+        }
+
+        // Función para formatear hora a 12H (HH:MM AM/PM)
+        function formatTime12H(timeStr) {
+            if (!timeStr || timeStr === '--:--' || timeStr === '---') return '--:--';
+            const parts = timeStr.split(':');
+            if (parts.length < 2) return timeStr;
+            let hours = parseInt(parts[0], 10);
+            const minutes = parts[1].padStart(2, '0');
+            if (isNaN(hours)) return timeStr;
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            if (hours === 0) hours = 12;
+            return `${hours}:${minutes} ${ampm}`;
         }
 
         function toggleIndexingUI(show) {
@@ -1097,11 +1330,16 @@
             const typeFilter = document.getElementById('filter-type').value;
             const driverFilter = document.getElementById('filter-driver').value;
             const searchText = document.getElementById('search-text').value.toLowerCase();
-            let filtered = allTrips;
+
+            // Filtro estricto: Solo mostrar viajes confirmados o contactados
+            const ALLOWED_STATUSES = ['confirmado', 'contactado_whatsapp', 'contactado_email'];
+            console.log('Aplicando filtros. Total antes:', allTrips.length);
+            let filtered = allTrips.filter(t => ALLOWED_STATUSES.includes(t.trip_status));
+            console.log('Total después de filtro estricto:', filtered.length);
 
             if (range.length === 2) {
-                const start = range[0]; start.setHours(0,0,0,0);
-                const end = range[1]; end.setHours(23,59,59,999);
+                const start = range[0]; start.setHours(0, 0, 0, 0);
+                const end = range[1]; end.setHours(23, 59, 59, 999);
                 filtered = filtered.filter(t => t.raw_date >= start && t.raw_date <= end);
             }
             if (typeFilter !== 'all') filtered = filtered.filter(t => t.type === typeFilter);
@@ -1135,7 +1373,7 @@
                         <td data-label="Cliente">
                             <div class="flex items-center">
                                 <div class="client-avatar">${getInitials(trip.client)}</div>
-                                <span class="font-bold text-[#002a3f] text-base">${trip.client}</span>
+                                <span class="font-bold text-[#002a3f] text-base">${capitalizeName(trip.client)}</span>
                             </div>
                         </td>
                         <td data-label="Fecha / Hora">
@@ -1148,13 +1386,10 @@
                             <span class="trip-badge ${isArrival ? 'badge-arrival' : 'badge-departure'}">${isArrival ? 'Llegada' : 'Salida'}</span>
                         </td>
                         <td data-label="Ruta" class="font-semibold text-gray-600 text-sm">${trip.route}</td>
-                        <td data-label="Vuelo" class="text-sm text-gray-500 font-semibold">${trip.flight}</td>
+                        <td data-label="Vuelo" class="text-sm text-gray-500 font-semibold">${(trip.flight || '').toUpperCase()}</td>
                         <td data-label="Chofer" class="text-sm font-semibold text-gray-700">${trip.driver && trip.driver.trim() !== '' ? trip.driver : 'No asignado'}</td>
-                        <td data-label="Estatus">
-                            <div class="status-pill status-${getTripStatusClass(trip.trip_status)}">
-                                <span class="status-dot"></span>
-                                ${translateTripStatus(trip.trip_status)}
-                            </div>
+                        <td data-label="Notas" class="text-sm text-gray-600 font-semibold max-w-xs truncate" title="${trip.driverNotes || ''}">
+                            ${trip.driverNotes || '--'}
                         </td>
                         <td data-label="Acción" class="pr-6 text-right">
                             <button onclick="openTripDetail(${idx})" class="bg-[#002a3f] text-white px-4 py-2 rounded-lg font-bold uppercase text-xs hover:bg-[#ed4441] transition-all" title="Ver detalle">
@@ -1167,9 +1402,9 @@
             }
         }
 
-        function translateStatus(s) { 
-            const map = { 'pending': 'Pendiente', 'processing': 'Procesando', 'on-hold': 'Espera', 'completed': 'Completado', 'cancelled': 'Cancelado', 'failed': 'Fallido' }; 
-            return map[s] || s; 
+        function translateStatus(s) {
+            const map = { 'pending': 'Pendiente', 'processing': 'Procesando', 'on-hold': 'Espera', 'completed': 'Completado', 'cancelled': 'Cancelado', 'failed': 'Fallido' };
+            return map[s] || s;
         }
 
         function translateTripStatus(s) {
@@ -1199,8 +1434,12 @@
             const order = trip.order || {};
             const isArrival = trip.type === 'arrival';
             const hotel = trip.hotel || 'Hotel no especificado';
-            const originName = isArrival ? 'Aeropuerto LIR' : hotel;
-            const destName = isArrival ? hotel : 'Aeropuerto LIR';
+            const hotelManual = findMetaValue(order, ["hotel_manual"]) || "";
+            // Mantenemos el hotel (zona) original para el display principal
+            const displayHotelName = hotel;
+
+            const originName = isArrival ? 'Aeropuerto LIR' : displayHotelName;
+            const destName = isArrival ? displayHotelName : 'Aeropuerto LIR';
 
             const statusKeyViaje = isArrival ? 'status_llegada' : 'status_salida';
             const statusViajeVal = findMetaValue(order, [statusKeyViaje]) || '';
@@ -1214,33 +1453,70 @@
             statusEl.innerText = translateStatus(statusReservaVal);
             statusEl.className = `status-pill status-${statusReservaVal}`;
 
-            const fullName = `${trip.client}`;
-            const email = trip.email || '';
+            const fullName = capitalizeName(trip.client);
+            const email = (trip.email || '').toLowerCase();
             const phone = trip.phone || '';
             const country = (order.billing?.country || "").toUpperCase();
             const addressOnlyLine1 = (order.shipping?.address_1 || order.billing?.address_1 || "");
 
             document.getElementById('trip-display-name').innerText = fullName;
-            document.getElementById('trip-display-email').innerText = email || '---';
-            document.getElementById('trip-display-phone').innerHTML = phone ? `<a href="tel:${phone}" class="hover:text-accent">${phone}</a>` : '---';
             document.getElementById('trip-display-country').innerText = country && COUNTRY_MAP[country] ? COUNTRY_MAP[country].name : (country || '---');
             document.getElementById('trip-display-address').innerText = addressOnlyLine1 || '---';
 
-            document.getElementById('trip-det-email-link').href = `mailto:${email}`;
-            document.getElementById('trip-det-whatsapp-link').href = `https://wa.me/${phone.replace(/\D/g, '')}`;
+            // Privacy Check
+            const showEmail = String(findMetaValue(order, ["privacy_show_email"])) === "1";
+            const showPhone = String(findMetaValue(order, ["privacy_show_phone"])) === "1";
+
+            // Email Display Logic
+            const emailEl = document.getElementById('trip-display-email');
+            const emailBtn = document.getElementById('trip-det-email-link');
+            if (!showEmail) {
+                emailEl.innerText = 'Privado';
+                emailEl.classList.add('text-gray-400', 'italic');
+                emailBtn.classList.add('hidden');
+            } else {
+                emailEl.innerText = email || '---';
+                emailEl.classList.remove('text-gray-400', 'italic');
+                emailBtn.classList.remove('hidden');
+                emailBtn.href = `mailto:${email}`;
+            }
+
+            // Phone Display Logic
+            const phoneEl = document.getElementById('trip-display-phone');
+            const whatsappBtn = document.getElementById('trip-det-whatsapp-link');
+            if (!showPhone) {
+                phoneEl.innerText = 'Privado';
+                phoneEl.classList.add('text-gray-400', 'italic');
+                whatsappBtn.classList.add('hidden');
+            } else {
+                phoneEl.innerHTML = phone ? `<a href="tel:${phone}" class="hover:text-accent">${phone}</a>` : '---';
+                phoneEl.classList.remove('text-gray-400', 'italic');
+                whatsappBtn.classList.remove('hidden');
+                whatsappBtn.href = `https://wa.me/${phone.replace(/\D/g, '')}`;
+            }
 
             // Ruta
             document.getElementById('trip-origin-name').innerText = originName;
             document.getElementById('trip-dest-name').innerText = destName;
             document.getElementById('trip-origin-icon').innerText = isArrival ? '🛬' : '🏨';
             document.getElementById('trip-dest-icon').innerText = isArrival ? '🏨' : '🛫';
-            document.getElementById('trip-route-separator-emoji').innerText = isArrival ? '➡️' : '⬅️';
+            document.getElementById('trip-route-separator-emoji').innerText = '➡️';
             document.getElementById('trip-origin-label').innerText = isArrival ? 'Origen' : 'Origen';
             document.getElementById('trip-dest-label').innerText = isArrival ? 'Destino' : 'Destino';
 
             document.getElementById('trip-general-trip-type').innerText = isArrival ? 'Llegada' : 'Salida';
             document.getElementById('trip-general-pax-value').innerText = trip.pax || '1';
+            document.getElementById('trip-general-pax-value').innerText = trip.pax || '1';
             document.getElementById('trip-general-relative').innerText = getRelativeTime(trip.raw_date);
+
+            // Hotel Pill Logic
+            const hotelPill = document.getElementById('trip-hotel-pill');
+            if (hotelManual) {
+                document.getElementById('trip-general-hotel-value').innerText = hotelManual;
+                hotelPill.classList.remove('hidden');
+            } else {
+                hotelPill.classList.add('hidden');
+            }
 
             // Tarjeta de logística
             document.getElementById('trip-card-title').innerText = isArrival ? 'Llegada' : 'Salida';
@@ -1268,12 +1544,16 @@
 
             const logisticsContainer = document.getElementById('trip-logistics-fields-list');
             logisticsContainer.innerHTML = '';
+            const fechaLabel = isArrival ? 'Fecha' : 'Fecha de Recogida';
+            const horaLabel = isArrival ? 'Hora' : 'Hora de Recogida';
             logisticsContainer.innerHTML += `
-                <div><p class="meta-field-label">Fecha</p><p class="meta-field-value">${trip.dateStr}</p></div>
-                <div><p class="meta-field-label">Hora</p><p class="meta-field-value">${trip.time || '--:--'}</p></div>
-                <div><p class="meta-field-label">Vuelo</p><p class="meta-field-value">${trip.flight || '--'}</p></div>
+                <div><p class="meta-field-label">${fechaLabel}</p><p class="meta-field-value">${trip.dateStr}</p></div>
+                <div><p class="meta-field-label">${horaLabel}</p><p class="meta-field-value">${trip.time || '--:--'}</p></div>
+                <div><p class="meta-field-label">Vuelo</p><p class="meta-field-value">${(trip.flight || '--').toUpperCase()}</p></div>
                 <div><p class="meta-field-label">Ruta</p><p class="meta-field-value">${trip.route}</p></div>
             `;
+
+
 
             // Asignación
             const assign = resolveAssignment(trip);
@@ -1287,7 +1567,7 @@
             const tripStatusOptions = isArrival ? TRIP_STATUS_OPTIONS : TRIP_STATUS_OPTIONS;
             const displayText = tripStatusOptions[statusViajeVal] || 'Sin estatus';
             statusViajeSelect.innerText = displayText;
-            
+
             // Cambiar color según estatus
             let colorClass = 'bg-blue-500';
             if (statusViajeVal === 'confirmado') {
@@ -1310,8 +1590,8 @@
         }
 
         function getRelativeTime(d) {
-            const now = new Date(); now.setHours(0,0,0,0);
-            const target = new Date(d); target.setHours(0,0,0,0);
+            const now = new Date(); now.setHours(0, 0, 0, 0);
+            const target = new Date(d); target.setHours(0, 0, 0, 0);
             const diff = Math.floor((target - now) / (1000 * 60 * 60 * 24));
             if (diff === 0) return 'Hoy';
             if (diff === 1) return 'Mañana';
@@ -1321,4 +1601,5 @@
         }
     </script>
 </body>
+
 </html>

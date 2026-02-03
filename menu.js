@@ -1,6 +1,6 @@
 class AdminNavbar extends HTMLElement {
-  connectedCallback() {
-    this.innerHTML = `
+    connectedCallback() {
+        this.innerHTML = `
       <style>
         /* --- ESTILOS DEL MENÚ --- */
         :host {
@@ -168,67 +168,182 @@ class AdminNavbar extends HTMLElement {
             </button>
         </div>
       </header>
+
+      <!-- Modal Confirmación Logout -->
+      <div id="logout-modal" class="logout-modal-overlay hidden">
+        <div class="logout-modal-box">
+          <div class="logout-modal-icon">🚪</div>
+          <h3 class="logout-modal-title">¿Cerrar sesión?</h3>
+          <p class="logout-modal-text">Tendrás que volver a iniciar sesión para acceder al sistema.</p>
+          <div class="logout-modal-buttons">
+            <button id="logout-cancel-btn" class="logout-btn-cancel">Cancelar</button>
+            <button id="logout-confirm-btn" class="logout-btn-confirm">Sí, cerrar sesión</button>
+          </div>
+        </div>
+      </div>
+
+      <style>
+        .logout-modal-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 42, 63, 0.9);
+          backdrop-filter: blur(8px);
+          z-index: 300;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+        }
+        .logout-modal-overlay.hidden { display: none; }
+        .logout-modal-box {
+          background: white;
+          border-radius: 20px;
+          padding: 40px;
+          max-width: 400px;
+          width: 100%;
+          text-align: center;
+          box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+          animation: modalSlideIn 0.3s ease;
+        }
+        @keyframes modalSlideIn {
+          from { opacity: 0; transform: scale(0.9) translateY(-20px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .logout-modal-icon { font-size: 48px; margin-bottom: 16px; }
+        .logout-modal-title {
+          font-family: 'Oswald', sans-serif;
+          font-size: 24px;
+          font-weight: 700;
+          color: #002a3f;
+          text-transform: uppercase;
+          margin: 0 0 12px 0;
+        }
+        .logout-modal-text {
+          color: #64748b;
+          font-size: 14px;
+          margin: 0 0 24px 0;
+          line-height: 1.5;
+        }
+        .logout-modal-buttons {
+          display: flex;
+          gap: 12px;
+          justify-content: center;
+        }
+        .logout-btn-cancel {
+          padding: 12px 24px;
+          border-radius: 10px;
+          font-size: 13px;
+          font-weight: 800;
+          text-transform: uppercase;
+          cursor: pointer;
+          transition: all 0.2s;
+          background: #f1f5f9;
+          color: #64748b;
+          border: none;
+        }
+        .logout-btn-cancel:hover { background: #e2e8f0; }
+        .logout-btn-confirm {
+          padding: 12px 24px;
+          border-radius: 10px;
+          font-size: 13px;
+          font-weight: 800;
+          text-transform: uppercase;
+          cursor: pointer;
+          transition: all 0.2s;
+          background: #ef4444;
+          color: white;
+          border: none;
+        }
+        .logout-btn-confirm:hover { background: #dc2626; }
+      </style>
     `;
 
-    this.setupEvents();
-    this.highlightActiveLink();
-  }
+        this.setupEvents();
+        this.highlightActiveLink();
+    }
 
-  setupEvents() {
-    const overlay = this.querySelector('#mobile-menu-overlay');
-    const hamBtn = this.querySelector('#hamburger-btn');
-    const closeBtn = this.querySelector('#close-mobile-btn');
+    setupEvents() {
+        const overlay = this.querySelector('#mobile-menu-overlay');
+        const hamBtn = this.querySelector('#hamburger-btn');
+        const closeBtn = this.querySelector('#close-mobile-btn');
 
-    const toggleMenu = () => overlay.classList.toggle('open');
-    
-    hamBtn.addEventListener('click', toggleMenu);
-    closeBtn.addEventListener('click', toggleMenu);
+        const toggleMenu = () => overlay.classList.toggle('open');
 
-    this.querySelectorAll('.mobile-menu-overlay a').forEach(link => {
-        link.addEventListener('click', () => overlay.classList.remove('open'));
-    });
+        hamBtn.addEventListener('click', toggleMenu);
+        closeBtn.addEventListener('click', toggleMenu);
 
-    const refreshBtn = this.querySelector('#global-refresh-btn');
-    refreshBtn.addEventListener('click', () => {
-        if (typeof window.refreshData === 'function') {
-            window.refreshData(1);
-        } else {
-            window.location.reload();
+        this.querySelectorAll('.mobile-menu-overlay a').forEach(link => {
+            link.addEventListener('click', () => overlay.classList.remove('open'));
+        });
+
+        const refreshBtn = this.querySelector('#global-refresh-btn');
+        refreshBtn.addEventListener('click', () => {
+            if (typeof window.refreshData === 'function') {
+                window.refreshData(1);
+            } else {
+                window.location.reload();
+            }
+        });
+
+        // Logout elements
+        const logoutBtn = this.querySelector('#logout-btn');
+        const mobileLogoutBtn = this.querySelector('#mobile-logout-btn');
+        const logoutModal = this.querySelector('#logout-modal');
+        const logoutCancelBtn = this.querySelector('#logout-cancel-btn');
+        const logoutConfirmBtn = this.querySelector('#logout-confirm-btn');
+
+        // Mostrar modal de confirmación
+        const showLogoutModal = (e) => {
+            e.preventDefault();
+            overlay.classList.remove('open'); // Cerrar menú móvil si está abierto
+            logoutModal.classList.remove('hidden');
+        };
+
+        // Cerrar modal
+        const hideLogoutModal = () => {
+            logoutModal.classList.add('hidden');
+        };
+
+        // Confirmar logout
+        const confirmLogout = async () => {
+            try {
+                sessionStorage.removeItem('session_token');
+                await fetch('api/logout.php');
+                window.location.href = 'login.html';
+            } catch (error) {
+                console.error('Error al cerrar sesión:', error);
+                sessionStorage.removeItem('session_token');
+                window.location.href = 'login.html';
+            }
+        };
+
+        // Event listeners
+        if (logoutBtn) logoutBtn.addEventListener('click', showLogoutModal);
+        if (mobileLogoutBtn) mobileLogoutBtn.addEventListener('click', showLogoutModal);
+        if (logoutCancelBtn) logoutCancelBtn.addEventListener('click', hideLogoutModal);
+        if (logoutConfirmBtn) logoutConfirmBtn.addEventListener('click', confirmLogout);
+
+        // Cerrar modal al hacer clic fuera
+        if (logoutModal) {
+            logoutModal.addEventListener('click', (e) => {
+                if (e.target === logoutModal) hideLogoutModal();
+            });
         }
-    });
+    }
 
-    // Logout buttons
-    const logoutBtn = this.querySelector('#logout-btn');
-    const mobileLogoutBtn = this.querySelector('#mobile-logout-btn');
-    
-    const handleLogout = async (e) => {
-        e.preventDefault();
-        try {
-            await fetch('api/logout.php');
-            window.location.href = 'login.html';
-        } catch (error) {
-            console.error('Error al cerrar sesión:', error);
-            window.location.href = 'login.html';
-        }
-    };
+    highlightActiveLink() {
+        const currentPath = window.location.pathname;
+        const links = this.querySelectorAll('.nav-item');
 
-    if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
-    if (mobileLogoutBtn) mobileLogoutBtn.addEventListener('click', handleLogout);
-  }
-
-  highlightActiveLink() {
-    const currentPath = window.location.pathname;
-    const links = this.querySelectorAll('.nav-item');
-    
-    links.forEach(link => {
-        const href = link.getAttribute('href');
-        if ((currentPath === '/' || currentPath.endsWith('index.html')) && href === 'index.html') {
-            link.classList.add('active');
-        } else if (href !== '#' && (currentPath.includes(href) || (currentPath === '/' && href === 'index.html'))) {
-            link.classList.add('active');
-        }
-    });
-  }
+        links.forEach(link => {
+            const href = link.getAttribute('href');
+            if ((currentPath === '/' || currentPath.endsWith('index.html')) && href === 'index.html') {
+                link.classList.add('active');
+            } else if (href !== '#' && (currentPath.includes(href) || (currentPath === '/' && href === 'index.html'))) {
+                link.classList.add('active');
+            }
+        });
+    }
 }
 
 customElements.define('admin-navbar', AdminNavbar);
