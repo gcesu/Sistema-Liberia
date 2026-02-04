@@ -775,6 +775,31 @@
                     class="text-sm font-normal text-gray-400">v1.2</span></h2>
         </div>
 
+        <!-- Header especial para vista de chofer -->
+        <div id="driver-header"
+            class="hidden mt-6 mb-6 p-6 bg-gradient-to-r from-[#002a3f] to-[#003d5c] rounded-xl shadow-lg">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <p class="text-white/60 text-xs uppercase tracking-widest font-bold mb-1">📅 Tu Cronograma</p>
+                    <h1 id="driver-schedule-title"
+                        class="text-2xl md:text-3xl font-black text-white uppercase tracking-wide"></h1>
+                </div>
+                <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                    <div class="flex flex-col">
+                        <label class="text-white/60 text-xs uppercase tracking-widest font-bold mb-1">Filtrar por
+                            Fecha</label>
+                        <input type="text" id="driver-date-filter"
+                            class="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 w-64"
+                            placeholder="Seleccionar fecha...">
+                    </div>
+                    <button onclick="clearDriverDateFilter()"
+                        class="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-bold uppercase tracking-wide transition-all mt-auto">
+                        Mostrar Todo
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <div class="filter-container shadow-sm">
             <div class="w-full md:w-64 input-group">
                 <label>Rango de Fechas</label>
@@ -1061,14 +1086,24 @@
                 const filterContainer = document.querySelector('.filter-container');
                 const title = document.querySelector('h2');
                 const main = document.querySelector('main');
+                const driverHeader = document.getElementById('driver-header');
 
                 if (navbar) navbar.style.display = 'none';
                 if (filterContainer) filterContainer.style.display = 'none';
-                if (title) title.style.display = 'none';
+                if (title) title.parentElement.style.display = 'none';
                 if (main) main.style.paddingTop = '20px';
 
                 // Convertir parámetro URL al nombre real del chofer
                 const realDriverName = mapUrlParamToDriverName(choferParam);
+
+                // Mostrar header del chofer con su nombre
+                if (driverHeader) {
+                    driverHeader.classList.remove('hidden');
+                    document.getElementById('driver-schedule-title').innerText = `CRONOGRAMA DE ${realDriverName.toUpperCase()}`;
+                }
+
+                // Inicializar date picker para chofer
+                initDriverDatePicker();
 
                 // Establecer el valor del filtro de chofer
                 const driverSelect = document.getElementById('filter-driver');
@@ -1089,6 +1124,43 @@
                 locale: "es",
                 onChange: () => applyFilters()
             });
+        }
+
+        let driverDatePicker = null;
+
+        function initDriverDatePicker() {
+            driverDatePicker = flatpickr("#driver-date-filter", {
+                mode: "single",
+                dateFormat: "d/M/Y",
+                locale: "es",
+                onChange: (selectedDates) => {
+                    if (selectedDates.length > 0) {
+                        // Establecer el mismo día como rango en el picker oculto
+                        const selectedDate = selectedDates[0];
+                        if (datePicker) {
+                            datePicker.setDate([selectedDate, selectedDate]);
+                        }
+                        applyFilters();
+                    }
+                }
+            });
+        }
+
+        function clearDriverDateFilter() {
+            // Limpiar filtro de fecha del chofer
+            if (driverDatePicker) {
+                driverDatePicker.clear();
+            }
+            // Establecer rango amplio (últimos 30 días hasta 30 días adelante)
+            const today = new Date();
+            const past = new Date(today);
+            past.setDate(past.getDate() - 30);
+            const future = new Date(today);
+            future.setDate(future.getDate() + 30);
+            if (datePicker) {
+                datePicker.setDate([past, future]);
+            }
+            applyFilters();
         }
 
         async function startBackgroundIndexing() {

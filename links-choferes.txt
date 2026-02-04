@@ -2,26 +2,22 @@ Links para cada chofer - Página de Choferes
 ==============================================
 
 Pedro:
-http://sistema.liberiaairportshuttle.com/choferes.html?chofer=Pedro
+http://sistema.liberiaairportshuttle.com/choferes?chofer=Pedro
 
 Fermín:
-http://sistema.liberiaairportshuttle.com/choferes.html?chofer=Fermin
+http://sistema.liberiaairportshuttle.com/choferes?chofer=Fermin
 
 Manuel Alvarado:
-http://sistema.liberiaairportshuttle.com/choferes.html?chofer=ManuelA
+http://sistema.liberiaairportshuttle.com/choferes?chofer=ManuelA
 
 Albán:
-http://sistema.liberiaairportshuttle.com/choferes.html?chofer=Alban
+http://sistema.liberiaairportshuttle.com/choferes?chofer=Alban
 
 Chayo:
-http://sistema.liberiaairportshuttle.com/choferes.html?chofer=Chayo
+http://sistema.liberiaairportshuttle.com/choferes?chofer=Chayo
 
 Alex Fila:
-http://sistema.liberiaairportshuttle.com/choferes.html?chofer=AlexF
+http://sistema.liberiaairportshuttle.com/choferes?chofer=AlexF
 
 Alex Montero:
-http://sistema.liberiaairportshuttle.com/choferes.html?chofer=AlexM
-
-
-Nota: Estas URLs funcionan con el servidor en localhost:3000
-Cuando subas a producción, reemplaza con tu dominio real.
+http://sistema.liberiaairportshuttle.com/choferes?chofer=AlexM
