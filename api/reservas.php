@@ -48,7 +48,7 @@ if ($method === 'GET') {
     $offset = ($page - 1) * $per_page;
 
     // Filtro por fecha (after)
-    $whereClause = "1=1";
+    $whereClause = "1=1 AND status != 'trash'";
     $params = [];
 
     if (isset($_GET['after']) && $_GET['after'] !== '') {
@@ -166,6 +166,7 @@ if ($method === 'PUT') {
             'status_salida' => 'salida_status',
             'privacy_show_email' => 'privacy_show_email',
             'privacy_show_phone' => 'privacy_show_phone',
+            'privacy_show_financiero' => 'privacy_show_financiero',
             'hotel_name' => 'hotel_manual',
         ];
 
@@ -375,9 +376,11 @@ function buildMetaData($r)
         $meta[] = ['key' => 'status_salida', 'value' => $r['salida_status']];
     }
 
-    // Privacidad - solo enviar "1" si explícitamente es "1", sino "0"
-    $meta[] = ['key' => 'privacy_show_email', 'value' => (isset($r['privacy_show_email']) && $r['privacy_show_email'] === '1') ? '1' : '0'];
-    $meta[] = ['key' => 'privacy_show_phone', 'value' => (isset($r['privacy_show_phone']) && $r['privacy_show_phone'] === '1') ? '1' : '0'];
+    // Privacidad - usar comparación flexible para manejar tanto "1" como 1
+    $meta[] = ['key' => 'privacy_show_email', 'value' => (!empty($r['privacy_show_email']) && $r['privacy_show_email'] == '1') ? '1' : '0'];
+    $meta[] = ['key' => 'privacy_show_phone', 'value' => (!empty($r['privacy_show_phone']) && $r['privacy_show_phone'] == '1') ? '1' : '0'];
+    // Default 1 (mostrar) si no existe. Solo 0 si es explícitamente 0 en BD (o '0')
+    $meta[] = ['key' => 'privacy_show_financiero', 'value' => (isset($r['privacy_show_financiero']) && $r['privacy_show_financiero'] == '0') ? '0' : '1'];
 
     // Hotel Manual
     if (!empty($r['hotel_manual'])) {

@@ -1,0 +1,12 @@
+# Activar el motor de reescritura
+RewriteEngine On
+
+# Si el archivo o directorio existe físicamente, no reescribir
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Reglas de reescritura
+RewriteRule ^reservas$ index.html [L]
+RewriteRule ^viajes$ viajes.html [L]
+RewriteRule ^choferes$ choferes.html [L]
+RewriteRule ^login$ login.html [L]

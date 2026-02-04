@@ -23,7 +23,7 @@
             // Verificar si hay token en sessionStorage (expira al cerrar pestaña)
             const token = sessionStorage.getItem('session_token');
             if (!token) {
-                window.location.href = 'login.html';
+                window.location.href = '/login';
                 return;
             }
 
@@ -34,11 +34,11 @@
                 const data = await response.json();
                 if (!data.authenticated) {
                     sessionStorage.removeItem('session_token');
-                    window.location.href = 'login.html';
+                    window.location.href = '/login';
                 }
             } catch (error) {
                 console.error('Error verificando sesión:', error);
-                window.location.href = 'login.html';
+                window.location.href = '/login';
             }
         })();
     </script>
@@ -434,12 +434,12 @@
         .info-pill {
             background: #f1f5f9;
             color: #475569;
-            padding: 6px 12px;
-            border-radius: 6px;
+            padding: 8px 16px;
+            border-radius: 8px;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            font-size: var(--font-xs);
+            gap: 8px;
+            font-size: 13px;
             font-weight: 600;
             border: 1px solid #e2e8f0;
         }
@@ -823,13 +823,13 @@
             <table id="trips-table">
                 <thead>
                     <tr>
-                        <th class="w-20 pl-6">ID</th>
-                        <th class="w-64">Cliente</th>
+                        <th class="w-64 pl-6">Cliente</th>
                         <th>Fecha / Hora</th>
-                        <th>Tipo</th>
-                        <th>Ruta (Origen ➝ Destino)</th>
+                        <th>Hotel</th>
                         <th>Vuelo</th>
                         <th>Chofer</th>
+                        <th>Precio</th>
+                        <th>Método</th>
                         <th>Notas</th>
                         <th class="pr-6 text-right">Acción</th>
                     </tr>
@@ -854,7 +854,6 @@
                 <div class="px-6 md:px-8 py-4 border-b flex justify-between items-center bg-white">
                     <div class="flex flex-wrap items-center gap-4">
                         <h3 id="trip-modal-title" class="text-xl md:text-2xl font-bold text-[#002a3f] title-font"></h3>
-                        <span id="trip-det-status-pill" class="status-pill"></span>
                     </div>
                     <button onclick="closeTripModal()"
                         class="text-3xl text-gray-300 hover:text-gray-600 transition">&times;</button>
@@ -927,32 +926,27 @@
                         <!-- Píldoras Resumen -->
                         <div class="flex flex-wrap gap-3 mb-8">
                             <div class="info-pill bg-white shadow-sm">
-                                <span class="text-gray-400 text-[10px] uppercase font-bold">Tipo:</span>
-                                <span id="trip-general-trip-type" class="font-bold text-[#002a3f] uppercase"></span>
+                                <span class="text-gray-500 text-sm uppercase font-bold">Tipo:</span>
+                                <span id="trip-general-trip-type"
+                                    class="font-black text-[#002a3f] uppercase text-lg"></span>
                             </div>
                             <div class="info-pill bg-white shadow-sm">
-                                <span class="text-gray-400 text-[10px] uppercase font-bold">Pax:</span>
-                                <span id="trip-general-pax-value" class="font-bold text-[#002a3f]"></span>
+                                <span class="text-gray-500 text-sm uppercase font-bold">Pax:</span>
+                                <span id="trip-general-pax-value" class="font-black text-[#002a3f] text-lg"></span>
                             </div>
                             <div id="trip-hotel-pill" class="info-pill bg-white shadow-sm hidden">
-                                <span class="text-gray-400 text-[10px] uppercase font-bold">Hotel:</span>
-                                <span id="trip-general-hotel-value" class="font-bold text-[#002a3f]"></span>
+                                <span class="text-gray-500 text-sm uppercase font-bold">Hotel:</span>
+                                <span id="trip-general-hotel-value"
+                                    class="font-black text-[#002a3f] uppercase text-lg"></span>
                             </div>
                             <div class="info-pill bg-white shadow-sm">
-                                <span class="text-gray-400 text-[10px] uppercase font-bold">Proximidad:</span>
-                                <span id="trip-general-relative" class="font-bold text-[#002a3f]"></span>
+                                <span class="text-gray-500 text-sm uppercase font-bold">Proximidad:</span>
+                                <span id="trip-general-relative"
+                                    class="font-black text-[#002a3f] uppercase text-lg"></span>
                             </div>
                         </div>
 
-                        <!-- Estatus del Viaje (Llegada/Salida) -->
-                        <div class="mb-8 p-4 bg-gray-50 rounded-lg border-2 border-gray-200">
-                            <label class="text-xs font-bold text-gray-500 uppercase tracking-widest block mb-2">Estatus
-                                del Viaje</label>
-                            <div class="flex items-center gap-4">
-                                <span id="trip-status-viaje-pill"
-                                    class="inline-block px-3 py-1 rounded-full text-white text-sm font-bold bg-blue-500"></span>
-                            </div>
-                        </div>
+
 
                         <!-- Tarjeta de Viaje -->
                         <div class="operation-card" id="trip-operation-card">
@@ -987,6 +981,16 @@
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+
+                        <!-- Resumen Financiero del Viaje -->
+                        <div id="trip-financial-summary" class="mt-4">
+                            <div class="bg-white border rounded-xl p-5 shadow-sm max-w-md ml-auto">
+                                <h5
+                                    class="text-xs font-black text-gray-500 uppercase tracking-widest mb-4 pb-2 border-b">
+                                    Resumen Financiero</h5>
+                                <div id="trip-payment-breakdown" class="space-y-3"></div>
                             </div>
                         </div>
                     </div>
@@ -1146,6 +1150,14 @@
                         const rawTime = findMetaValue(order, ["- Arrival Time"]);
                         const driver = findMetaValue(order, ["chofer_llegada"]) || "";
                         const tripStatus = (findMetaValue(order, ["status_llegada"]) || "").trim();
+                        const isRoundTrip = !!findMetaValue(order, ["- Arrival Date"]) && !!findMetaValue(order, ["- Departure Date"]);
+                        const tripPrice = parseFloat(order.total || 0) / (isRoundTrip ? 2 : 1);
+                        const hotelManual = findMetaValue(order, ["hotel_manual"]) || '';
+
+                        // Privacidad Financiera (Default: '1' = mostrar)
+                        const showFinancieroMeta = findMetaValue(order, ["privacy_show_financiero"]);
+                        const showFinanciero = showFinancieroMeta === null || showFinancieroMeta === '' || String(showFinancieroMeta) !== "0";
+
                         batchTrips.push({
                             id: order.id,
                             order_status: order.status,
@@ -1160,9 +1172,13 @@
                             driver: driver,
                             driverNotes: findMetaValue(order, ["nota_choferes_llegada"]) || '',
                             hotel,
+                            hotelManual,
                             pax,
                             email,
                             phone,
+                            tripPrice,
+                            showFinanciero,
+                            paymentMethod: order.payment_method_title || '--',
                             order
                         });
                     }
@@ -1175,6 +1191,14 @@
                         const rawTime = findMetaValue(order, ["- Pick-up Time at Hotel"]);
                         const driver = findMetaValue(order, ["chofer_salida"]) || "";
                         const tripStatus = (findMetaValue(order, ["status_salida"]) || "").trim();
+                        const isRoundTrip = !!findMetaValue(order, ["- Arrival Date"]) && !!findMetaValue(order, ["- Departure Date"]);
+                        const tripPrice = parseFloat(order.total || 0) / (isRoundTrip ? 2 : 1);
+                        const hotelManual = findMetaValue(order, ["hotel_manual"]) || '';
+
+                        // Privacidad Financiera
+                        const showFinancieroMeta = findMetaValue(order, ["privacy_show_financiero"]);
+                        const showFinanciero = showFinancieroMeta === null || showFinancieroMeta === '' || String(showFinancieroMeta) !== "0";
+
                         batchTrips.push({
                             id: order.id,
                             order_status: order.status,
@@ -1189,9 +1213,15 @@
                             driver: driver,
                             driverNotes: findMetaValue(order, ["nota_choferes_ida"]) || '',
                             hotel,
+                            hotelManual,
                             pax,
                             email,
                             phone,
+                            tripPrice,
+                            phone,
+                            tripPrice,
+                            showFinanciero,
+                            paymentMethod: order.payment_method_title || '--',
                             order
                         });
                     }
@@ -1369,8 +1399,7 @@
                     const isArrival = trip.type === 'arrival';
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td data-label="ID" class="pl-6 font-bold text-gray-400">#${trip.id}</td>
-                        <td data-label="Cliente">
+                        <td data-label="Cliente" class="pl-6">
                             <div class="flex items-center">
                                 <div class="client-avatar">${getInitials(trip.client)}</div>
                                 <span class="font-bold text-[#002a3f] text-base">${capitalizeName(trip.client)}</span>
@@ -1382,13 +1411,12 @@
                                 <span class="text-xs font-bold text-gray-400 uppercase">${trip.time}</span>
                             </div>
                         </td>
-                        <td data-label="Tipo">
-                            <span class="trip-badge ${isArrival ? 'badge-arrival' : 'badge-departure'}">${isArrival ? 'Llegada' : 'Salida'}</span>
-                        </td>
-                        <td data-label="Ruta" class="font-semibold text-gray-600 text-sm">${trip.route}</td>
+                        <td data-label="Hotel" class="font-semibold text-gray-600 text-sm">${trip.hotelManual || '--'}</td>
                         <td data-label="Vuelo" class="text-sm text-gray-500 font-semibold">${(trip.flight || '').toUpperCase()}</td>
                         <td data-label="Chofer" class="text-sm font-semibold text-gray-700">${trip.driver && trip.driver.trim() !== '' ? trip.driver : 'No asignado'}</td>
-                        <td data-label="Notas" class="text-sm text-gray-600 font-semibold max-w-xs truncate" title="${trip.driverNotes || ''}">
+                        <td data-label="Precio" class="text-sm font-bold text-green-600">${trip.showFinanciero ? '$' + trip.tripPrice.toFixed(2) : '$ ***'}</td>
+                        <td data-label="Método" class="text-sm font-semibold text-gray-500">${trip.showFinanciero ? trip.paymentMethod : '***'}</td>
+                        <td data-label="Notas" class="text-sm text-gray-600 font-semibold" title="${trip.driverNotes || ''}">
                             ${trip.driverNotes || '--'}
                         </td>
                         <td data-label="Acción" class="pr-6 text-right">
@@ -1448,10 +1476,6 @@
             document.body.style.overflow = 'hidden';
 
             document.getElementById('trip-modal-title').innerText = `Viaje #${trip.id}`;
-
-            const statusEl = document.getElementById('trip-det-status-pill');
-            statusEl.innerText = translateStatus(statusReservaVal);
-            statusEl.className = `status-pill status-${statusReservaVal}`;
 
             const fullName = capitalizeName(trip.client);
             const email = (trip.email || '').toLowerCase();
@@ -1562,24 +1586,10 @@
             document.getElementById('trip-display-meta-subchofer').innerText = assign.codriver;
             document.getElementById('trip-display-meta-nota_choferes').innerText = assign.driverNotes;
 
-            // Estatus del Viaje (Llegada/Salida)
-            const statusViajeSelect = document.getElementById('trip-status-viaje-pill');
-            const tripStatusOptions = isArrival ? TRIP_STATUS_OPTIONS : TRIP_STATUS_OPTIONS;
-            const displayText = tripStatusOptions[statusViajeVal] || 'Sin estatus';
-            statusViajeSelect.innerText = displayText;
+            // Estatus del Viaje - removido del UI
 
-            // Cambiar color según estatus
-            let colorClass = 'bg-blue-500';
-            if (statusViajeVal === 'confirmado') {
-                colorClass = 'bg-green-500';
-            } else if (statusViajeVal === 'contactado_whatsapp') {
-                colorClass = 'bg-blue-500';
-            } else if (statusViajeVal === 'contactado_email') {
-                colorClass = 'bg-yellow-500';
-            } else if (statusViajeVal === 'cancelado') {
-                colorClass = 'bg-red-500';
-            }
-            statusViajeSelect.className = `inline-block px-3 py-1 rounded-full text-white text-sm font-bold ${colorClass}`;
+            // Renderizar resumen financiero con privacidad
+            renderTripFinancialSummary(order, trip.showFinanciero);
 
             document.getElementById('trip-modal').classList.remove('hidden');
         }
@@ -1587,6 +1597,64 @@
         function closeTripModal() {
             document.getElementById('trip-modal').classList.add('hidden');
             document.body.style.overflow = '';
+        }
+
+        function renderTripFinancialSummary(order, showFinanciero = true) {
+            const container = document.getElementById('trip-payment-breakdown');
+            container.innerHTML = '';
+
+            if (!showFinanciero) {
+                container.innerHTML = '<div class="text-sm text-gray-400 italic p-4 text-center">Información financiera oculta</div>';
+                return;
+            }
+
+            // Detectar si es round-trip (tiene tanto llegada como salida)
+            const hasArrival = !!findMetaValue(order, ["- Arrival Date"]);
+            const hasDeparture = !!findMetaValue(order, ["- Departure Date"]);
+            const isRoundTrip = hasArrival && hasDeparture;
+            const divisor = isRoundTrip ? 2 : 1;
+
+            const addRow = (label, value, isBold = false, isAccent = false, isDiscount = false) => {
+                let numVal = parseFloat(value);
+                if (value === undefined || value === null || value === "" || isNaN(numVal) || numVal === 0) return;
+
+                // Dividir por 2 si es round-trip
+                numVal = numVal / divisor;
+
+                const formattedValue = isDiscount ? `-$${Math.abs(numVal).toFixed(2)}` : `$${numVal.toFixed(2)}`;
+                const colorClass = isDiscount ? 'text-green-600' : (isAccent ? 'text-red-500' : 'text-[#002a3f]');
+                container.innerHTML += `
+                    <div class="flex justify-between items-center ${isBold ? 'pt-3 border-t border-dashed border-gray-200 mt-2' : 'text-sm'}">
+                        <span class="font-bold uppercase opacity-50 text-[10px] tracking-widest">${label}</span>
+                        <span class="font-bold ${isBold ? 'text-2xl' : 'text-base'} ${colorClass}">${formattedValue}</span>
+                    </div>`;
+            };
+
+            // Indicador de round-trip
+            if (isRoundTrip) {
+                container.innerHTML += `<div class="text-[10px] uppercase font-black text-orange-500 mb-3 pb-2 border-b">⚠️ Round Trip - Montos divididos entre 2</div>`;
+            }
+
+            if (order.payment_method_title) {
+                container.innerHTML += `<div class="text-[10px] uppercase font-black text-gray-400 mb-4 border-b pb-2">Método: ${order.payment_method_title}</div>`;
+            }
+
+            const subtotal = (order.line_items || []).reduce((acc, item) => acc + parseFloat(item.subtotal || 0), 0);
+            addRow("Subtotal Servicios", subtotal);
+
+            if (order.fee_lines && order.fee_lines.length > 0) {
+                order.fee_lines.forEach(fee => addRow(fee.name || 'Cargo Adicional', fee.total));
+            }
+
+            if (order.tax_lines && order.tax_lines.length > 0) {
+                order.tax_lines.forEach(tax => addRow(tax.label || 'Impuesto', tax.tax_total));
+            }
+
+            if (order.coupon_lines && order.coupon_lines.length > 0) {
+                order.coupon_lines.forEach(coupon => addRow(`Cupón: ${coupon.code}`, coupon.discount, false, false, true));
+            }
+
+            addRow("Total Este Viaje", order.total, true);
         }
 
         function getRelativeTime(d) {

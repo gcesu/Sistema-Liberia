@@ -359,7 +359,7 @@
                         sessionStorage.setItem('session_token', data.token);
                     }
                     // Login exitoso - redirigir al panel
-                    window.location.href = 'index.html';
+                    window.location.href = '/reservas';
                 } else {
                     // Error de login
                     errorMsg.textContent = data.message || 'Usuario o contraseña incorrectos';
