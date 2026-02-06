@@ -155,44 +155,41 @@ function updateLastSync($pdo)
 }
 
 /**
- * Elimina una orden de la BD local
+ * Elimina una orden de la BD local (y sus viajes asociados)
  */
 function deleteOrderFromDB($pdo, $orderId)
 {
+    // Primero eliminar viajes asociados
+    $stmt = $pdo->prepare("DELETE FROM viajes WHERE reserva_id = ?");
+    $stmt->execute([$orderId]);
+
+    // Luego eliminar la reserva
     $stmt = $pdo->prepare("DELETE FROM reservas WHERE id = ?");
     $stmt->execute([$orderId]);
     return $stmt->rowCount() > 0;
 }
 
 /**
- * Guarda una orden en la BD (misma lógica que sync.php)
+ * Guarda una orden en la BD (soporta múltiples viajes por orden)
  */
 function saveOrderToDB($pdo, $order)
 {
-    // Función para buscar metadatos
-    $meta = function ($key) use ($order) {
+    // Función para buscar metadatos en array
+    $findMeta = function ($metaArray, $key) {
         $clean = strtolower(preg_replace('/[^a-z0-9]/i', '', $key));
-
-        // Buscar en meta_data principal
-        if (isset($order['meta_data'])) {
-            foreach ($order['meta_data'] as $m) {
-                $mClean = strtolower(preg_replace('/[^a-z0-9]/i', '', $m['key'] ?? ''));
-                if ($mClean === $clean)
-                    return $m['value'];
+        foreach ($metaArray as $m) {
+            $mClean = strtolower(preg_replace('/[^a-z0-9]/i', '', $m['key'] ?? ''));
+            $dClean = strtolower(preg_replace('/[^a-z0-9]/i', '', $m['display_key'] ?? ''));
+            if ($mClean === $clean || $dClean === $clean) {
+                return $m['value'] ?? $m['display_value'] ?? null;
             }
         }
-
-        // Buscar en line_items meta_data
-        if (isset($order['line_items'][0]['meta_data'])) {
-            foreach ($order['line_items'][0]['meta_data'] as $m) {
-                $mClean = strtolower(preg_replace('/[^a-z0-9]/i', '', $m['key'] ?? ''));
-                $dClean = strtolower(preg_replace('/[^a-z0-9]/i', '', $m['display_key'] ?? ''));
-                if ($mClean === $clean || $dClean === $clean)
-                    return $m['value'];
-            }
-        }
-
         return null;
+    };
+
+    // Función para buscar en meta_data de la orden
+    $orderMeta = function ($key) use ($order, $findMeta) {
+        return $findMeta($order['meta_data'] ?? [], $key);
     };
 
     // Función para parsear fecha
@@ -208,6 +205,19 @@ function saveOrderToDB($pdo, $order)
         return null;
     };
 
+    // Función para parsear hora
+    $parseTime = function ($timeStr) {
+        if (!$timeStr)
+            return null;
+        // Limpiar y normalizar
+        $timeStr = trim($timeStr);
+        // Si ya está en formato HH:MM
+        if (preg_match('/^(\d{1,2}):(\d{2})/', $timeStr, $matches)) {
+            return str_pad($matches[1], 2, '0', STR_PAD_LEFT) . ':' . $matches[2] . ':00';
+        }
+        return null;
+    };
+
     $billing = $order['billing'] ?? [];
     $shipping = $order['shipping'] ?? [];
 
@@ -215,12 +225,9 @@ function saveOrderToDB($pdo, $order)
     $direccion = $billing['address_1'] ?? '';
     if (empty($direccion))
         $direccion = $shipping['address_1'] ?? '';
-    if (empty($direccion))
-        $direccion = $meta('_shipping_address_1');
-    if (empty($direccion))
-        $direccion = $meta('_billing_address_1');
 
-    $data = [
+    // 1. Guardar/actualizar la reserva (sin campos de viaje individuales)
+    $reservaData = [
         'id' => $order['id'],
         'status' => $order['status'],
         'date_created' => $order['date_created'],
@@ -229,23 +236,6 @@ function saveOrderToDB($pdo, $order)
         'cliente_telefono' => $billing['phone'] ?? '',
         'cliente_pais' => $billing['country'] ?? '',
         'cliente_direccion' => $direccion ?? '',
-        'tipo_viaje' => $meta('- Type of Trip'),
-        'pasajeros' => intval($meta('Passengers')) ?: 1,
-        'hotel_nombre' => $order['line_items'][0]['name'] ?? '',
-        'llegada_fecha' => $parseDate($meta('- Arrival Date')),
-        'llegada_hora' => $meta('- Arrival Time'),
-        'llegada_vuelo' => $meta('- Arrival Flight Number'),
-        'llegada_chofer' => $meta('chofer_llegada'),
-        'llegada_subchofer' => $meta('subchofer_llegada'),
-        'llegada_nota_choferes' => $meta('nota_choferes_llegada'),
-        'llegada_notas_internas' => $meta('notas_internas_llegada'),
-        'salida_fecha' => $parseDate($meta('- Departure Date')),
-        'salida_hora' => $meta('- Pick-up Time at Hotel'),
-        'salida_vuelo' => $meta('- Departure Flight Number'),
-        'salida_chofer' => $meta('chofer_salida'),
-        'salida_subchofer' => $meta('subchofer_salida'),
-        'salida_nota_choferes' => $meta('nota_choferes_ida'),
-        'salida_notas_internas' => $meta('notas_internas_salida'),
         'metodo_pago' => $order['payment_method_title'] ?? '',
         'subtotal' => floatval(array_sum(array_column($order['line_items'] ?? [], 'subtotal'))),
         'cargos_adicionales' => floatval(array_sum(array_column($order['fee_lines'] ?? [], 'total'))),
@@ -255,60 +245,132 @@ function saveOrderToDB($pdo, $order)
         'raw_data' => json_encode($order)
     ];
 
-    $sql = "
-        INSERT INTO reservas (id, status, date_created, cliente_nombre, cliente_email, cliente_telefono, cliente_pais, cliente_direccion,
-            tipo_viaje, pasajeros, hotel_nombre, llegada_fecha, llegada_hora, llegada_vuelo, llegada_chofer, llegada_subchofer,
-            llegada_nota_choferes, llegada_notas_internas, salida_fecha, salida_hora, salida_vuelo, salida_chofer, salida_subchofer,
-            salida_nota_choferes, salida_notas_internas, metodo_pago, subtotal, cargos_adicionales, impuestos, descuentos, total, raw_data)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    $sqlReserva = "
+        INSERT INTO reservas (id, status, date_created, cliente_nombre, cliente_email, cliente_telefono, 
+            cliente_pais, cliente_direccion, metodo_pago, subtotal, cargos_adicionales, impuestos, 
+            descuentos, total, raw_data)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
             status = VALUES(status), cliente_nombre = VALUES(cliente_nombre), cliente_email = VALUES(cliente_email),
-            cliente_telefono = VALUES(cliente_telefono), cliente_pais = VALUES(cliente_pais), cliente_direccion = VALUES(cliente_direccion),
-            tipo_viaje = VALUES(tipo_viaje), pasajeros = VALUES(pasajeros), hotel_nombre = VALUES(hotel_nombre),
-            llegada_fecha = VALUES(llegada_fecha), llegada_hora = VALUES(llegada_hora), llegada_vuelo = VALUES(llegada_vuelo),
-            llegada_chofer = VALUES(llegada_chofer), llegada_subchofer = VALUES(llegada_subchofer),
-            llegada_nota_choferes = VALUES(llegada_nota_choferes), llegada_notas_internas = VALUES(llegada_notas_internas),
-            salida_fecha = VALUES(salida_fecha), salida_hora = VALUES(salida_hora), salida_vuelo = VALUES(salida_vuelo),
-            salida_chofer = VALUES(salida_chofer), salida_subchofer = VALUES(salida_subchofer),
-            salida_nota_choferes = VALUES(salida_nota_choferes), salida_notas_internas = VALUES(salida_notas_internas),
-            metodo_pago = VALUES(metodo_pago), subtotal = VALUES(subtotal), cargos_adicionales = VALUES(cargos_adicionales),
-            impuestos = VALUES(impuestos), descuentos = VALUES(descuentos), total = VALUES(total), raw_data = VALUES(raw_data)
+            cliente_telefono = VALUES(cliente_telefono), cliente_pais = VALUES(cliente_pais), 
+            cliente_direccion = VALUES(cliente_direccion), metodo_pago = VALUES(metodo_pago), 
+            subtotal = VALUES(subtotal), cargos_adicionales = VALUES(cargos_adicionales),
+            impuestos = VALUES(impuestos), descuentos = VALUES(descuentos), total = VALUES(total), 
+            raw_data = VALUES(raw_data)
+    ";
+
+    $stmt = $pdo->prepare($sqlReserva);
+    $stmt->execute([
+        $reservaData['id'],
+        $reservaData['status'],
+        $reservaData['date_created'],
+        $reservaData['cliente_nombre'],
+        $reservaData['cliente_email'],
+        $reservaData['cliente_telefono'],
+        $reservaData['cliente_pais'],
+        $reservaData['cliente_direccion'],
+        $reservaData['metodo_pago'],
+        $reservaData['subtotal'],
+        $reservaData['cargos_adicionales'],
+        $reservaData['impuestos'],
+        $reservaData['descuentos'],
+        $reservaData['total'],
+        $reservaData['raw_data']
+    ]);
+
+    // 2. Procesar cada line_item y crear viajes
+    $lineItems = $order['line_items'] ?? [];
+
+    foreach ($lineItems as $itemIndex => $item) {
+        $itemMeta = $item['meta_data'] ?? [];
+        $hotelName = $item['name'] ?? 'Hotel no especificado';
+
+        // Determinar tipo de viaje
+        $tripType = $findMeta($itemMeta, '- Type of Trip') ?? $findMeta($itemMeta, 'Type of Trip') ?? '';
+        $tripTypeLower = strtolower($tripType);
+
+        // Extraer pasajeros
+        $paxStr = $findMeta($itemMeta, 'Passengers') ?? '1';
+        $pax = intval(preg_replace('/[^0-9]/', '', $paxStr)) ?: 1;
+
+        // Determinar si tiene llegada y/o salida
+        $hasArrival = strpos($tripTypeLower, 'hotel') !== false || strpos($tripTypeLower, 'roundtrip') !== false || strpos($tripTypeLower, 'round trip') !== false;
+        $hasDeparture = strpos($tripTypeLower, 'airport') !== false || strpos($tripTypeLower, 'roundtrip') !== false || strpos($tripTypeLower, 'round trip') !== false;
+
+        // Si no se detecta el tipo, intentar por las fechas
+        $arrivalDate = $parseDate($findMeta($itemMeta, '- Arrival Date'));
+        $departureDate = $parseDate($findMeta($itemMeta, '- Departure Date'));
+
+        if ($arrivalDate && !$hasArrival)
+            $hasArrival = true;
+        if ($departureDate && !$hasDeparture)
+            $hasDeparture = true;
+
+        // Crear viaje de llegada
+        if ($hasArrival && $arrivalDate) {
+            $arrivalTime = $parseTime($findMeta($itemMeta, '- Arrival Time') ?? $findMeta($itemMeta, 'Arrival Time'));
+            $arrivalFlight = $findMeta($itemMeta, '- Arrival Flight Number') ?? $findMeta($itemMeta, 'Arrival Flight');
+
+            saveTrip($pdo, [
+                'reserva_id' => $order['id'],
+                'item_index' => $itemIndex,
+                'tipo' => 'llegada',
+                'fecha' => $arrivalDate,
+                'hora' => $arrivalTime,
+                'vuelo' => $arrivalFlight,
+                'pax' => $pax,
+                'hotel' => $hotelName
+            ]);
+        }
+
+        // Crear viaje de salida
+        if ($hasDeparture && $departureDate) {
+            $departureTime = $parseTime($findMeta($itemMeta, '- Pick-up Time at Hotel') ?? $findMeta($itemMeta, 'Pick up Time'));
+            $departureFlight = $findMeta($itemMeta, '- Departure Flight Number') ?? $findMeta($itemMeta, 'Departure Flight');
+
+            // Para roundtrip, usar índice diferente para la salida
+            $tripItemIndex = ($hasArrival && $arrivalDate) ? $itemIndex + 1000 : $itemIndex;
+
+            saveTrip($pdo, [
+                'reserva_id' => $order['id'],
+                'item_index' => $tripItemIndex,
+                'tipo' => 'salida',
+                'fecha' => $departureDate,
+                'hora' => $departureTime,
+                'vuelo' => $departureFlight,
+                'pax' => $pax,
+                'hotel' => $hotelName
+            ]);
+        }
+    }
+}
+
+/**
+ * Guarda un viaje individual en la tabla viajes
+ */
+function saveTrip($pdo, $data)
+{
+    $sql = "
+        INSERT INTO viajes (reserva_id, item_index, tipo, fecha, hora, vuelo, pax, hotel)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+            fecha = VALUES(fecha),
+            hora = VALUES(hora),
+            vuelo = VALUES(vuelo),
+            pax = VALUES(pax),
+            hotel = VALUES(hotel)
     ";
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute([
-        $data['id'],
-        $data['status'],
-        $data['date_created'],
-        $data['cliente_nombre'],
-        $data['cliente_email'],
-        $data['cliente_telefono'],
-        $data['cliente_pais'],
-        $data['cliente_direccion'],
-        $data['tipo_viaje'],
-        $data['pasajeros'],
-        $data['hotel_nombre'],
-        $data['llegada_fecha'],
-        $data['llegada_hora'],
-        $data['llegada_vuelo'],
-        $data['llegada_chofer'],
-        $data['llegada_subchofer'],
-        $data['llegada_nota_choferes'],
-        $data['llegada_notas_internas'],
-        $data['salida_fecha'],
-        $data['salida_hora'],
-        $data['salida_vuelo'],
-        $data['salida_chofer'],
-        $data['salida_subchofer'],
-        $data['salida_nota_choferes'],
-        $data['salida_notas_internas'],
-        $data['metodo_pago'],
-        $data['subtotal'],
-        $data['cargos_adicionales'],
-        $data['impuestos'],
-        $data['descuentos'],
-        $data['total'],
-        $data['raw_data']
+        $data['reserva_id'],
+        $data['item_index'],
+        $data['tipo'],
+        $data['fecha'],
+        $data['hora'],
+        $data['vuelo'],
+        $data['pax'],
+        $data['hotel']
     ]);
 }
 ?>

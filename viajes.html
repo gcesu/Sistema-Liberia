@@ -1380,6 +1380,7 @@
   <script>
     // API Proxy - Las credenciales están protegidas en el servidor
     const API_PROXY = "api/reservas.php";
+    const VIAJES_API = "api/viajes_api.php";
 
     // CALCULAR FECHA DE INICIO (7 meses atrás)
     const startDate = new Date();
@@ -1602,6 +1603,8 @@
     let currentTripOrder = null;
     let currentTripIsArrival = false;
     let currentTripStatusKey = null;
+    let currentViajeId = null;      // ID del viaje en la tabla viajes
+    let currentItemIndex = null;    // item_index del viaje
     let tripEditingSections = { passenger: false, logistics: false };
     let tripOriginalValues = {};
     let datePicker;
@@ -1797,89 +1800,141 @@
 
     function processBatch(orders) {
       const batchTrips = [];
-      const ARRIVAL_KEYS = ["- Arrival Date"];
-      const ARRIVAL_TIME_KEYS = ["- Arrival Time", "Arrival Time"];
-      const ARRIVAL_FLIGHT_KEYS = [
-        "- Arrival Flight Number",
-        "Arrival Flight",
-      ];
-      const DEPARTURE_KEYS = ["- Departure Date"];
-      const DEPARTURE_TIME_KEYS = ["- Pick-up Time at Hotel", "Pick up Time"];
-      const DEPARTURE_FLIGHT_KEYS = [
-        "- Departure Flight Number",
-        "Departure Flight",
-      ];
 
       orders.forEach((order) => {
         const clientName =
           `${order.billing.first_name} ${order.billing.last_name}`.trim();
-        const hotel = order.line_items?.[0]?.name || "Hotel no especificado";
         const status = order.status;
-        const pax = resolvePax(order);
         const email = order.billing?.email || "";
         const phone = order.billing?.phone || "";
 
-        const arrivalDateStr = findMetaValue(order, ARRIVAL_KEYS);
-        if (arrivalDateStr) {
-          const parsedDate = parseFlexibleDate(arrivalDateStr);
-          if (parsedDate) {
-            const rawTime = findMetaValue(order, ARRIVAL_TIME_KEYS);
-            const normalizedTime = normalizeTime(rawTime);
-            const fullDate = new Date(parsedDate);
-            const [th, tm] =
-              normalizedTime !== "--:--" ? normalizedTime.split(":") : [0, 0];
-            fullDate.setHours(th, tm);
-            const tripStatus = findMetaValue(order, ["status_llegada"]) || "";
+        // NUEVO: Usar array de viajes de la API si está disponible
+        if (order.viajes && order.viajes.length > 0) {
+          order.viajes.forEach((viaje) => {
+            const parsedDate = parseFlexibleDate(viaje.fecha);
+            if (parsedDate) {
+              const normalizedTime = normalizeTime(viaje.hora);
+              const fullDate = new Date(parsedDate);
+              const [th, tm] =
+                normalizedTime !== "--:--" ? normalizedTime.split(":") : [0, 0];
+              fullDate.setHours(th, tm);
 
-            batchTrips.push({
-              id: order.id,
-              order_status: status,
-              trip_status: tripStatus,
-              client: clientName,
-              type: "arrival",
-              dateStr: formatDateStandard(parsedDate),
-              time: formatTime12H(rawTime),
-              route: `Aeropuerto LIR ➝ ${hotel}`,
-              flight: findMetaValue(order, ARRIVAL_FLIGHT_KEYS) || "--",
-              raw_date: fullDate,
-              hotel,
-              pax,
-              email,
-              phone,
-              order,
-            });
+              const isArrival = viaje.tipo === "llegada";
+              const hotel = viaje.hotel || "Hotel no especificado";
+
+              batchTrips.push({
+                id: order.id,
+                viaje_id: viaje.id,
+                item_index: viaje.item_index,
+                order_status: status,
+                trip_status: viaje.status || "",
+                client: clientName,
+                type: isArrival ? "arrival" : "departure",
+                dateStr: formatDateStandard(parsedDate),
+                time: formatTime12H(viaje.hora),
+                route: isArrival
+                  ? `Aeropuerto LIR ➝ ${hotel}`
+                  : `${hotel} ➝ Aeropuerto LIR`,
+                flight: viaje.vuelo || "--",
+                raw_date: fullDate,
+                hotel,
+                pax: viaje.pax || 1,
+                email,
+                phone,
+                order,
+                chofer: viaje.chofer || "",
+                subchofer: viaje.subchofer || "",
+                nota_choferes: viaje.nota_choferes || "",
+                notas_internas: viaje.notas_internas || "",
+              });
+            }
+          });
+        } else {
+          // FALLBACK: Extracción legacy para órdenes antiguas sin viajes en BD
+          const hotel = order.line_items?.[0]?.name || "Hotel no especificado";
+          const pax = resolvePax(order);
+
+          const ARRIVAL_KEYS = ["- Arrival Date"];
+          const ARRIVAL_TIME_KEYS = ["- Arrival Time", "Arrival Time"];
+          const ARRIVAL_FLIGHT_KEYS = ["- Arrival Flight Number", "Arrival Flight"];
+          const DEPARTURE_KEYS = ["- Departure Date"];
+          const DEPARTURE_TIME_KEYS = ["- Pick-up Time at Hotel", "Pick up Time"];
+          const DEPARTURE_FLIGHT_KEYS = ["- Departure Flight Number", "Departure Flight"];
+
+          const arrivalDateStr = findMetaValue(order, ARRIVAL_KEYS);
+          if (arrivalDateStr) {
+            const parsedDate = parseFlexibleDate(arrivalDateStr);
+            if (parsedDate) {
+              const rawTime = findMetaValue(order, ARRIVAL_TIME_KEYS);
+              const normalizedTime = normalizeTime(rawTime);
+              const fullDate = new Date(parsedDate);
+              const [th, tm] =
+                normalizedTime !== "--:--" ? normalizedTime.split(":") : [0, 0];
+              fullDate.setHours(th, tm);
+              const tripStatus = findMetaValue(order, ["status_llegada"]) || "";
+
+              batchTrips.push({
+                id: order.id,
+                viaje_id: null,
+                item_index: 0,
+                order_status: status,
+                trip_status: tripStatus,
+                client: clientName,
+                type: "arrival",
+                dateStr: formatDateStandard(parsedDate),
+                time: formatTime12H(rawTime),
+                route: `Aeropuerto LIR ➝ ${hotel}`,
+                flight: findMetaValue(order, ARRIVAL_FLIGHT_KEYS) || "--",
+                raw_date: fullDate,
+                hotel,
+                pax,
+                email,
+                phone,
+                order,
+                chofer: findMetaValue(order, ["chofer_llegada"]) || "",
+                subchofer: findMetaValue(order, ["subchofer_llegada"]) || "",
+                nota_choferes: findMetaValue(order, ["nota_choferes_llegada"]) || "",
+                notas_internas: findMetaValue(order, ["notas_internas_llegada"]) || "",
+              });
+            }
           }
-        }
 
-        const departureDateStr = findMetaValue(order, DEPARTURE_KEYS);
-        if (departureDateStr) {
-          const parsedDate = parseFlexibleDate(departureDateStr);
-          if (parsedDate) {
-            const rawTime = findMetaValue(order, DEPARTURE_TIME_KEYS);
-            const normalizedTime = normalizeTime(rawTime);
-            const fullDate = new Date(parsedDate);
-            const [th, tm] =
-              normalizedTime !== "--:--" ? normalizedTime.split(":") : [0, 0];
-            fullDate.setHours(th, tm);
-            const tripStatus = findMetaValue(order, ["status_salida"]) || "";
+          const departureDateStr = findMetaValue(order, DEPARTURE_KEYS);
+          if (departureDateStr) {
+            const parsedDate = parseFlexibleDate(departureDateStr);
+            if (parsedDate) {
+              const rawTime = findMetaValue(order, DEPARTURE_TIME_KEYS);
+              const normalizedTime = normalizeTime(rawTime);
+              const fullDate = new Date(parsedDate);
+              const [th, tm] =
+                normalizedTime !== "--:--" ? normalizedTime.split(":") : [0, 0];
+              fullDate.setHours(th, tm);
+              const tripStatus = findMetaValue(order, ["status_salida"]) || "";
 
-            batchTrips.push({
-              id: order.id,
-              order_status: status,
-              trip_status: tripStatus,
-              client: clientName,
-              type: "departure",
-              dateStr: formatDateStandard(parsedDate),
-              time: formatTime12H(rawTime),
-              route: `${hotel} ➝ Aeropuerto LIR`,
-              flight: findMetaValue(order, DEPARTURE_FLIGHT_KEYS) || "--",
-              raw_date: fullDate,
-              hotel,
-              pax,
-              email,
-              phone,
-              order,
-            });
+              batchTrips.push({
+                id: order.id,
+                viaje_id: null,
+                item_index: 1,
+                order_status: status,
+                trip_status: tripStatus,
+                client: clientName,
+                type: "departure",
+                dateStr: formatDateStandard(parsedDate),
+                time: formatTime12H(rawTime),
+                route: `${hotel} ➝ Aeropuerto LIR`,
+                flight: findMetaValue(order, DEPARTURE_FLIGHT_KEYS) || "--",
+                raw_date: fullDate,
+                hotel,
+                pax,
+                email,
+                phone,
+                order,
+                chofer: findMetaValue(order, ["chofer_salida"]) || "",
+                subchofer: findMetaValue(order, ["subchofer_salida"]) || "",
+                nota_choferes: findMetaValue(order, ["nota_choferes_ida"]) || "",
+                notas_internas: findMetaValue(order, ["notas_internas_salida"]) || "",
+              });
+            }
           }
         }
       });
@@ -2157,13 +2212,16 @@
       currentTripOrder = order;
       currentTripIsArrival = isArrival;
       currentTripStatusKey = isArrival ? "status_llegada" : "status_salida";
+      currentViajeId = trip.viaje_id || null;
+      currentItemIndex = trip.item_index !== undefined ? trip.item_index : null;
       const hotel = trip.hotel || "Hotel no especificado";
       const originName = isArrival ? "Aeropuerto LIR" : hotel;
       const destName = isArrival ? hotel : "Aeropuerto LIR";
       const contactParts = [trip.email, trip.phone].filter(Boolean);
 
       const statusKeyViaje = isArrival ? "status_llegada" : "status_salida";
-      const statusViajeVal = findMetaValue(order, [statusKeyViaje]) || "";
+      // NUEVO: Usar trip_status primero (de tabla viajes), fallback a metadata
+      const statusViajeVal = trip.trip_status || findMetaValue(order, [statusKeyViaje]) || "";
       const statusReservaVal = trip.order_status;
 
       tripEditingSections = { passenger: false, logistics: false };
@@ -2365,10 +2423,11 @@
         ? "notas_internas_llegada"
         : "notas_internas_salida";
 
-      const driverVal = findMetaValue(order, [driverKey]) || "";
-      const codriverVal = findMetaValue(order, [codriverKey]) || "";
-      const notesVal = findMetaValue(order, [driverNotesKey]) || "";
-      const internalVal = findMetaValue(order, [internalNotesKey]) || "";
+      // NUEVO: Usar datos del trip primero (de tabla viajes), fallback a metadata
+      const driverVal = trip.chofer || trip.driver || findMetaValue(order, [driverKey]) || "";
+      const codriverVal = trip.subchofer || trip.codriver || findMetaValue(order, [codriverKey]) || "";
+      const notesVal = trip.nota_choferes || trip.driverNotes || findMetaValue(order, [driverNotesKey]) || "";
+      const internalVal = trip.notas_internas || trip.internalNotes || findMetaValue(order, [internalNotesKey]) || "";
 
       tripOriginalValues[driverKey] = driverVal;
       tripOriginalValues[codriverKey] = codriverVal;
@@ -2436,9 +2495,8 @@
 
 
 
-      const statusViajeValFinal =
-        findMetaValue(order, [statusKeyViaje]) || "";
-      statusViajeSelect.value = statusViajeValFinal;
+      // CORREGIDO: Usar statusViajeVal ya calculado (incluye trip.trip_status)
+      statusViajeSelect.value = statusViajeVal;
 
       // Mostrar el estatus del viaje
       tripStatusViajeUpdateDisplay();
@@ -2449,8 +2507,8 @@
         .getElementById("trip-status-viaje-edit")
         .classList.add("hidden");
 
-      // Renderizar resumen financiero
-      renderTripFinancialSummary(order);
+      // Renderizar resumen financiero (con el viaje actual para cálculo correcto)
+      renderTripFinancialSummary(order, trip);
 
       document.getElementById("trip-modal").classList.remove("hidden");
     }
@@ -2460,22 +2518,56 @@
       document.body.style.overflow = "";
     }
 
-    function renderTripFinancialSummary(order) {
+    function renderTripFinancialSummary(order, trip = null) {
       const container = document.getElementById('trip-payment-breakdown');
       container.innerHTML = '';
 
-      // Detectar si es round-trip (tiene tanto llegada como salida)
-      const hasArrival = !!findMetaValue(order, ["- Arrival Date"]);
-      const hasDeparture = !!findMetaValue(order, ["- Departure Date"]);
-      const isRoundTrip = hasArrival && hasDeparture;
+      // Si tenemos información del viaje específico, buscar el line_item correspondiente
+      let tripSubtotal = null;
+      let isRoundTrip = false;
+      let tripLineItem = null;
+
+      if (trip && trip.item_index !== undefined && order.line_items) {
+        // Buscar el line_item que corresponde a este viaje
+        tripLineItem = order.line_items.find((li, idx) => {
+          // El line_item index puede corresponder directamente o vía viaje_id
+          if (trip.viaje_id && li.id === trip.viaje_id) return true;
+          // O por item_index (para viajes con item_index < 1000)
+          if (trip.item_index < 1000 && idx === trip.item_index) return true;
+          // Para roundtrip departures (item_index >= 1000), buscar el original
+          if (trip.item_index >= 1000 && idx === (trip.item_index - 1000)) return true;
+          return false;
+        });
+
+        if (tripLineItem) {
+          tripSubtotal = parseFloat(tripLineItem.subtotal || 0);
+        }
+
+        // Detectar si este viaje es parte de un roundtrip
+        // Un roundtrip tiene item_index >= 1000 para la salida (mismo line_item que la llegada)
+        if (trip.item_index >= 1000) {
+          isRoundTrip = true;
+        } else if (order.viajes && order.viajes.length > 0) {
+          // Verificar si hay otro viaje con item_index = trip.item_index + 1000 (la salida del roundtrip)
+          isRoundTrip = order.viajes.some(v => v.item_index === trip.item_index + 1000);
+        }
+      } else {
+        // Fallback: detectar roundtrip por metadata legacy
+        const hasArrival = !!findMetaValue(order, ["- Arrival Date"]);
+        const hasDeparture = !!findMetaValue(order, ["- Departure Date"]);
+        isRoundTrip = hasArrival && hasDeparture;
+      }
+
       const divisor = isRoundTrip ? 2 : 1;
 
-      const addRow = (label, value, isBold = false, isAccent = false, isDiscount = false) => {
+      const addRow = (label, value, isBold = false, isAccent = false, isDiscount = false, skipDivisor = false) => {
         let numVal = parseFloat(value);
         if (value === undefined || value === null || value === "" || isNaN(numVal) || numVal === 0) return;
 
-        // Dividir por 2 si es round-trip
-        numVal = numVal / divisor;
+        // Dividir por 2 solo si es round-trip y no se omite el divisor
+        if (!skipDivisor) {
+          numVal = numVal / divisor;
+        }
 
         const formattedValue = isDiscount ? `-$${Math.abs(numVal).toFixed(2)}` : `$${numVal.toFixed(2)}`;
         const colorClass = isDiscount ? 'text-green-600' : (isAccent ? 'text-red-500' : 'text-[#002a3f]');
@@ -2495,22 +2587,47 @@
         container.innerHTML += `<div class="text-[10px] uppercase font-black text-gray-400 mb-4 border-b pb-2">Método: ${order.payment_method_title}</div>`;
       }
 
-      const subtotal = (order.line_items || []).reduce((acc, item) => acc + parseFloat(item.subtotal || 0), 0);
-      addRow("Subtotal Servicios", subtotal);
+      // Usar el subtotal del line_item específico si está disponible
+      if (tripSubtotal !== null) {
+        addRow("Subtotal Este Servicio", tripSubtotal);
+      } else {
+        const subtotal = (order.line_items || []).reduce((acc, item) => acc + parseFloat(item.subtotal || 0), 0);
+        addRow("Subtotal Servicios", subtotal);
+      }
+
+      // Proporcionar cargos adicionales e impuestos entre todos los viajes
+      const totalViajes = order.viajes?.length || order.line_items?.length || 1;
+      const proportion = 1 / totalViajes;
 
       if (order.fee_lines && order.fee_lines.length > 0) {
-        order.fee_lines.forEach(fee => addRow(fee.name || 'Cargo Adicional', fee.total));
+        order.fee_lines.forEach(fee => {
+          // Dividir el cargo total entre todos los viajes
+          const feeAmount = parseFloat(fee.total || 0) * proportion;
+          addRow(fee.name || 'Cargo Adicional', feeAmount, false, false, false, true); // true = no aplicar divisor
+        });
       }
 
       if (order.tax_lines && order.tax_lines.length > 0) {
-        order.tax_lines.forEach(tax => addRow(tax.label || 'Impuesto', tax.tax_total));
+        order.tax_lines.forEach(tax => {
+          const taxAmount = parseFloat(tax.tax_total || 0) * proportion;
+          addRow(tax.label || 'Impuesto', taxAmount, false, false, false, true);
+        });
       }
 
       if (order.coupon_lines && order.coupon_lines.length > 0) {
-        order.coupon_lines.forEach(coupon => addRow(`Cupón: ${coupon.code}`, coupon.discount, false, false, true));
+        order.coupon_lines.forEach(coupon => {
+          const couponAmount = parseFloat(coupon.discount || 0) * proportion;
+          addRow(`Cupón: ${coupon.code}`, couponAmount, false, false, true, true);
+        });
       }
 
-      addRow("Total Este Viaje", order.total, true);
+      // Total de este viaje
+      if (tripSubtotal !== null) {
+        const tripTotal = tripSubtotal / divisor;
+        addRow("Total Este Viaje", tripTotal * divisor, true); // El divisor ya se aplica en addRow
+      } else {
+        addRow("Total Este Viaje", order.total, true);
+      }
     }
 
     function tripToggleStatusEditQuick() {
@@ -2832,6 +2949,31 @@
       };
 
       try {
+        // NUEVO: Si hay viaje_id, actualizar primero la tabla viajes
+        if (currentViajeId) {
+          const viajePayload = {
+            chofer: document.getElementById("trip-input-meta-chofer").value,
+            subchofer: document.getElementById("trip-input-meta-subchofer").value,
+            nota_choferes: document.getElementById("trip-input-meta-nota_choferes").value,
+            notas_internas: document.getElementById("trip-input-meta-notas_internas").value,
+            status: statusViajeVal,
+          };
+
+          const viajeResp = await fetch(
+            `${VIAJES_API}?viaje_id=${currentViajeId}`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(viajePayload),
+            }
+          );
+          if (!viajeResp.ok) {
+            const errData = await viajeResp.json().catch(() => ({}));
+            throw new Error(errData.error || "Error guardando viaje");
+          }
+        }
+
+        // Actualizar reserva (datos del cliente, estatus de orden, privacy settings)
         const resp = await fetch(
           `${API_PROXY}?order_id=${currentTripOrder.id}`,
           {
@@ -2843,10 +2985,20 @@
         if (!resp.ok) throw new Error("Error guardando cambios");
         const updated = await resp.json();
 
+        // Valores guardados
+        const savedDriver = document.getElementById("trip-input-meta-chofer").value;
+        const savedCodriver = document.getElementById("trip-input-meta-subchofer").value;
+        const savedDriverNotes = document.getElementById("trip-input-meta-nota_choferes").value;
+        const savedInternalNotes = document.getElementById("trip-input-meta-notas_internas").value;
+
         // Actualizar en allTrips
-        const allTripIndex = allTrips.findIndex(
-          (t) => t.id === currentTripId,
-        );
+        const allTripIndex = allTrips.findIndex((t) => {
+          if (currentViajeId && t.viaje_id) return t.viaje_id === currentViajeId;
+          if (currentItemIndex !== null && t.item_index !== undefined) {
+            return t.id === currentTripId && t.item_index === currentItemIndex;
+          }
+          return t.id === currentTripId && t.type === (currentTripIsArrival ? 'arrival' : 'departure');
+        });
         if (allTripIndex !== -1) {
           allTrips[allTripIndex].order = updated;
           allTrips[allTripIndex].client =
@@ -2855,11 +3007,25 @@
           allTrips[allTripIndex].phone = updated.billing.phone || "";
           allTrips[allTripIndex].order_status = updated.status;
           allTrips[allTripIndex].trip_status = statusViajeVal;
+          // NUEVO: Actualizar datos del viaje
+          allTrips[allTripIndex].chofer = savedDriver;
+          allTrips[allTripIndex].subchofer = savedCodriver;
+          allTrips[allTripIndex].nota_choferes = savedDriverNotes;
+          allTrips[allTripIndex].notas_internas = savedInternalNotes;
         }
 
-        const tripIndex = currentFilteredTrips.findIndex(
-          (t) => t.id === currentTripId,
-        );
+        const tripIndex = currentFilteredTrips.findIndex((t) => {
+          // Para viajes nuevos, usar viaje_id
+          if (currentViajeId && t.viaje_id) {
+            return t.viaje_id === currentViajeId;
+          }
+          // Fallback: id + item_index o id + type
+          if (currentItemIndex !== null && t.item_index !== undefined) {
+            return t.id === currentTripId && t.item_index === currentItemIndex;
+          }
+          // Fallback final: id + tipo
+          return t.id === currentTripId && t.type === (currentTripIsArrival ? 'arrival' : 'departure');
+        });
         if (tripIndex !== -1) {
           // Actualizar el order y reconstruir los campos del trip desde el order actualizado
           currentFilteredTrips[tripIndex].order = updated;
@@ -2869,6 +3035,11 @@
           currentFilteredTrips[tripIndex].phone = updated.billing.phone || "";
           currentFilteredTrips[tripIndex].order_status = updated.status;
           currentFilteredTrips[tripIndex].trip_status = statusViajeVal;
+          // NUEVO: Actualizar datos del viaje
+          currentFilteredTrips[tripIndex].chofer = savedDriver;
+          currentFilteredTrips[tripIndex].subchofer = savedCodriver;
+          currentFilteredTrips[tripIndex].nota_choferes = savedDriverNotes;
+          currentFilteredTrips[tripIndex].notas_internas = savedInternalNotes;
 
           // Re-renderizar tabla
           renderTrips(currentFilteredTrips);

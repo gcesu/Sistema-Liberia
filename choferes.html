@@ -1210,92 +1210,144 @@
             const batchTrips = [];
             orders.forEach(order => {
                 const clientName = `${order.billing.first_name} ${order.billing.last_name}`;
-                const hotel = order.line_items?.[0]?.name || "Hotel no especificado";
-                const pax = resolvePax(order);
                 const email = order.billing?.email || "";
                 const phone = order.billing?.phone || "";
 
-                const arrivalDateStr = findMetaValue(order, ["- Arrival Date"]);
-                if (arrivalDateStr) {
-                    const parsedDate = parseFlexibleDate(arrivalDateStr);
-                    if (parsedDate) {
-                        const rawTime = findMetaValue(order, ["- Arrival Time"]);
-                        const driver = findMetaValue(order, ["chofer_llegada"]) || "";
-                        const tripStatus = (findMetaValue(order, ["status_llegada"]) || "").trim();
-                        const isRoundTrip = !!findMetaValue(order, ["- Arrival Date"]) && !!findMetaValue(order, ["- Departure Date"]);
-                        const tripPrice = parseFloat(order.total || 0) / (isRoundTrip ? 2 : 1);
-                        const hotelManual = findMetaValue(order, ["hotel_manual"]) || '';
+                // Privacidad Financiera (Default: '1' = mostrar)
+                const showFinancieroMeta = findMetaValue(order, ["privacy_show_financiero"]);
+                const showFinanciero = showFinancieroMeta === null || showFinancieroMeta === '' || String(showFinancieroMeta) !== "0";
 
-                        // Privacidad Financiera (Default: '1' = mostrar)
-                        const showFinancieroMeta = findMetaValue(order, ["privacy_show_financiero"]);
-                        const showFinanciero = showFinancieroMeta === null || showFinancieroMeta === '' || String(showFinancieroMeta) !== "0";
+                // NUEVO: Usar array de viajes de la API si está disponible
+                if (order.viajes && order.viajes.length > 0) {
+                    order.viajes.forEach((viaje) => {
+                        const parsedDate = parseFlexibleDate(viaje.fecha);
+                        if (parsedDate) {
+                            const isArrival = viaje.tipo === "llegada";
+                            const hotel = viaje.hotel || "Hotel no especificado";
 
-                        batchTrips.push({
-                            id: order.id,
-                            order_status: order.status,
-                            trip_status: tripStatus,
-                            client: clientName,
-                            type: 'arrival',
-                            dateStr: formatDateStandard(parsedDate),
-                            time: formatTime12H(rawTime),
-                            route: `Aeropuerto LIR ➝ ${hotel}`,
-                            flight: findMetaValue(order, ["- Arrival Flight Number"]) || '--',
-                            raw_date: parsedDate,
-                            driver: driver,
-                            driverNotes: findMetaValue(order, ["nota_choferes_llegada"]) || '',
-                            hotel,
-                            hotelManual,
-                            pax,
-                            email,
-                            phone,
-                            tripPrice,
-                            showFinanciero,
-                            paymentMethod: order.payment_method_title || '--',
-                            order
-                        });
+                            // Buscar el subtotal del line_item correspondiente
+                            let tripPrice = 0;
+                            const originalItemIndex = viaje.item_index >= 1000 ? viaje.item_index - 1000 : viaje.item_index;
+                            if (order.line_items && order.line_items[originalItemIndex]) {
+                                tripPrice = parseFloat(order.line_items[originalItemIndex].subtotal || 0);
+                            }
+                            // Si es roundtrip, dividir el precio entre 2
+                            if (viaje.item_index >= 1000 || order.viajes.some(v => v.item_index === viaje.item_index + 1000)) {
+                                tripPrice = tripPrice / 2;
+                            }
+
+                            batchTrips.push({
+                                id: order.id,
+                                viaje_id: viaje.id,
+                                item_index: viaje.item_index,
+                                order_status: order.status,
+                                trip_status: viaje.status || "",
+                                client: clientName,
+                                type: isArrival ? 'arrival' : 'departure',
+                                dateStr: formatDateStandard(parsedDate),
+                                time: formatTime12H(viaje.hora),
+                                route: isArrival ? `Aeropuerto LIR ➝ ${hotel}` : `${hotel} ➝ Aeropuerto LIR`,
+                                flight: viaje.vuelo || '--',
+                                raw_date: parsedDate,
+                                driver: viaje.chofer || "",
+                                // NUEVO: Agregar campos para resolveAssignment
+                                chofer: viaje.chofer || "",
+                                subchofer: viaje.subchofer || "",
+                                nota_choferes: viaje.nota_choferes || "",
+                                notas_internas: viaje.notas_internas || "",
+                                driverNotes: viaje.nota_choferes || '',
+                                hotel,
+                                hotelManual: '',
+                                pax: viaje.pax || 1,
+                                email,
+                                phone,
+                                tripPrice,
+                                showFinanciero,
+                                paymentMethod: order.payment_method_title || '--',
+                                order
+                            });
+                        }
+                    });
+                } else {
+                    // FALLBACK: Extracción legacy para órdenes antiguas
+                    const hotel = order.line_items?.[0]?.name || "Hotel no especificado";
+                    const pax = resolvePax(order);
+                    const hotelManual = findMetaValue(order, ["hotel_manual"]) || '';
+
+                    const arrivalDateStr = findMetaValue(order, ["- Arrival Date"]);
+                    if (arrivalDateStr) {
+                        const parsedDate = parseFlexibleDate(arrivalDateStr);
+                        if (parsedDate) {
+                            const rawTime = findMetaValue(order, ["- Arrival Time"]);
+                            const driver = findMetaValue(order, ["chofer_llegada"]) || "";
+                            const tripStatus = (findMetaValue(order, ["status_llegada"]) || "").trim();
+                            const isRoundTrip = !!findMetaValue(order, ["- Arrival Date"]) && !!findMetaValue(order, ["- Departure Date"]);
+                            const tripPrice = parseFloat(order.total || 0) / (isRoundTrip ? 2 : 1);
+
+                            batchTrips.push({
+                                id: order.id,
+                                viaje_id: null,
+                                item_index: 0,
+                                order_status: order.status,
+                                trip_status: tripStatus,
+                                client: clientName,
+                                type: 'arrival',
+                                dateStr: formatDateStandard(parsedDate),
+                                time: formatTime12H(rawTime),
+                                route: `Aeropuerto LIR ➝ ${hotel}`,
+                                flight: findMetaValue(order, ["- Arrival Flight Number"]) || '--',
+                                raw_date: parsedDate,
+                                driver: driver,
+                                driverNotes: findMetaValue(order, ["nota_choferes_llegada"]) || '',
+                                hotel,
+                                hotelManual,
+                                pax,
+                                email,
+                                phone,
+                                tripPrice,
+                                showFinanciero,
+                                paymentMethod: order.payment_method_title || '--',
+                                order
+                            });
+                        }
                     }
-                }
 
-                const departureDateStr = findMetaValue(order, ["- Departure Date"]);
-                if (departureDateStr) {
-                    const parsedDate = parseFlexibleDate(departureDateStr);
-                    if (parsedDate) {
-                        const rawTime = findMetaValue(order, ["- Pick-up Time at Hotel"]);
-                        const driver = findMetaValue(order, ["chofer_salida"]) || "";
-                        const tripStatus = (findMetaValue(order, ["status_salida"]) || "").trim();
-                        const isRoundTrip = !!findMetaValue(order, ["- Arrival Date"]) && !!findMetaValue(order, ["- Departure Date"]);
-                        const tripPrice = parseFloat(order.total || 0) / (isRoundTrip ? 2 : 1);
-                        const hotelManual = findMetaValue(order, ["hotel_manual"]) || '';
+                    const departureDateStr = findMetaValue(order, ["- Departure Date"]);
+                    if (departureDateStr) {
+                        const parsedDate = parseFlexibleDate(departureDateStr);
+                        if (parsedDate) {
+                            const rawTime = findMetaValue(order, ["- Pick-up Time at Hotel"]);
+                            const driver = findMetaValue(order, ["chofer_salida"]) || "";
+                            const tripStatus = (findMetaValue(order, ["status_salida"]) || "").trim();
+                            const isRoundTrip = !!findMetaValue(order, ["- Arrival Date"]) && !!findMetaValue(order, ["- Departure Date"]);
+                            const tripPrice = parseFloat(order.total || 0) / (isRoundTrip ? 2 : 1);
 
-                        // Privacidad Financiera
-                        const showFinancieroMeta = findMetaValue(order, ["privacy_show_financiero"]);
-                        const showFinanciero = showFinancieroMeta === null || showFinancieroMeta === '' || String(showFinancieroMeta) !== "0";
-
-                        batchTrips.push({
-                            id: order.id,
-                            order_status: order.status,
-                            trip_status: tripStatus,
-                            client: clientName,
-                            type: 'departure',
-                            dateStr: formatDateStandard(parsedDate),
-                            time: formatTime12H(rawTime),
-                            route: `${hotel} ➝ Aeropuerto LIR`,
-                            flight: findMetaValue(order, ["- Departure Flight Number"]) || '--',
-                            raw_date: parsedDate,
-                            driver: driver,
-                            driverNotes: findMetaValue(order, ["nota_choferes_ida"]) || '',
-                            hotel,
-                            hotelManual,
-                            pax,
-                            email,
-                            phone,
-                            tripPrice,
-                            phone,
-                            tripPrice,
-                            showFinanciero,
-                            paymentMethod: order.payment_method_title || '--',
-                            order
-                        });
+                            batchTrips.push({
+                                id: order.id,
+                                viaje_id: null,
+                                item_index: 1,
+                                order_status: order.status,
+                                trip_status: tripStatus,
+                                client: clientName,
+                                type: 'departure',
+                                dateStr: formatDateStandard(parsedDate),
+                                time: formatTime12H(rawTime),
+                                route: `${hotel} ➝ Aeropuerto LIR`,
+                                flight: findMetaValue(order, ["- Departure Flight Number"]) || '--',
+                                raw_date: parsedDate,
+                                driver: driver,
+                                driverNotes: findMetaValue(order, ["nota_choferes_ida"]) || '',
+                                hotel,
+                                hotelManual,
+                                pax,
+                                email,
+                                phone,
+                                tripPrice,
+                                showFinanciero,
+                                paymentMethod: order.payment_method_title || '--',
+                                order
+                            });
+                        }
                     }
                 }
             });
@@ -1320,14 +1372,14 @@
             const codriverKey = isArrival ? 'subchofer_llegada' : 'subchofer_salida';
             const driverNotesKey = isArrival ? 'nota_choferes_llegada' : 'nota_choferes_ida';
             const internalNotesKey = isArrival ? 'notas_internas_llegada' : 'notas_internas_salida';
-            const getVal = (k) => findMetaValue(order, [k]) || 'No asignado';
 
-            return {
-                driver: getVal(driverKey),
-                codriver: getVal(codriverKey),
-                driverNotes: findMetaValue(order, [driverNotesKey]) || 'Sin notas',
-                internalNotes: findMetaValue(order, [internalNotesKey]) || 'Sin notas'
-            };
+            // NUEVO: Usar datos del trip primero (de tabla viajes), fallback a metadata
+            const driver = trip.chofer || trip.driver || findMetaValue(order, [driverKey]) || 'No asignado';
+            const codriver = trip.subchofer || trip.codriver || findMetaValue(order, [codriverKey]) || 'No asignado';
+            const driverNotes = trip.nota_choferes || trip.driverNotes || findMetaValue(order, [driverNotesKey]) || 'Sin notas';
+            const internalNotes = trip.notas_internas || trip.internalNotes || findMetaValue(order, [internalNotesKey]) || 'Sin notas';
+
+            return { driver, codriver, driverNotes, internalNotes };
         }
 
         const COUNTRY_MAP = { 'AF': { name: 'Afganistán' }, 'AL': { name: 'Albania' }, 'DZ': { name: 'Argelia' }, 'AD': { name: 'Andorra' }, 'AO': { name: 'Angola' }, 'AG': { name: 'Antigua y Barbuda' }, 'AR': { name: 'Argentina' }, 'AM': { name: 'Armenia' }, 'AU': { name: 'Australia' }, 'AT': { name: 'Austria' }, 'AZ': { name: 'Azerbaiyán' }, 'BS': { name: 'Bahamas' }, 'BH': { name: 'Baréin' }, 'BD': { name: 'Bangladés' }, 'BB': { name: 'Barbados' }, 'BY': { name: 'Bielorrusia' }, 'BE': { name: 'Bélgica' }, 'BZ': { name: 'Belice' }, 'BJ': { name: 'Benín' }, 'BT': { name: 'Bután' }, 'BO': { name: 'Bolivia' }, 'BA': { name: 'Bosnia y Herzegovina' }, 'BW': { name: 'Botsuana' }, 'BR': { name: 'Brasil' }, 'BN': { name: 'Brunéi' }, 'BG': { name: 'Bulgaria' }, 'BF': { name: 'Burkina Faso' }, 'BI': { name: 'Burundi' }, 'KH': { name: 'Camboya' }, 'CM': { name: 'Camerún' }, 'CA': { name: 'Canadá' }, 'CV': { name: 'Cabo Verde' }, 'CF': { name: 'República Centroafricana' }, 'TD': { name: 'Chad' }, 'CL': { name: 'Chile' }, 'CN': { name: 'China' }, 'CO': { name: 'Colombia' }, 'KM': { name: 'Comoras' }, 'CG': { name: 'Congo' }, 'CD': { name: 'Congo, República Democrática del' }, 'CR': { name: 'Costa Rica' }, 'HR': { name: 'Croacia' }, 'CU': { name: 'Cuba' }, 'CY': { name: 'Chipre' }, 'CZ': { name: 'República Checa' }, 'DK': { name: 'Dinamarca' }, 'DJ': { name: 'Yibuti' }, 'DM': { name: 'Dominica' }, 'DO': { name: 'República Dominicana' }, 'EC': { name: 'Ecuador' }, 'EG': { name: 'Egipto' }, 'SV': { name: 'El Salvador' }, 'GQ': { name: 'Guinea Ecuatorial' }, 'ER': { name: 'Eritrea' }, 'EE': { name: 'Estonia' }, 'ET': { name: 'Etiopía' }, 'FJ': { name: 'Fiyi' }, 'FI': { name: 'Finlandia' }, 'FR': { name: 'Francia' }, 'GA': { name: 'Gabón' }, 'GM': { name: 'Gambia' }, 'GE': { name: 'Georgia' }, 'DE': { name: 'Alemania' }, 'GH': { name: 'Ghana' }, 'GR': { name: 'Grecia' }, 'GD': { name: 'Granada' }, 'GT': { name: 'Guatemala' }, 'GN': { name: 'Guinea' }, 'GW': { name: 'Guinea-Bisáu' }, 'GY': { name: 'Guyana' }, 'HT': { name: 'Haití' }, 'HN': { name: 'Honduras' }, 'HU': { name: 'Hungría' }, 'IS': { name: 'Islandia' }, 'IN': { name: 'India' }, 'ID': { name: 'Indonesia' }, 'IR': { name: 'Irán' }, 'IQ': { name: 'Irak' }, 'IE': { name: 'Irlanda' }, 'IL': { name: 'Israel' }, 'IT': { name: 'Italia' }, 'JM': { name: 'Jamaica' }, 'JP': { name: 'Japón' }, 'JO': { name: 'Jordania' }, 'KZ': { name: 'Kazajistán' }, 'KE': { name: 'Kenia' }, 'KI': { name: 'Kiribati' }, 'KW': { name: 'Kuwait' }, 'KG': { name: 'Kirguistán' }, 'LA': { name: 'Laos' }, 'LV': { name: 'Letonia' }, 'LB': { name: 'Líbano' }, 'LS': { name: 'Lesoto' }, 'LR': { name: 'Liberia' }, 'LY': { name: 'Libia' }, 'LI': { name: 'Liechtenstein' }, 'LT': { name: 'Lituania' }, 'LU': { name: 'Luxemburgo' }, 'MK': { name: 'Macedonia del Norte' }, 'MG': { name: 'Madagascar' }, 'MW': { name: 'Malaui' }, 'MY': { name: 'Malasia' }, 'MV': { name: 'Maldivas' }, 'ML': { name: 'Malí' }, 'MT': { name: 'Malta' }, 'MH': { name: 'Islas Marshall' }, 'MR': { name: 'Mauritania' }, 'MU': { name: 'Mauricio' }, 'MX': { name: 'México' }, 'FM': { name: 'Micronesia' }, 'MD': { name: 'Moldavia' }, 'MC': { name: 'Mónaco' }, 'MN': { name: 'Mongolia' }, 'ME': { name: 'Montenegro' }, 'MA': { name: 'Marruecos' }, 'MZ': { name: 'Mozambique' }, 'MM': { name: 'Myanmar' }, 'NA': { name: 'Namibia' }, 'NR': { name: 'Nauru' }, 'NP': { name: 'Nepal' }, 'NL': { name: 'Países Bajos' }, 'NZ': { name: 'Nueva Zelanda' }, 'NI': { name: 'Nicaragua' }, 'NE': { name: 'Níger' }, 'NG': { name: 'Nigeria' }, 'KP': { name: 'Corea del Norte' }, 'NO': { name: 'Noruega' }, 'OM': { name: 'Omán' }, 'PK': { name: 'Pakistán' }, 'PW': { name: 'Palaos' }, 'PA': { name: 'Panamá' }, 'PG': { name: 'Papúa Nueva Guinea' }, 'PY': { name: 'Paraguay' }, 'PE': { name: 'Perú' }, 'PH': { name: 'Filipinas' }, 'PL': { name: 'Polonia' }, 'PT': { name: 'Portugal' }, 'QA': { name: 'Catar' }, 'RO': { name: 'Rumania' }, 'RU': { name: 'Rusia' }, 'RW': { name: 'Ruanda' }, 'KN': { name: 'San Cristóbal y Nieves' }, 'LC': { name: 'Santa Lucía' }, 'VC': { name: 'San Vicente y las Granadinas' }, 'WS': { name: 'Samoa' }, 'SM': { name: 'San Marino' }, 'ST': { name: 'Santo Tomé y Príncipe' }, 'SA': { name: 'Arabia Saudita' }, 'SN': { name: 'Senegal' }, 'RS': { name: 'Serbia' }, 'SC': { name: 'Seychelles' }, 'SL': { name: 'Sierra Leona' }, 'SG': { name: 'Singapur' }, 'SK': { name: 'Eslovaquia' }, 'SI': { name: 'Eslovenia' }, 'SB': { name: 'Islas Salomón' }, 'SO': { name: 'Somalia' }, 'ZA': { name: 'Sudáfrica' }, 'KR': { name: 'Corea del Sur' }, 'ES': { name: 'España' }, 'LK': { name: 'Sri Lanka' }, 'SD': { name: 'Sudán' }, 'SR': { name: 'Surinam' }, 'SZ': { name: 'Esuatini' }, 'SE': { name: 'Suecia' }, 'CH': { name: 'Suiza' }, 'SY': { name: 'Siria' }, 'TW': { name: 'Taiwán' }, 'TJ': { name: 'Tayikistán' }, 'TZ': { name: 'Tanzania' }, 'TH': { name: 'Tailandia' }, 'TL': { name: 'Timor Oriental' }, 'TG': { name: 'Togo' }, 'TO': { name: 'Tonga' }, 'TT': { name: 'Trinidad y Tobago' }, 'TN': { name: 'Túnez' }, 'TR': { name: 'Turquía' }, 'TM': { name: 'Turkmenistán' }, 'TV': { name: 'Tuvalu' }, 'UG': { name: 'Uganda' }, 'UA': { name: 'Ucrania' }, 'AE': { name: 'Emiratos Árabes Unidos' }, 'GB': { name: 'Reino Unido' }, 'US': { name: 'Estados Unidos' }, 'UY': { name: 'Uruguay' }, 'UZ': { name: 'Uzbekistán' }, 'VU': { name: 'Vanuatu' }, 'VE': { name: 'Venezuela' }, 'VN': { name: 'Vietnam' }, 'YE': { name: 'Yemen' }, 'ZM': { name: 'Zambia' }, 'ZW': { name: 'Zimbabue' } };
