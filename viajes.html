@@ -568,7 +568,7 @@
         top: 0;
         max-height: calc(100vh - 140px);
         overflow-y: auto;
-        align-self: flex-start;
+        align-self: stretch;
       }
 
       .modal-main-content {
@@ -1063,7 +1063,7 @@
 
       <div class="w-full md:w-48 input-group">
         <label>Tipo de Viaje</label>
-        <select id="filter-type" class="custom-input">
+        <select id="filter-type" onchange="applyFilters()" class="custom-input">
           <option value="all">Todos</option>
           <option value="arrival">Solo Llegadas</option>
           <option value="departure">Solo Salidas</option>
@@ -1076,9 +1076,6 @@
           placeholder="Cliente, Hotel, ID..." />
       </div>
 
-      <button onclick="applyFilters()" class="btn-action w-full md:w-auto mt-4 md:mt-0">
-        Filtrar
-      </button>
       <button onclick="resetFilters()" class="text-gray-400 text-xs font-bold uppercase hover:text-red-500 ml-4">
         Limpiar
       </button>
@@ -1183,7 +1180,7 @@
               </div>
 
               <div class="space-y-6">
-                <div class="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                <div class="p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
                   <p class="meta-field-label">📧 Correo</p>
                   <div id="trip-display-email" class="meta-field-value break-all"></div>
                   <input type="email" id="trip-input-email" oninput="tripHandleEmailInput()"
@@ -1196,7 +1193,7 @@
                   </div>
                 </div>
 
-                <div class="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                <div class="p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
                   <p class="meta-field-label">📞 Teléfono</p>
                   <div id="trip-display-phone" class="meta-field-value"></div>
                   <input type="text" id="trip-input-phone" oninput="tripCheckForChanges()" class="hidden input-editable"
@@ -1209,7 +1206,7 @@
                   </div>
                 </div>
 
-                <div class="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                <div class="p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
                   <p class="meta-field-label">🌍 País</p>
                   <div id="trip-display-country" class="meta-field-value"></div>
                   <select id="trip-input-country" onchange="tripCheckForChanges()" class="hidden input-editable">
@@ -1217,7 +1214,7 @@
                   </select>
                 </div>
 
-                <div class="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                <div class="p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
                   <p class="meta-field-label">📍 Dirección</p>
                   <div id="trip-display-address" class="meta-field-value text-sm"></div>
                   <textarea id="trip-input-address" oninput="tripCheckForChanges()" rows="2"
@@ -1343,6 +1340,16 @@
                     </div>
                   </div>
                 </div>
+              </div>
+
+              <!-- Botones de mensaje -->
+              <div class="flex gap-2 mt-4 px-5 pb-5" id="trip-message-buttons">
+                <button onclick="sendTripEmail()"
+                  class="flex-1 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all shadow-sm flex items-center justify-center gap-1">Recordatorio
+                  Correo</button>
+                <button onclick="sendTripWhatsApp()"
+                  class="flex-1 px-3 py-2 bg-green-500 hover:bg-green-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all shadow-sm flex items-center justify-center gap-1">Recordatorio
+                  WhatsApp</button>
               </div>
 
               <!-- Resumen Financiero del Viaje -->
@@ -1605,6 +1612,7 @@
     let currentTripStatusKey = null;
     let currentViajeId = null;      // ID del viaje en la tabla viajes
     let currentItemIndex = null;    // item_index del viaje
+    let currentTrip = null;         // Objeto trip completo para mensajes
     let tripEditingSections = { passenger: false, logistics: false };
     let tripOriginalValues = {};
     let datePicker;
@@ -2067,6 +2075,77 @@
       return `${hours}:${minutes} ${ampm}`;
     }
 
+    function generateTripMessage(trip, order) {
+      const firstName = (order.billing?.first_name || '').trim();
+      const pax = trip.pax || 1;
+      const hotel = trip.hotel || 'el hotel';
+      const vuelo = (trip.flight || '').toUpperCase();
+      const hora = trip.time || '';
+      const fecha = trip.dateStr || '';
+      const totalViajes = order.viajes?.length || order.line_items?.length || 1;
+
+      // Calcular el monto por viaje usando la misma lógica que el resumen financiero
+      let ratePerTrip = '$___';
+      if (order.total) {
+        let tripSubtotal = null;
+        if (trip.item_index !== undefined && order.line_items) {
+          const originalIdx = trip.item_index >= 1000 ? trip.item_index - 1000 : trip.item_index;
+          if (order.line_items[originalIdx]) {
+            tripSubtotal = parseFloat(order.line_items[originalIdx].subtotal || 0);
+          }
+        }
+
+        // Detectar roundtrip
+        let isRoundTrip = false;
+        if (trip.item_index >= 1000) {
+          isRoundTrip = true;
+        } else if (order.viajes && order.viajes.length > 0) {
+          isRoundTrip = order.viajes.some(v => v.item_index === trip.item_index + 1000);
+        }
+
+        const divisor = isRoundTrip ? 2 : 1;
+
+        // Calcular cargos, impuestos y cupones proporcionales (igual que el resumen financiero)
+        const proportion = 1 / totalViajes;
+        let feeSum = 0;
+        let taxSum = 0;
+        let couponSum = 0;
+        if (order.fee_lines) order.fee_lines.forEach(f => feeSum += parseFloat(f.total || 0) * proportion);
+        if (order.tax_lines) order.tax_lines.forEach(t => taxSum += parseFloat(t.tax_total || 0) * proportion);
+        if (order.coupon_lines) order.coupon_lines.forEach(c => couponSum += parseFloat(c.discount || 0) * proportion);
+
+        if (tripSubtotal !== null) {
+          const amount = (tripSubtotal / divisor) + feeSum + taxSum - couponSum;
+          ratePerTrip = `$${amount % 1 === 0 ? amount.toFixed(0) : amount.toFixed(2)}`;
+        } else {
+          const amount = parseFloat(order.total) / totalViajes;
+          ratePerTrip = `$${amount % 1 === 0 ? amount.toFixed(0) : amount.toFixed(2)}`;
+        }
+      }
+      const isArrival = trip.type === 'arrival';
+
+      if (isArrival) {
+        return `Hi ${firstName}. This is M\u00f3nica, with Liberia Airport Shuttle (Costa Rica). We are all set to pick *${pax} people* up at Liberia Airport (LIR) tomorrow, *${fecha}*, on flight ${vuelo} (arriving at ${hora}), to be taken to *${hotel}*. Please confirm that everything is still on.\n\n\u2022The one-way rate is ${ratePerTrip} USD, payable to your driver in USD cash.\n\n\u2022Your driver will be outside of customs area holding a sign with your name on it. If having trouble finding the driver, please contact us and head to the outside of the Bar Imperial/Britt caf\u00e9. You will see a set of tables and chairs in that outside part.\n\n\u2022For safety reasons, do not accept help from anyone other than a representative of Liberia Airport Shuttle. (There are people outside offering help to carry the luggage, but for YOUR SAFETY, I recommend you not to give your luggage to any of them as they do not work with our company).`;
+      } else {
+        return `Hi ${firstName}. This is M\u00f3nica, with Liberia Airport Shuttle. I hope you're enjoying your time in Costa Rica! We are all set to pick *${pax} people* up at ${hotel} tomorrow, ${fecha}, at ${hora}. The rate is ${ratePerTrip} USD, payable to your driver in USD cash.\n\nMay I have your room number, please? Your driver will need it at the entrance, but he will meet you at the lobby.`;
+      }
+    }
+
+    function sendTripEmail() {
+      if (!currentTrip || !currentTripOrder) return;
+      const email = (currentTrip.email || '').toLowerCase();
+      const subject = currentTripIsArrival ? 'Liberia Airport Shuttle - Arrival Confirmation' : 'Liberia Airport Shuttle - Departure Confirmation';
+      const body = generateTripMessage(currentTrip, currentTripOrder);
+      window.open(`mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+    }
+
+    function sendTripWhatsApp() {
+      if (!currentTrip || !currentTripOrder) return;
+      const phone = (currentTrip.phone || '').replace(/\D/g, '');
+      const msg = generateTripMessage(currentTrip, currentTripOrder);
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+
     function toggleIndexingUI(show) {
       const statusBar = document.getElementById("indexing-status");
       const apiBadge = document.getElementById("api-status-badge");
@@ -2214,6 +2293,7 @@
       currentTripStatusKey = isArrival ? "status_llegada" : "status_salida";
       currentViajeId = trip.viaje_id || null;
       currentItemIndex = trip.item_index !== undefined ? trip.item_index : null;
+      currentTrip = trip;
       const hotel = trip.hotel || "Hotel no especificado";
       const originName = isArrival ? "Aeropuerto LIR" : hotel;
       const destName = isArrival ? hotel : "Aeropuerto LIR";
@@ -2529,18 +2609,38 @@
 
       if (trip && trip.item_index !== undefined && order.line_items) {
         // Buscar el line_item que corresponde a este viaje
+        const originalIdx = trip.item_index >= 1000 ? trip.item_index - 1000 : trip.item_index;
+
         tripLineItem = order.line_items.find((li, idx) => {
-          // El line_item index puede corresponder directamente o vía viaje_id
-          if (trip.viaje_id && li.id === trip.viaje_id) return true;
-          // O por item_index (para viajes con item_index < 1000)
-          if (trip.item_index < 1000 && idx === trip.item_index) return true;
-          // Para roundtrip departures (item_index >= 1000), buscar el original
-          if (trip.item_index >= 1000 && idx === (trip.item_index - 1000)) return true;
+          // Primero intentar por viaje_id (comparación loose para evitar int vs string)
+          if (trip.viaje_id && li.id == trip.viaje_id) return true;
           return false;
         });
 
+        // Fallback: si no encontró por viaje_id, buscar por item_index original
+        if (!tripLineItem) {
+          // Buscar cualquier line_item que comparta el mismo item_index original
+          // En roundtrips, tanto llegada (idx 0) como salida (idx 1000) apuntan al mismo producto
+          if (order.viajes && order.viajes.length > 0) {
+            const viajeIdx = order.viajes.findIndex(v => v.id == trip.viaje_id || v.item_index === trip.item_index);
+            if (viajeIdx !== -1 && order.line_items[viajeIdx]) {
+              tripLineItem = order.line_items[viajeIdx];
+            }
+          }
+          // Último fallback: buscar por posición usando item_index original
+          if (!tripLineItem && order.line_items[originalIdx]) {
+            tripLineItem = order.line_items[originalIdx];
+          }
+        }
+
         if (tripLineItem) {
           tripSubtotal = parseFloat(tripLineItem.subtotal || 0);
+        }
+
+        // Si el subtotal es 0 pero el order.total no, calcular proporcionalmente
+        if ((tripSubtotal === null || tripSubtotal === 0) && parseFloat(order.total) > 0) {
+          const numViajes = order.viajes?.length || order.line_items?.length || 1;
+          tripSubtotal = parseFloat(order.total) / numViajes;
         }
 
         // Detectar si este viaje es parte de un roundtrip
@@ -2587,6 +2687,16 @@
         container.innerHTML += `<div class="text-[10px] uppercase font-black text-gray-400 mb-4 border-b pb-2">Método: ${order.payment_method_title}</div>`;
       }
 
+      // Si es roundtrip, mostrar el total original de la reserva completa primero
+      if (isRoundTrip) {
+        const originalTotal = parseFloat(order.total || 0);
+        container.innerHTML += `
+          <div class="flex justify-between items-center mb-3 pb-2 border-b border-dashed border-gray-200">
+            <span class="font-bold uppercase opacity-50 text-[10px] tracking-widest">Total Original (Reserva Completa)</span>
+            <span class="font-bold text-lg text-[#002a3f]">$${originalTotal.toFixed(2)}</span>
+          </div>`;
+      }
+
       // Usar el subtotal del line_item específico si está disponible
       if (tripSubtotal !== null) {
         addRow("Subtotal Este Servicio", tripSubtotal);
@@ -2598,11 +2708,15 @@
       // Proporcionar cargos adicionales e impuestos entre todos los viajes
       const totalViajes = order.viajes?.length || order.line_items?.length || 1;
       const proportion = 1 / totalViajes;
+      let feeSum = 0;
+      let taxSum = 0;
+      let couponSum = 0;
 
       if (order.fee_lines && order.fee_lines.length > 0) {
         order.fee_lines.forEach(fee => {
           // Dividir el cargo total entre todos los viajes
           const feeAmount = parseFloat(fee.total || 0) * proportion;
+          feeSum += feeAmount;
           addRow(fee.name || 'Cargo Adicional', feeAmount, false, false, false, true); // true = no aplicar divisor
         });
       }
@@ -2610,6 +2724,7 @@
       if (order.tax_lines && order.tax_lines.length > 0) {
         order.tax_lines.forEach(tax => {
           const taxAmount = parseFloat(tax.tax_total || 0) * proportion;
+          taxSum += taxAmount;
           addRow(tax.label || 'Impuesto', taxAmount, false, false, false, true);
         });
       }
@@ -2617,14 +2732,19 @@
       if (order.coupon_lines && order.coupon_lines.length > 0) {
         order.coupon_lines.forEach(coupon => {
           const couponAmount = parseFloat(coupon.discount || 0) * proportion;
+          couponSum += couponAmount;
           addRow(`Cupón: ${coupon.code}`, couponAmount, false, false, true, true);
         });
       }
 
       // Total de este viaje
       if (tripSubtotal !== null) {
-        const tripTotal = tripSubtotal / divisor;
-        addRow("Total Este Viaje", tripTotal * divisor, true); // El divisor ya se aplica en addRow
+        const baseSubtotal = tripSubtotal / divisor;
+        const tripTotal = baseSubtotal + feeSum + taxSum - couponSum;
+
+
+
+        addRow("Total Este Viaje", tripTotal, true, false, false, true);
       } else {
         addRow("Total Este Viaje", order.total, true);
       }

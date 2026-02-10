@@ -280,6 +280,7 @@ function saveOrderToDB($pdo, $order)
 
     // 2. Procesar cada line_item y crear viajes
     $lineItems = $order['line_items'] ?? [];
+    $savedTrips = []; // Rastrear (item_index, tipo) guardados para limpiar huérfanos
 
     foreach ($lineItems as $itemIndex => $item) {
         $itemMeta = $item['meta_data'] ?? [];
@@ -321,6 +322,7 @@ function saveOrderToDB($pdo, $order)
                 'pax' => $pax,
                 'hotel' => $hotelName
             ]);
+            $savedTrips[] = ['item_index' => $itemIndex, 'tipo' => 'llegada'];
         }
 
         // Crear viaje de salida
@@ -341,6 +343,28 @@ function saveOrderToDB($pdo, $order)
                 'pax' => $pax,
                 'hotel' => $hotelName
             ]);
+            $savedTrips[] = ['item_index' => $tripItemIndex, 'tipo' => 'salida'];
+        }
+    }
+
+    // 3. Limpiar viajes huérfanos (índices antiguos de migración u otros webhooks)
+    if (!empty($savedTrips)) {
+        $conditions = [];
+        $params = [$order['id']];
+        foreach ($savedTrips as $trip) {
+            $conditions[] = "(item_index = ? AND tipo = ?)";
+            $params[] = $trip['item_index'];
+            $params[] = $trip['tipo'];
+        }
+        $keepCondition = implode(' OR ', $conditions);
+        $deleteStmt = $pdo->prepare(
+            "DELETE FROM viajes WHERE reserva_id = ? AND NOT ($keepCondition)"
+        );
+        $deleteStmt->execute($params);
+
+        $deletedCount = $deleteStmt->rowCount();
+        if ($deletedCount > 0) {
+            logWebhook("Limpiados $deletedCount viaje(s) huérfano(s) de orden #{$order['id']}");
         }
     }
 }
