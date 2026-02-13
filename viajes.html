@@ -195,6 +195,11 @@
       color: #991b1b;
     }
 
+    .status-refunded {
+      background: #ede9fe;
+      color: #5b21b6;
+    }
+
     /* Tipo de Viaje */
     .trip-badge {
       font-size: 10px;
@@ -3385,6 +3390,7 @@
         cancelado: "Cancelado",
         contactado_whatsapp: "Contactado WhatsApp",
         contactado_email: "Contactado Email",
+        contactado_todos: "Contactado Todos Los Medios",
       };
       return map[s] || "Sin estatus";
     }
@@ -3395,6 +3401,7 @@
         cancelado: "cancelled",
         contactado_whatsapp: "processing",
         contactado_email: "on-hold",
+        contactado_todos: "refunded",
       };
       return map[s] || "pending";
     }

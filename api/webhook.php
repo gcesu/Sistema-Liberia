@@ -242,14 +242,16 @@ function saveOrderToDB($pdo, $order)
         'impuestos' => floatval(array_sum(array_column($order['tax_lines'] ?? [], 'tax_total'))),
         'descuentos' => floatval(array_sum(array_column($order['coupon_lines'] ?? [], 'discount'))),
         'total' => floatval($order['total']),
-        'raw_data' => json_encode($order)
+        'raw_data' => json_encode($order),
+        'privacy_show_email' => '0',
+        'privacy_show_phone' => '0'
     ];
 
     $sqlReserva = "
         INSERT INTO reservas (id, status, date_created, cliente_nombre, cliente_email, cliente_telefono, 
             cliente_pais, cliente_direccion, metodo_pago, subtotal, cargos_adicionales, impuestos, 
-            descuentos, total, raw_data)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            descuentos, total, raw_data, privacy_show_email, privacy_show_phone)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
             status = VALUES(status), cliente_nombre = VALUES(cliente_nombre), cliente_email = VALUES(cliente_email),
             cliente_telefono = VALUES(cliente_telefono), cliente_pais = VALUES(cliente_pais), 
@@ -275,7 +277,9 @@ function saveOrderToDB($pdo, $order)
         $reservaData['impuestos'],
         $reservaData['descuentos'],
         $reservaData['total'],
-        $reservaData['raw_data']
+        $reservaData['raw_data'],
+        $reservaData['privacy_show_email'],
+        $reservaData['privacy_show_phone']
     ]);
 
     // 2. Procesar cada line_item y crear viajes
