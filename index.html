@@ -520,6 +520,54 @@
             background-color: white;
         }
 
+        /* Searchable Select Dropdown */
+        .searchable-select-wrapper {
+            position: relative;
+        }
+
+        .searchable-select-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            z-index: 999;
+            background: white;
+            border: 1px solid #cbd5e1;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .searchable-select-option {
+            padding: 8px 12px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--primary);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .searchable-select-option:hover,
+        .searchable-select-option.active {
+            background: #eef4ff;
+            color: var(--accent);
+        }
+
+        .searchable-select-option.selected {
+            background: var(--accent);
+            color: white;
+        }
+
+        .searchable-select-empty {
+            padding: 10px 12px;
+            font-size: 13px;
+            color: #94a3b8;
+            text-align: center;
+            font-style: italic;
+        }
+
         #input-email,
         #display-email {
             text-transform: lowercase;
@@ -1449,6 +1497,105 @@
             });
         }
 
+        // Convierte un <select> de chofer en un dropdown buscable
+        function initSearchableSelect(selectId) {
+            const hiddenSelect = document.getElementById(selectId);
+            if (!hiddenSelect) return;
+
+            const currentValue = hiddenSelect.value || '';
+            hiddenSelect.classList.add('hidden');
+
+            // Crear wrapper
+            const wrapper = document.createElement('div');
+            wrapper.className = 'searchable-select-wrapper';
+
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'input-editable bg-white';
+            input.placeholder = 'Buscar chofer...';
+            input.autocomplete = 'off';
+            input.value = currentValue;
+
+            const dropdown = document.createElement('div');
+            dropdown.className = 'searchable-select-dropdown hidden';
+
+            wrapper.appendChild(input);
+            wrapper.appendChild(dropdown);
+            hiddenSelect.parentNode.insertBefore(wrapper, hiddenSelect);
+
+            let activeIdx = -1;
+
+            function renderOptions(filter = '') {
+                const filterLower = filter.toLowerCase();
+                const noAssign = { value: '', label: 'No asignado' };
+                const allOptions = [noAssign, ...CHOFERES.map(c => ({ value: c, label: c }))];
+                const filtered = allOptions.filter(o => o.label.toLowerCase().includes(filterLower));
+                dropdown.innerHTML = '';
+                activeIdx = -1;
+                if (filtered.length === 0) {
+                    dropdown.innerHTML = '<div class="searchable-select-empty">Sin resultados</div>';
+                    return;
+                }
+                filtered.forEach((opt, idx) => {
+                    const div = document.createElement('div');
+                    div.className = 'searchable-select-option' + (opt.value === hiddenSelect.value ? ' selected' : '');
+                    div.textContent = opt.label;
+                    div.dataset.value = opt.value;
+                    div.addEventListener('mousedown', (e) => {
+                        e.preventDefault();
+                        selectOption(opt.value, opt.label);
+                    });
+                    dropdown.appendChild(div);
+                });
+            }
+
+            function selectOption(value, label) {
+                hiddenSelect.value = value;
+                input.value = label === 'No asignado' ? '' : label;
+                dropdown.classList.add('hidden');
+                hiddenSelect.dispatchEvent(new Event('change'));
+            }
+
+            input.addEventListener('focus', () => { input.select(); renderOptions(input.value); dropdown.classList.remove('hidden'); });
+            input.addEventListener('input', () => { renderOptions(input.value); dropdown.classList.remove('hidden'); });
+            input.addEventListener('blur', () => {
+                setTimeout(() => {
+                    dropdown.classList.add('hidden');
+                    input.value = hiddenSelect.value || '';
+                    activeIdx = -1;
+                }, 150);
+            });
+            input.addEventListener('keydown', (e) => {
+                const items = dropdown.querySelectorAll('.searchable-select-option');
+                if (items.length === 0) return;
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    activeIdx = Math.min(activeIdx + 1, items.length - 1);
+                    items.forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+                    items[activeIdx]?.scrollIntoView({ block: 'nearest' });
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    activeIdx = Math.max(activeIdx - 1, 0);
+                    items.forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+                    items[activeIdx]?.scrollIntoView({ block: 'nearest' });
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (activeIdx >= 0 && items[activeIdx]) {
+                        selectOption(items[activeIdx].dataset.value, items[activeIdx].textContent);
+                        input.blur();
+                    }
+                } else if (e.key === 'Escape') {
+                    dropdown.classList.add('hidden');
+                    input.blur();
+                }
+            });
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.searchable-select-wrapper') || !wrapper.contains(e.target)) {
+                    dropdown.classList.add('hidden');
+                }
+            });
+        }
+
         function getCountryDisplayName(code) { return code ? (COUNTRY_MAP[code.toUpperCase()]?.name || code.toUpperCase()) : 'N/A'; }
 
         async function startBackgroundIndexing(force = false) {
@@ -1901,6 +2048,7 @@
                     </div>
                 `;
                 container.appendChild(card);
+                initSearchableSelect(`input-${prefix}_chofer`);
             });
 
             // Layout grid si hay 2+ tarjetas
@@ -1918,6 +2066,7 @@
                     'chofer_llegada', 'subchofer_llegada', 'nota_choferes_llegada', 'notas_internas_llegada'
                 ]);
                 container.appendChild(card);
+                initSearchableSelect('input-meta-chofer_llegada');
             }
 
             if (hasDeparture) {
@@ -1925,6 +2074,7 @@
                     'chofer_salida', 'subchofer_salida', 'nota_choferes_ida', 'notas_internas_salida'
                 ]);
                 container.appendChild(card);
+                initSearchableSelect('input-meta-chofer_salida');
             }
 
             if (hasArrival && hasDeparture) {
@@ -2085,7 +2235,7 @@
                     if (totalViajes === 2 && arrivals === 1 && departures === 1) {
                         tripTypeFormatted = 'Ida y Vuelta';
                     } else {
-                        tripTypeFormatted = `${totalViajes} Viajes (${arrivals}↓ ${departures}↑)`;
+                        tripTypeFormatted = `${totalViajes} Viajes (${arrivals}⬇️ ${departures}⬆️)`;
                     }
                 } else if (arrivals > 1) {
                     tripTypeFormatted = `${arrivals} Llegadas`;

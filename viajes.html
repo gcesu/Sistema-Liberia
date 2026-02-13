@@ -327,6 +327,54 @@
       background-color: white;
     }
 
+    /* Searchable Select Dropdown */
+    .searchable-select-wrapper {
+      position: relative;
+    }
+
+    .searchable-select-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      z-index: 999;
+      background: white;
+      border: 1px solid #cbd5e1;
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      max-height: 200px;
+      overflow-y: auto;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .searchable-select-option {
+      padding: 8px 12px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--primary);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .searchable-select-option:hover,
+    .searchable-select-option.active {
+      background: #eef4ff;
+      color: var(--accent);
+    }
+
+    .searchable-select-option.selected {
+      background: var(--accent);
+      color: white;
+    }
+
+    .searchable-select-empty {
+      padding: 10px 12px;
+      font-size: 13px;
+      color: #94a3b8;
+      text-align: center;
+      font-style: italic;
+    }
+
     .btn-whatsapp {
       background-color: #25d366;
       color: white;
@@ -1315,8 +1363,13 @@
                     <div class="field-group-row">
                       <div>
                         <p class="meta-field-label">🚐 Chofer</p>
-                        <select id="trip-input-meta-chofer" onchange="tripCheckForChanges()"
-                          class="input-editable bg-white"></select>
+                        <div class="searchable-select-wrapper" id="chofer-search-wrapper">
+                          <input type="text" id="chofer-search-input" class="input-editable bg-white"
+                            placeholder="Buscar chofer..." autocomplete="off" />
+                          <div class="searchable-select-dropdown hidden" id="chofer-search-dropdown"></div>
+                        </div>
+                        <select id="trip-input-meta-chofer" style="display:none"
+                          onchange="tripCheckForChanges()"></select>
                         <div id="trip-display-meta-chofer" class="hidden meta-field-value"></div>
                       </div>
                       <div>
@@ -1401,6 +1454,7 @@
       cancelado: "Cancelado",
       contactado_whatsapp: "Contactado Por WhatsApp",
       contactado_email: "Contactado Por Email",
+      contactado_todos: "Contactado Por Todos Los Medios",
     };
 
     const TRIP_STATUS_ARRIVAL = TRIP_STATUS_OPTIONS;
@@ -1660,6 +1714,127 @@
       } catch (err) {
         console.error('Error cargando choferes:', err);
       }
+    }
+
+    function initSearchableChofer(initialValue = '') {
+      const input = document.getElementById('chofer-search-input');
+      const dropdown = document.getElementById('chofer-search-dropdown');
+      const hiddenSelect = document.getElementById('trip-input-meta-chofer');
+      if (!input || !dropdown || !hiddenSelect) return;
+
+      // Populate hidden select (for backward compat with .value reads)
+      hiddenSelect.innerHTML = '<option value="">No asignado</option>';
+      CHOFERES.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = opt.textContent = c;
+        hiddenSelect.appendChild(opt);
+      });
+
+      // Set initial value
+      hiddenSelect.value = initialValue;
+      input.value = initialValue || '';
+
+      let activeIdx = -1;
+
+      function renderOptions(filter = '') {
+        const filterLower = filter.toLowerCase();
+        const noAssign = { value: '', label: 'No asignado' };
+        const allOptions = [noAssign, ...CHOFERES.map(c => ({ value: c, label: c }))];
+        const filtered = allOptions.filter(o => o.label.toLowerCase().includes(filterLower));
+
+        dropdown.innerHTML = '';
+        activeIdx = -1;
+
+        if (filtered.length === 0) {
+          dropdown.innerHTML = '<div class="searchable-select-empty">Sin resultados</div>';
+          return;
+        }
+
+        filtered.forEach((opt, idx) => {
+          const div = document.createElement('div');
+          div.className = 'searchable-select-option' + (opt.value === hiddenSelect.value ? ' selected' : '');
+          div.textContent = opt.label;
+          div.dataset.value = opt.value;
+          div.dataset.idx = idx;
+          div.addEventListener('mousedown', (e) => {
+            e.preventDefault(); // prevent blur
+            selectOption(opt.value, opt.label);
+          });
+          dropdown.appendChild(div);
+        });
+      }
+
+      function selectOption(value, label) {
+        hiddenSelect.value = value;
+        input.value = label === 'No asignado' ? '' : label;
+        dropdown.classList.add('hidden');
+        hiddenSelect.dispatchEvent(new Event('change'));
+      }
+
+      function showDropdown() {
+        renderOptions(input.value);
+        dropdown.classList.remove('hidden');
+      }
+
+      function hideDropdown() {
+        dropdown.classList.add('hidden');
+        activeIdx = -1;
+      }
+
+      input.addEventListener('focus', () => {
+        input.select();
+        showDropdown();
+      });
+
+      input.addEventListener('input', () => {
+        renderOptions(input.value);
+        dropdown.classList.remove('hidden');
+      });
+
+      input.addEventListener('blur', () => {
+        // Small delay to allow mousedown on option
+        setTimeout(() => {
+          hideDropdown();
+          // If the typed text doesn't match any option, revert to current value
+          const currentVal = hiddenSelect.value;
+          input.value = currentVal || '';
+        }, 150);
+      });
+
+      input.addEventListener('keydown', (e) => {
+        const items = dropdown.querySelectorAll('.searchable-select-option');
+        if (items.length === 0) return;
+
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          activeIdx = Math.min(activeIdx + 1, items.length - 1);
+          items.forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+          items[activeIdx]?.scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          activeIdx = Math.max(activeIdx - 1, 0);
+          items.forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+          items[activeIdx]?.scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          if (activeIdx >= 0 && items[activeIdx]) {
+            const val = items[activeIdx].dataset.value;
+            const lbl = items[activeIdx].textContent;
+            selectOption(val, lbl);
+            input.blur();
+          }
+        } else if (e.key === 'Escape') {
+          hideDropdown();
+          input.blur();
+        }
+      });
+
+      // Close on click outside
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('#chofer-search-wrapper')) {
+          hideDropdown();
+        }
+      });
     }
 
     function initCountryDropdownTrip() {
@@ -2514,16 +2689,8 @@
       tripOriginalValues[driverNotesKey] = notesVal;
       tripOriginalValues[internalNotesKey] = internalVal;
 
-      // Inicializar select de choferes
-      const choferSelect = document.getElementById("trip-input-meta-chofer");
-      if (choferSelect) {
-        choferSelect.innerHTML = '<option value="">No asignado</option>';
-        CHOFERES.forEach((c) => {
-          const opt = document.createElement("option");
-          opt.value = opt.textContent = c;
-          choferSelect.appendChild(opt);
-        });
-      }
+      // Inicializar dropdown buscable de choferes
+      initSearchableChofer(driverVal);
 
       document.getElementById("trip-input-meta-chofer").value = driverVal;
       document.getElementById("trip-input-meta-subchofer").value =
@@ -2801,6 +2968,8 @@
         colorClass = "bg-blue-500";
       } else if (statusVal === "contactado_email") {
         colorClass = "bg-yellow-500";
+      } else if (statusVal === "contactado_todos") {
+        colorClass = "bg-purple-500";
       } else if (statusVal === "cancelado") {
         colorClass = "bg-red-500";
       }
