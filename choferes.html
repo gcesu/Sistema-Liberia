@@ -1623,8 +1623,8 @@
             const isArrival = trip.type === 'arrival';
             const hotel = trip.hotel || 'Hotel no especificado';
             const hotelManual = findMetaValue(order, ["hotel_manual"]) || "";
-            // Mantenemos el hotel (zona) original para el display principal
-            const displayHotelName = hotel;
+            const zoneName = order.line_items?.[0]?.name || 'Hotel no especificado';
+            const displayHotelName = hotel || hotelManual || zoneName;
 
             const originName = isArrival ? 'Aeropuerto LIR' : displayHotelName;
             const destName = isArrival ? displayHotelName : 'Aeropuerto LIR';

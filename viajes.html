@@ -2610,8 +2610,7 @@
       // Hotel Name Logic
       const zoneName = order.line_items?.[0]?.name || 'Hotel no especificado';
       const hotelManual = findMetaValue(order, ["hotel_manual"]) || "";
-      // Mantenemos zoneName para origen/destino principal
-      const displayHotelName = zoneName;
+      const displayHotelName = trip.hotel || hotelManual || zoneName;
 
       // Update Origin/Dest based on Trip Type
       if (trip.type === 'arrival') {
@@ -3227,6 +3226,68 @@
       tripCheckForChanges();
     }
 
+    function normalizeTimeForCompare(value) {
+      if (!value) return "";
+      const normalized = normalizeTime(String(value));
+      if (!normalized || normalized === "--:--") return "";
+      return normalized.slice(0, 5);
+    }
+
+    function matchViajeByFingerprint(viajesList) {
+      if (!Array.isArray(viajesList) || viajesList.length === 0) return null;
+
+      const targetTipo = currentTripIsArrival ? 'llegada' : 'salida';
+      const targetFecha = (tripOriginalValues["fecha"] || "").toString();
+      const targetHora = normalizeTimeForCompare(tripOriginalValues["hora"] || "");
+      const targetVuelo = (tripOriginalValues["vuelo"] || "").toString().trim().toUpperCase();
+
+      const sameType = viajesList.filter(v => v.tipo === targetTipo);
+      if (sameType.length === 1 && sameType[0]?.id) return sameType[0].id;
+
+      const strictMatch = sameType.find(v => {
+        const vFecha = (v.fecha || "").toString();
+        const vHora = normalizeTimeForCompare(v.hora || "");
+        const vVuelo = (v.vuelo || "").toString().trim().toUpperCase();
+        return vFecha === targetFecha && vHora === targetHora && vVuelo === targetVuelo;
+      });
+
+      return strictMatch?.id || null;
+    }
+
+    async function resolveViajeIdForSave() {
+      if (currentViajeId) return currentViajeId;
+
+      if (currentTrip?.viaje_id) return currentTrip.viaje_id;
+
+      const viajes = currentTripOrder?.viajes || [];
+      if (currentItemIndex !== null && currentItemIndex !== undefined) {
+        const matchByIndex = viajes.find(v => String(v.item_index) === String(currentItemIndex));
+        if (matchByIndex?.id) return matchByIndex.id;
+      }
+
+      const matchLocalFingerprint = matchViajeByFingerprint(viajes);
+      if (matchLocalFingerprint) return matchLocalFingerprint;
+
+      try {
+        const resp = await fetch(`${VIAJES_API}?reserva_id=${currentTripOrder?.id || 0}`);
+        if (resp.ok) {
+          const viajesDb = await resp.json();
+          if (Array.isArray(viajesDb) && viajesDb.length > 0) {
+            if (currentItemIndex !== null && currentItemIndex !== undefined) {
+              const dbByIndex = viajesDb.find(v => String(v.item_index) === String(currentItemIndex));
+              if (dbByIndex?.id) return dbByIndex.id;
+            }
+
+            const dbByFingerprint = matchViajeByFingerprint(viajesDb);
+            if (dbByFingerprint) return dbByFingerprint;
+          }
+        }
+      } catch (_) {
+      }
+
+      return null;
+    }
+
     async function tripSaveDetails() {
       if (!currentTripId || !currentTripOrder.id) return;
 
@@ -3247,9 +3308,24 @@
       ).value;
       const statusReservaVal =
         document.getElementById("trip-input-status").value;
+      const tripFechaVal = document.getElementById("trip-input-fecha")?.value || "";
+      const tripHoraVal = document.getElementById("trip-input-hora")?.value || "";
+      const tripVueloVal = document.getElementById("trip-input-vuelo")?.value?.trim() || "";
 
       const meta = [
         { key: currentTripStatusKey, value: statusViajeVal },
+        {
+          key: currentTripIsArrival ? "- Arrival Date" : "- Departure Date",
+          value: tripFechaVal,
+        },
+        {
+          key: currentTripIsArrival ? "- Arrival Time" : "- Pick-up Time at Hotel",
+          value: tripHoraVal,
+        },
+        {
+          key: currentTripIsArrival ? "- Arrival Flight Number" : "- Departure Flight Number",
+          value: tripVueloVal,
+        },
         {
           key: currentTripIsArrival ? "chofer_llegada" : "chofer_salida",
           value: document.getElementById("trip-input-meta-chofer").value,
@@ -3322,31 +3398,36 @@
       };
 
       try {
-        // NUEVO: Si hay viaje_id, actualizar primero la tabla viajes
-        if (currentViajeId) {
-          const viajePayload = {
-            fecha: document.getElementById("trip-input-fecha")?.value || "",
-            hora: document.getElementById("trip-input-hora")?.value || "",
-            vuelo: document.getElementById("trip-input-vuelo")?.value?.trim() || "",
-            chofer: document.getElementById("trip-input-meta-chofer").value,
-            subchofer: document.getElementById("trip-input-meta-subchofer").value,
-            nota_choferes: document.getElementById("trip-input-meta-nota_choferes").value,
-            notas_internas: document.getElementById("trip-input-meta-notas_internas").value,
-            status: statusViajeVal,
-          };
+        const resolvedViajeId = await resolveViajeIdForSave();
 
-          const viajeResp = await fetch(
-            `${VIAJES_API}?viaje_id=${currentViajeId}`,
-            {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(viajePayload),
-            }
-          );
-          if (!viajeResp.ok) {
-            const errData = await viajeResp.json().catch(() => ({}));
-            throw new Error(errData.error || "Error guardando viaje");
+        if (!resolvedViajeId) {
+          throw new Error("No se pudo identificar el viaje en la base local para guardar los cambios");
+        }
+
+        // NUEVO: Si hay viaje_id, actualizar primero la tabla viajes
+        currentViajeId = resolvedViajeId;
+        const viajePayload = {
+          fecha: tripFechaVal,
+          hora: tripHoraVal,
+          vuelo: tripVueloVal,
+          chofer: document.getElementById("trip-input-meta-chofer").value,
+          subchofer: document.getElementById("trip-input-meta-subchofer").value,
+          nota_choferes: document.getElementById("trip-input-meta-nota_choferes").value,
+          notas_internas: document.getElementById("trip-input-meta-notas_internas").value,
+          status: statusViajeVal,
+        };
+
+        const viajeResp = await fetch(
+          `${VIAJES_API}?viaje_id=${resolvedViajeId}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(viajePayload),
           }
+        );
+        if (!viajeResp.ok) {
+          const errData = await viajeResp.json().catch(() => ({}));
+          throw new Error(errData.error || "Error guardando viaje");
         }
 
         // Actualizar reserva (datos del cliente, estatus de orden, privacy settings)

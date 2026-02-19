@@ -681,6 +681,18 @@
             box-shadow: 0 4px 12px rgba(0, 42, 63, 0.15);
         }
 
+        .route-cards-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .route-visualizer.route-card-item {
+            margin-bottom: 0;
+        }
+
         .route-point {
             display: flex;
             flex-direction: column;
@@ -2332,34 +2344,68 @@
             document.getElementById('general-trip-type').innerText = tripTypeFormatted;
             document.getElementById('general-pax-value').innerText = paxDisplay;
 
-            const originNameEl = document.getElementById('origin-name');
-            const destNameEl = document.getElementById('dest-name');
-            const originIconEl = document.getElementById('origin-icon');
-            const destIconEl = document.getElementById('dest-icon');
-            const separatorEmojiEl = document.getElementById('route-separator-emoji');
+            const routeDisplay = document.getElementById('route-display');
+            const buildRouteContent = (originIcon, originName, destIcon, destName, separatorEmoji = '➡️') => `
+                    <div class="route-point">
+                        <span class="text-3xl">${originIcon}</span>
+                        <span class="route-point-label">Origen</span>
+                        <span class="route-point-name">${originName}</span>
+                    </div>
+                    <div class="route-separator-container">
+                        <span>${separatorEmoji}</span>
+                    </div>
+                    <div class="route-point">
+                        <span class="text-3xl">${destIcon}</span>
+                        <span class="route-point-label">Destino</span>
+                        <span class="route-point-name">${destName}</span>
+                    </div>
+                `;
 
-            const hasArrival = (o.viajes && o.viajes.some(v => v.tipo === 'llegada')) || deepScanMeta(o, "- Arrival Date") !== null;
-            const hasDeparture = (o.viajes && o.viajes.some(v => v.tipo === 'salida')) || deepScanMeta(o, "- Departure Date") !== null;
-            const isRoundTrip = hasArrival && hasDeparture;
+            const buildRouteCard = (originIcon, originName, destIcon, destName, separatorEmoji = '➡️') =>
+                `<div class="route-visualizer route-card-item">${buildRouteContent(originIcon, originName, destIcon, destName, separatorEmoji)}</div>`;
 
-            if (isRoundTrip) {
-                originIconEl.innerText = "✈️";
-                originNameEl.innerText = "Aeropuerto LIR";
-                destIconEl.innerText = "🏨";
-                destNameEl.innerText = displayHotelName;
-                separatorEmojiEl.innerText = "🔄";
-            } else if (hasArrival) {
-                originIconEl.innerText = "🛬";
-                originNameEl.innerText = "Aeropuerto LIR";
-                destIconEl.innerText = "🏨";
-                destNameEl.innerText = displayHotelName;
-                separatorEmojiEl.innerText = "➡️";
+            if (o.viajes && o.viajes.length > 0) {
+                const sortedTrips = [...o.viajes].sort((a, b) => {
+                    const da = a.fecha ? new Date(a.fecha) : new Date('9999-12-31');
+                    const db = b.fecha ? new Date(b.fecha) : new Date('9999-12-31');
+                    if (da - db !== 0) return da - db;
+                    const ha = a.hora || '99:99';
+                    const hb = b.hora || '99:99';
+                    return ha.localeCompare(hb);
+                });
+
+                const arrivals = sortedTrips.filter(v => v.tipo === 'llegada').length;
+                const departures = sortedTrips.filter(v => v.tipo === 'salida').length;
+                const isSimpleRoundTrip = sortedTrips.length === 2 && arrivals === 1 && departures === 1;
+
+                if (isSimpleRoundTrip) {
+                    const roundHotel = sortedTrips.find(v => v.tipo === 'llegada')?.hotel || displayHotelName;
+                    routeDisplay.className = 'route-visualizer';
+                    routeDisplay.innerHTML = buildRouteContent('✈️', 'Aeropuerto LIR', '🏨', roundHotel, '🔄');
+                } else {
+                    routeDisplay.className = 'route-cards-stack';
+                    routeDisplay.innerHTML = `${sortedTrips.map(v => {
+                        const hotel = v.hotel || hotelManual || zoneName || 'Hotel no especificado';
+                        if (v.tipo === 'llegada') {
+                            return buildRouteCard('🛬', 'Aeropuerto LIR', '🏨', hotel, '➡️');
+                        }
+                        return buildRouteCard('🏨', hotel, '🛫', 'Aeropuerto LIR', '➡️');
+                    }).join('')}`;
+                }
             } else {
-                originIconEl.innerText = "🏨";
-                originNameEl.innerText = displayHotelName;
-                destIconEl.innerText = "🛫";
-                destNameEl.innerText = "Aeropuerto LIR";
-                separatorEmojiEl.innerText = "➡️";
+                const hasArrival = deepScanMeta(o, "- Arrival Date") !== null;
+                const hasDeparture = deepScanMeta(o, "- Departure Date") !== null;
+                const isRoundTrip = hasArrival && hasDeparture;
+
+                routeDisplay.className = 'route-visualizer';
+
+                if (isRoundTrip) {
+                    routeDisplay.innerHTML = buildRouteContent('✈️', 'Aeropuerto LIR', '🏨', displayHotelName, '🔄');
+                } else if (hasArrival) {
+                    routeDisplay.innerHTML = buildRouteContent('🛬', 'Aeropuerto LIR', '🏨', displayHotelName, '➡️');
+                } else {
+                    routeDisplay.innerHTML = buildRouteContent('🏨', displayHotelName, '🛫', 'Aeropuerto LIR', '➡️');
+                }
             }
         }
 
@@ -2423,6 +2469,7 @@
             const addressVal = document.getElementById('input-address').value.trim();
 
             let meta = [];
+            let viajesSaveErrors = [];
 
             // ── Guardar viajes individuales (nuevo sistema) ──
             if (currentOrderViajes.length > 0) {
@@ -2461,8 +2508,17 @@
                             }
                         } catch (e) {
                             console.error(`Error guardando viaje ${viaje.id}:`, e);
+                            viajesSaveErrors.push(`Viaje #${viaje.id}: ${e.message || 'Error desconocido'}`);
                         }
                     }
+                }
+
+                if (viajesSaveErrors.length > 0) {
+                    toggleLoader(false);
+                    btnSave.disabled = false;
+                    btnSave.innerHTML = originalBtnText;
+                    alert(`No se pudieron guardar ${viajesSaveErrors.length} viaje(s). Intenta nuevamente.`);
+                    return;
                 }
             } else {
                 // Legacy: guardar vía metadata
@@ -2511,7 +2567,11 @@
                     body: JSON.stringify(payload)
                 });
                 if (!resp.ok) throw new Error("Error");
-                const updated = await resp.json();
+                await resp.json();
+
+                const refreshResp = await fetch(`${API_PROXY}?order_id=${currentOrderId}&_t=${Date.now()}`);
+                if (!refreshResp.ok) throw new Error("No se pudo refrescar la reserva actualizada");
+                const updated = await refreshResp.json();
                 injectLegacyMetaFromViajes(updated);
 
                 // Actualizar todos los arrays locales
@@ -2531,6 +2591,7 @@
                 updateStats();
             } catch (e) {
                 console.error(e);
+                alert(e.message || 'No se pudieron guardar los cambios');
             } finally {
                 toggleLoader(false);
                 btnSave.disabled = false;
