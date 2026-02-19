@@ -251,6 +251,23 @@ function syncViajeToWooCommerce($pdo, $viaje, $changes)
         $metaData[] = ['key' => $keyPrefix . $field, 'value' => $value];
     }
 
+    // Actualizar keys estándar de WooCommerce para fecha, hora, vuelo
+    if ($tipo === 'llegada') {
+        if (isset($changes['fecha']))
+            $metaData[] = ['key' => '- Arrival Date', 'value' => $changes['fecha']];
+        if (isset($changes['hora']))
+            $metaData[] = ['key' => '- Arrival Time', 'value' => $changes['hora']];
+        if (isset($changes['vuelo']))
+            $metaData[] = ['key' => '- Arrival Flight Number', 'value' => $changes['vuelo']];
+    } else {
+        if (isset($changes['fecha']))
+            $metaData[] = ['key' => '- Departure Date', 'value' => $changes['fecha']];
+        if (isset($changes['hora']))
+            $metaData[] = ['key' => '- Pick-up Time at Hotel', 'value' => $changes['hora']];
+        if (isset($changes['vuelo']))
+            $metaData[] = ['key' => '- Departure Flight Number', 'value' => $changes['vuelo']];
+    }
+
     // También actualizar campos legacy si aplica (compatibilidad)
     if (isset($changes['chofer'])) {
         $legacyKey = $tipo === 'llegada' ? 'chofer_llegada' : 'chofer_salida';

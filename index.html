@@ -1176,12 +1176,7 @@
                                 <span class="text-gray-500 text-sm uppercase font-bold">Pax:</span>
                                 <span id="general-pax-value" class="font-black text-[#002a3f] text-lg"></span>
                             </div>
-                            <div class="info-pill bg-white shadow-sm flex items-center gap-2">
-                                <span class="text-gray-500 text-sm uppercase font-bold">Hotel:</span>
-                                <input type="text" id="input-hotel-name-edit" oninput="checkForChanges()"
-                                    class="font-black text-[#002a3f] uppercase bg-transparent outline-none border-b border-transparent focus:border-blue-300 transition-colors w-64 text-lg placeholder-gray-300"
-                                    placeholder="NOMBRE DEL HOTEL">
-                            </div>
+
                         </div>
                     </div>
 
@@ -1777,6 +1772,7 @@
             currentPage = page;
             renderTable();
             updatePaginationUI();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         function updateProgressUI(percent, text) {
@@ -1810,14 +1806,15 @@
 
         function formatTripTypeTable(order) {
             let hotel = order.line_items?.[0]?.name || 'Hotel no especificado';
-            // Usar hotel de viajes o hotel_manual si está disponible
+            // Usar hoteles de viajes individuales
             if (order.viajes && order.viajes.length > 0) {
-                const viajeHotel = order.viajes.find(v => v.hotel)?.hotel;
-                if (viajeHotel) hotel = viajeHotel;
+                const uniqueHotels = [...new Set(order.viajes.map(v => v.hotel).filter(h => h && h.trim()))];
+                if (uniqueHotels.length > 0) hotel = uniqueHotels.join(' · ');
             }
-            const hotelManual = deepScanMeta(order, 'hotel_manual');
-            if (hotelManual) hotel = hotelManual;
-            if (hotel === 'Transfer') hotel = hotelManual || 'Hotel no especificado';
+            if (hotel === 'Transfer') {
+                const hotelManual = deepScanMeta(order, 'hotel_manual');
+                hotel = hotelManual || 'Hotel no especificado';
+            }
 
             let routeHTML = "";
             let label = "";
@@ -1927,11 +1924,7 @@
 
 
 
-            // Hotel Logic
-            const zoneName = o.line_items?.[0]?.name || '';
-            const hotelManual = findMetaValue(o, ["hotel_manual"]) || "";
-
-            originalValues = { name: fullName, email, phone, country, address, status: o.status, hotel_name: hotelManual };
+            originalValues = { name: fullName, email, phone, country, address, status: o.status };
 
             document.getElementById('display-name').innerText = fullName;
             document.getElementById('display-email').innerText = email;
@@ -1999,6 +1992,9 @@
             renderPaymentInfo(o);
 
             document.getElementById('order-modal').classList.remove('hidden');
+            // Scroll modal content to top
+            document.querySelectorAll('#modal-box .modal-main-content, #modal-box .modal-sidebar').forEach(el => el.scrollTop = 0);
+            document.getElementById('modal-box').scrollTop = 0;
             requestAnimationFrame(() => {
                 resizeLogisticsNoteTextareas();
             });
@@ -2052,6 +2048,7 @@
                 originalValues[`${prefix}_fecha`] = viaje.fecha || '';
                 originalValues[`${prefix}_hora`] = viaje.hora || '';
                 originalValues[`${prefix}_vuelo`] = viaje.vuelo || '';
+                originalValues[`${prefix}_hotel`] = viaje.hotel || '';
 
                 // Fecha y hora formateadas
                 const fechaDisplay = viaje.fecha ? formatDateShort(viaje.fecha) : '--';
@@ -2096,6 +2093,11 @@
                                 <p class="meta-field-label text-gray-400">Vuelo</p>
                                 <p id="display-${prefix}_vuelo" class="meta-field-value text-base">${vueloDisplay}</p>
                                 <input type="text" id="input-${prefix}_vuelo" oninput="checkForChanges()" value="${viaje.vuelo || ''}" class="hidden input-editable mt-1 uppercase">
+                            </div>
+                            <div class="col-span-2">
+                                <p class="meta-field-label text-gray-400">🏨 Hotel</p>
+                                <p id="display-${prefix}_hotel" class="meta-field-value text-base">${viaje.hotel || '<span class="text-gray-300">Sin especificar</span>'}</p>
+                                <input type="text" id="input-${prefix}_hotel" oninput="checkForChanges()" value="${viaje.hotel || ''}" class="hidden input-editable mt-1" placeholder="Nombre del hotel">
                             </div>
                         </div>
 
@@ -2259,7 +2261,7 @@
             const btn = document.getElementById(`btn-edit-viaje-${viajeId}`);
             const isEditing = btn.classList.contains('editing');
 
-            const fieldKeys = ['fecha', 'hora', 'vuelo'];
+            const fieldKeys = ['fecha', 'hora', 'vuelo', 'hotel'];
             fieldKeys.forEach(k => {
                 const display = document.getElementById(`display-${prefix}_${k}`);
                 const input = document.getElementById(`input-${prefix}_${k}`);
@@ -2294,19 +2296,14 @@
 
         function renderGeneralInfo(o) {
             const zoneName = o.line_items?.[0]?.name || 'Hotel no especificado';
-            const hotelManual = findMetaValue(o, ["hotel_manual"]) || "";
 
-            // El input muestra el manual (o vacío)
-            document.getElementById('input-hotel-name-edit').value = hotelManual;
-
-            // Para mostrar en el banner azul: usar hotel de viajes, luego hotel_manual, luego zona
+            // Para mostrar en el banner azul: usar hoteles de viajes individuales, luego zona
             let displayHotelName = zoneName;
             if (o.viajes && o.viajes.length > 0) {
-                const viajeHotel = o.viajes.find(v => v.hotel)?.hotel;
-                if (viajeHotel) displayHotelName = viajeHotel;
+                const uniqueHotels = [...new Set(o.viajes.map(v => v.hotel).filter(h => h && h.trim()))];
+                if (uniqueHotels.length > 0) displayHotelName = uniqueHotels.join(' · ');
             }
-            if (hotelManual) displayHotelName = hotelManual;
-            if (displayHotelName === 'Transfer') displayHotelName = hotelManual || 'Hotel no especificado';
+            if (displayHotelName === 'Transfer') displayHotelName = 'Hotel no especificado';
 
             // Calcular tipo de viaje y pax
             let tripTypeFormatted, paxDisplay;
@@ -2385,7 +2382,7 @@
                 } else {
                     routeDisplay.className = 'route-cards-stack';
                     routeDisplay.innerHTML = `${sortedTrips.map(v => {
-                        const hotel = v.hotel || hotelManual || zoneName || 'Hotel no especificado';
+                        const hotel = v.hotel || zoneName || 'Hotel no especificado';
                         if (v.tipo === 'llegada') {
                             return buildRouteCard('🛬', 'Aeropuerto LIR', '🏨', hotel, '➡️');
                         }
@@ -2481,7 +2478,8 @@
                     const fieldsMap = {
                         chofer: 'chofer', subchofer: 'subchofer',
                         nota_choferes: 'nota_choferes', notas_internas: 'notas_internas',
-                        fecha: 'fecha', hora: 'hora', vuelo: 'vuelo'
+                        fecha: 'fecha', hora: 'hora', vuelo: 'vuelo',
+                        hotel: 'hotel'
                     };
 
                     for (const [fieldKey, apiKey] of Object.entries(fieldsMap)) {
@@ -2539,8 +2537,7 @@
             meta.push({ key: 'privacy_show_financiero', value: showFinanciero ? "1" : "0" });
             meta.push({ key: 'precio_neto', value: document.getElementById('input-precio-neto')?.value?.trim() || '' });
 
-            // Agregar hotel name
-            meta.push({ key: 'hotel_name', value: document.getElementById('input-hotel-name-edit').value });
+
 
             const payload = {
                 status: document.getElementById('input-status').value,
@@ -2627,7 +2624,7 @@
             if (currentOrderViajes.length > 0) {
                 for (const viaje of currentOrderViajes) {
                     const prefix = `viaje_${viaje.id}`;
-                    const viajeFields = ['chofer', 'subchofer', 'nota_choferes', 'notas_internas', 'fecha', 'hora', 'vuelo'];
+                    const viajeFields = ['chofer', 'subchofer', 'nota_choferes', 'notas_internas', 'fecha', 'hora', 'vuelo', 'hotel'];
                     for (const f of viajeFields) {
                         const inp = document.getElementById(`input-${prefix}_${f}`);
                         if (inp) {
@@ -2666,8 +2663,7 @@
             if (showPhone !== originalValues.privacy_show_phone) changed = true;
             if (showFinanciero !== originalValues.privacy_show_financiero) changed = true;
 
-            // Check Hotel Name
-            if (document.getElementById('input-hotel-name-edit').value !== originalValues.hotel_name) changed = true;
+
 
             const precioNetoInput = document.getElementById('input-precio-neto');
             if (precioNetoInput && precioNetoInput.value.trim() !== (originalValues.precio_neto || '')) changed = true;

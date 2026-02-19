@@ -382,9 +382,6 @@ function saveTrip($pdo, $data)
         INSERT INTO viajes (reserva_id, item_index, tipo, fecha, hora, vuelo, pax, hotel)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
-            fecha = VALUES(fecha),
-            hora = VALUES(hora),
-            vuelo = VALUES(vuelo),
             pax = VALUES(pax),
             hotel = VALUES(hotel)
     ";

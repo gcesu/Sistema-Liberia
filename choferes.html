@@ -1520,7 +1520,7 @@
             const searchText = document.getElementById('search-text').value.toLowerCase();
 
             // Filtro estricto: Solo mostrar viajes confirmados o contactados
-            const ALLOWED_STATUSES = ['confirmado', 'contactado_whatsapp', 'contactado_email'];
+            const ALLOWED_STATUSES = ['confirmado', 'contactado_whatsapp', 'contactado_email', 'contactado_todos'];
             console.log('Aplicando filtros. Total antes:', allTrips.length);
             let filtered = allTrips.filter(t => ALLOWED_STATUSES.includes(t.trip_status));
             console.log('Total después de filtro estricto:', filtered.length);
@@ -1571,7 +1571,7 @@
                         </td>
                         <td data-label="Origen" class="text-sm font-semibold text-gray-600">${trip.route ? trip.route.split(' ➝ ')[0] : '--'}</td>
                         <td data-label="Destino" class="text-sm font-semibold text-gray-600">${trip.route ? trip.route.split(' ➝ ')[1] || '--' : '--'}</td>
-                        <td data-label="Hotel" class="font-semibold text-gray-600 text-sm">${trip.hotelManual || '--'}</td>
+                        <td data-label="Hotel" class="font-semibold text-gray-600 text-sm">${trip.hotel || '--'}</td>
                         <td data-label="Vuelo" class="text-sm text-gray-500 font-semibold">${(trip.flight || '').toUpperCase()}</td>
                         <td data-label="Chofer" class="text-sm font-semibold text-gray-700">${trip.driver && trip.driver.trim() !== '' ? trip.driver : 'No asignado'}</td>
                         <td data-label="Precio" class="text-sm font-bold text-green-600">${trip.showFinanciero ? '$' + trip.tripPrice.toFixed(2) : '$ ***'}</td>
@@ -1600,7 +1600,8 @@
                 'confirmado': 'Confirmado',
                 'cancelado': 'Cancelado',
                 'contactado_whatsapp': 'Contactado WhatsApp',
-                'contactado_email': 'Contactado Email'
+                'contactado_email': 'Contactado Email',
+                'contactado_todos': 'Contactado Todos'
             };
             return map[s] || 'Sin estatus';
         }
@@ -1610,7 +1611,8 @@
                 'confirmado': 'completed',
                 'cancelado': 'cancelled',
                 'contactado_whatsapp': 'processing',
-                'contactado_email': 'on-hold'
+                'contactado_email': 'on-hold',
+                'contactado_todos': 'on-hold'
             };
             return map[s] || 'pending';
         }
@@ -1695,8 +1697,8 @@
 
             // Hotel Pill Logic
             const hotelPill = document.getElementById('trip-hotel-pill');
-            if (hotelManual) {
-                document.getElementById('trip-general-hotel-value').innerText = hotelManual;
+            if (trip.hotel && trip.hotel !== 'Hotel no especificado') {
+                document.getElementById('trip-general-hotel-value').innerText = trip.hotel;
                 hotelPill.classList.remove('hidden');
             } else {
                 hotelPill.classList.add('hidden');
@@ -1752,6 +1754,9 @@
             renderTripFinancialSummary(order, trip);
 
             document.getElementById('trip-modal').classList.remove('hidden');
+            // Scroll modal content to top
+            document.querySelectorAll('#trip-modal-box .modal-main-content, #trip-modal-box .modal-sidebar').forEach(el => el.scrollTop = 0);
+            document.getElementById('trip-modal-box').scrollTop = 0;
         }
 
         function closeTripModal() {

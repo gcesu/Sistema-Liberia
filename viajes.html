@@ -1387,13 +1387,15 @@
                     </div>
                     <div>
                       <p class="meta-field-label">📢 Nota Choferes</p>
-                      <textarea id="trip-input-meta-nota_choferes" oninput="tripCheckForChanges(); autoResizeTextarea(this)" rows="2"
+                      <textarea id="trip-input-meta-nota_choferes"
+                        oninput="tripCheckForChanges(); autoResizeTextarea(this)" rows="2"
                         class="input-editable bg-white resize-none h-16"></textarea>
                       <div id="trip-display-meta-nota_choferes" class="hidden meta-field-value"></div>
                     </div>
                     <div>
                       <p class="meta-field-label">🔒 Notas Internas</p>
-                      <textarea id="trip-input-meta-notas_internas" oninput="tripCheckForChanges(); autoResizeTextarea(this)" rows="2"
+                      <textarea id="trip-input-meta-notas_internas"
+                        oninput="tripCheckForChanges(); autoResizeTextarea(this)" rows="2"
                         class="input-editable bg-white resize-none h-16"></textarea>
                       <div id="trip-display-meta-notas_internas" class="hidden meta-field-value"></div>
                     </div>
@@ -2637,8 +2639,8 @@
 
       // Hotel Pill Logic
       const hotelPill = document.getElementById("trip-hotel-pill");
-      if (hotelManual) {
-        document.getElementById("trip-general-hotel-value").innerText = hotelManual;
+      if (trip.hotel && trip.hotel !== 'Hotel no especificado') {
+        document.getElementById("trip-general-hotel-value").innerText = trip.hotel;
         hotelPill.classList.remove("hidden");
       } else {
         hotelPill.classList.add("hidden");
@@ -2809,6 +2811,9 @@
       renderTripFinancialSummary(order, trip);
 
       document.getElementById("trip-modal").classList.remove("hidden");
+      // Scroll modal content to top
+      document.querySelectorAll('#trip-modal-box .modal-main-content, #trip-modal-box .modal-sidebar').forEach(el => el.scrollTop = 0);
+      document.getElementById('trip-modal-box').scrollTop = 0;
       requestAnimationFrame(() => {
         resizeTripNoteTextareas();
       });
@@ -2971,13 +2976,46 @@
       }
 
       const precioNetoVal = parseFloat(findMetaValue(order, ["precio_neto"]) || 0);
-      let totalViajesForNet = order.viajes?.length || 0;
-      if (!totalViajesForNet) {
-        const hasArrival = !!findMetaValue(order, ["- Arrival Date"]);
-        const hasDeparture = !!findMetaValue(order, ["- Departure Date"]);
-        totalViajesForNet = hasArrival && hasDeparture ? 2 : 1;
+      // Distribución proporcional del precio neto basado en el subtotal de cada viaje
+      // Usa redondeo por residuo para que la suma sea exacta (sin exceder ni faltar centavos)
+      let precioNetoPorViaje = 0;
+      if (precioNetoVal > 0 && order.viajes && order.viajes.length > 0 && order.line_items && order.line_items.length > 0) {
+        const orderSubtotal = (order.line_items || []).reduce((acc, item) => acc + parseFloat(item.subtotal || 0), 0);
+        if (orderSubtotal > 0) {
+          // Calcular las proporciones de TODOS los viajes, redondeando hacia abajo
+          const allShares = [];
+          let sumFloor = 0;
+          for (let i = 0; i < order.viajes.length; i++) {
+            const li = order.line_items[i];
+            const sub = li ? parseFloat(li.subtotal || 0) : 0;
+            const rawShare = precioNetoVal * (sub / orderSubtotal);
+            const floored = Math.floor(rawShare * 100) / 100; // redondear hacia abajo
+            allShares.push(floored);
+            sumFloor += floored;
+          }
+          // El último viaje recibe el residuo exacto para que la suma sea perfecta
+          const remainder = Math.round((precioNetoVal - sumFloor) * 100) / 100;
+          allShares[allShares.length - 1] = Math.round((allShares[allShares.length - 1] + remainder) * 100) / 100;
+
+          // Buscar el índice del viaje actual
+          const currentIdx = order.viajes.findIndex(v =>
+            (trip.viaje_id && v.id == trip.viaje_id) || v.item_index === trip.item_index
+          );
+          precioNetoPorViaje = currentIdx >= 0 ? allShares[currentIdx] : allShares[0];
+        } else {
+          // Fallback: dividir equitativamente
+          precioNetoPorViaje = precioNetoVal / order.viajes.length;
+        }
+      } else if (precioNetoVal > 0) {
+        // Fallback: dividir equitativamente si no hay viajes disponibles
+        let totalViajesForNet = order.viajes?.length || 0;
+        if (!totalViajesForNet) {
+          const hasArrival = !!findMetaValue(order, ["- Arrival Date"]);
+          const hasDeparture = !!findMetaValue(order, ["- Departure Date"]);
+          totalViajesForNet = hasArrival && hasDeparture ? 2 : 1;
+        }
+        precioNetoPorViaje = totalViajesForNet > 0 ? (precioNetoVal / totalViajesForNet) : 0;
       }
-      const precioNetoPorViaje = totalViajesForNet > 0 ? (precioNetoVal / totalViajesForNet) : 0;
       container.innerHTML += `
         <div class="flex justify-between items-center pt-3 border-t border-dashed border-gray-200 mt-2">
           <span class="font-bold uppercase opacity-50 text-[10px] tracking-widest">PRECIO NETO</span>
