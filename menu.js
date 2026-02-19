@@ -151,9 +151,10 @@ class AdminNavbar extends HTMLElement {
         </a>
         
         <nav class="nav-links-desktop">
-            <a href="/reservas" class="nav-item">Reservas</a>
-            <a href="/viajes" class="nav-item">Viajes</a>
-            <a href="/choferes" class="nav-item">Choferes</a>
+            <a href="/index.html" class="nav-item">Reservas</a>
+            <a href="/cotizaciones.html" class="nav-item">Cotizaciones</a>
+            <a href="/viajes.html" class="nav-item">Viajes</a>
+            <a href="/choferes.html" class="nav-item">Choferes</a>
         </nav>
 
         <div class="ml-auto flex items-center gap-2 md:gap-4">

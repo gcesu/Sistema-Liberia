@@ -40,6 +40,7 @@
 
   <!-- CONEXIÓN AL MENÚ GLOBAL -->
   <script src="menu.js" defer></script>
+  <script src="phone-utils.js"></script>
 
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
@@ -1386,13 +1387,13 @@
                     </div>
                     <div>
                       <p class="meta-field-label">📢 Nota Choferes</p>
-                      <textarea id="trip-input-meta-nota_choferes" oninput="tripCheckForChanges()" rows="2"
+                      <textarea id="trip-input-meta-nota_choferes" oninput="tripCheckForChanges(); autoResizeTextarea(this)" rows="2"
                         class="input-editable bg-white resize-none h-16"></textarea>
                       <div id="trip-display-meta-nota_choferes" class="hidden meta-field-value"></div>
                     </div>
                     <div>
                       <p class="meta-field-label">🔒 Notas Internas</p>
-                      <textarea id="trip-input-meta-notas_internas" oninput="tripCheckForChanges()" rows="2"
+                      <textarea id="trip-input-meta-notas_internas" oninput="tripCheckForChanges(); autoResizeTextarea(this)" rows="2"
                         class="input-editable bg-white resize-none h-16"></textarea>
                       <div id="trip-display-meta-notas_internas" class="hidden meta-field-value"></div>
                     </div>
@@ -1862,10 +1863,7 @@
       datePicker = flatpickr("#date-range", {
         mode: "range",
         dateFormat: "d/M/Y",
-        defaultDate: [
-          new Date(),
-          new Date(new Date().setDate(new Date().getDate() + 30)),
-        ],
+        defaultDate: [new Date(), new Date()],
         locale: {
           firstDayOfWeek: 1,
           rangeSeparator: " a ",
@@ -2311,6 +2309,23 @@
       }
     }
 
+    function autoResizeTextarea(textarea) {
+      if (!textarea) return;
+      if (!textarea.dataset.baseHeight) {
+        textarea.dataset.baseHeight = String(textarea.offsetHeight || 64);
+      }
+      const baseHeight = parseFloat(textarea.dataset.baseHeight) || 64;
+      textarea.style.overflowY = 'hidden';
+      textarea.style.height = 'auto';
+      textarea.style.height = `${Math.max(textarea.scrollHeight, baseHeight)}px`;
+    }
+
+    function resizeTripNoteTextareas() {
+      const modal = document.getElementById("trip-modal");
+      if (!modal) return;
+      modal.querySelectorAll('textarea[id*="nota_choferes"], textarea[id*="notas_internas"]').forEach(autoResizeTextarea);
+    }
+
     function sendTripEmail() {
       if (!currentTrip || !currentTripOrder) return;
       const email = (currentTrip.email || '').toLowerCase();
@@ -2321,9 +2336,14 @@
 
     function sendTripWhatsApp() {
       if (!currentTrip || !currentTripOrder) return;
-      const phone = (currentTrip.phone || '').replace(/\D/g, '');
       const msg = generateTripMessage(currentTrip, currentTripOrder);
-      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+      const whatsappUrl = PhoneUtils.buildWhatsappUrl(
+        currentTrip.phone || '',
+        currentTripOrder.billing?.country || '',
+        msg
+      );
+      if (!whatsappUrl) return;
+      window.open(whatsappUrl, '_blank');
     }
 
     function toggleIndexingUI(show) {
@@ -2546,7 +2566,7 @@
 
       document.getElementById("trip-det-email-link").href = `mailto:${email}`;
       document.getElementById("trip-det-whatsapp-link").href =
-        `https://wa.me/${phone.replace(/\D/g, "")}`;
+        PhoneUtils.buildWhatsappUrl(phone, country);
 
       document.getElementById("trip-input-name").value = fullName;
       document.getElementById("trip-input-email").value = email;
@@ -2661,10 +2681,32 @@
       logisticsContainer.innerHTML = "";
       const fechaLabel = isArrival ? "Fecha" : "Fecha de Recogida";
       const horaLabel = isArrival ? "Hora" : "Hora de Recogida";
+      const tripDateInputValue = trip.raw_date
+        ? `${trip.raw_date.getFullYear()}-${String(trip.raw_date.getMonth() + 1).padStart(2, "0")}-${String(trip.raw_date.getDate()).padStart(2, "0")}`
+        : "";
+      const normalizedTripTime = normalizeTime(trip.time || "");
+      const tripTimeInputValue = normalizedTripTime !== "--:--" ? normalizedTripTime : "";
+      const tripFlightInputValue = (trip.flight && trip.flight !== "--") ? trip.flight : "";
+      tripOriginalValues["fecha"] = tripDateInputValue;
+      tripOriginalValues["hora"] = tripTimeInputValue;
+      tripOriginalValues["vuelo"] = tripFlightInputValue;
+
       logisticsContainer.innerHTML += `
-                <div><p class="meta-field-label">${fechaLabel}</p><p class="meta-field-value">${trip.dateStr}</p></div>
-                <div><p class="meta-field-label">${horaLabel}</p><p class="meta-field-value">${trip.time || "--:--"}</p></div>
-                <div><p class="meta-field-label">Vuelo</p><p class="meta-field-value">${(trip.flight || "--").toUpperCase()}</p></div>
+                <div>
+                  <p class="meta-field-label">${fechaLabel}</p>
+                  <p id="trip-display-fecha" class="meta-field-value">${trip.dateStr}</p>
+                  <input type="date" id="trip-input-fecha" oninput="tripCheckForChanges()" value="${tripDateInputValue}" class="hidden input-editable mt-1">
+                </div>
+                <div>
+                  <p class="meta-field-label">${horaLabel}</p>
+                  <p id="trip-display-hora" class="meta-field-value">${trip.time || "--:--"}</p>
+                  <input type="time" id="trip-input-hora" oninput="tripCheckForChanges()" value="${tripTimeInputValue}" class="hidden input-editable mt-1">
+                </div>
+                <div>
+                  <p class="meta-field-label">Vuelo</p>
+                  <p id="trip-display-vuelo" class="meta-field-value">${(trip.flight || "--").toUpperCase()}</p>
+                  <input type="text" id="trip-input-vuelo" oninput="tripCheckForChanges()" value="${tripFlightInputValue}" class="hidden input-editable mt-1 uppercase">
+                </div>
                 <div><p class="meta-field-label">Ruta</p><p class="meta-field-value">${trip.route}</p></div>
             `;
 
@@ -2704,6 +2746,8 @@
         notesVal;
       document.getElementById("trip-input-meta-notas_internas").value =
         internalVal;
+      autoResizeTextarea(document.getElementById("trip-input-meta-nota_choferes"));
+      autoResizeTextarea(document.getElementById("trip-input-meta-notas_internas"));
 
       document.getElementById("trip-display-meta-chofer").innerText =
         assign.driver;
@@ -2726,8 +2770,11 @@
           .getElementById(k.replace("display", "input"))
           ?.classList.remove("hidden");
       });
-      // Ocultar el botón de editar logística ya que siempre están editables
-      document.getElementById("trip-btn-edit-logistics").classList.add("hidden");
+      // Mostrar botón para editar datos de viaje (fecha/hora/vuelo)
+      const btnEditLogistics = document.getElementById("trip-btn-edit-logistics");
+      btnEditLogistics.classList.remove("hidden");
+      btnEditLogistics.innerText = "Editar";
+      btnEditLogistics.classList.remove("editing");
 
       // Estatus del Viaje (Llegada/Salida)
       const tripStatusOptions = isArrival
@@ -2763,6 +2810,9 @@
       renderTripFinancialSummary(order, trip);
 
       document.getElementById("trip-modal").classList.remove("hidden");
+      requestAnimationFrame(() => {
+        resizeTripNoteTextareas();
+      });
     }
 
     function closeTripModal() {
@@ -2920,6 +2970,20 @@
       } else {
         addRow("Total Este Viaje", order.total, true);
       }
+
+      const precioNetoVal = parseFloat(findMetaValue(order, ["precio_neto"]) || 0);
+      let totalViajesForNet = order.viajes?.length || 0;
+      if (!totalViajesForNet) {
+        const hasArrival = !!findMetaValue(order, ["- Arrival Date"]);
+        const hasDeparture = !!findMetaValue(order, ["- Departure Date"]);
+        totalViajesForNet = hasArrival && hasDeparture ? 2 : 1;
+      }
+      const precioNetoPorViaje = totalViajesForNet > 0 ? (precioNetoVal / totalViajesForNet) : 0;
+      container.innerHTML += `
+        <div class="flex justify-between items-center pt-3 border-t border-dashed border-gray-200 mt-2">
+          <span class="font-bold uppercase opacity-50 text-[10px] tracking-widest">PRECIO NETO</span>
+          <span class="font-bold text-base text-[#002a3f]">$${precioNetoPorViaje.toFixed(2)}</span>
+        </div>`;
     }
 
     function tripToggleStatusEditQuick() {
@@ -3022,10 +3086,9 @@
         document.getElementById("trip-btn-edit-logistics").innerText =
           "Editar";
         [
-          "trip-display-meta-chofer",
-          "trip-display-meta-subchofer",
-          "trip-display-meta-nota_choferes",
-          "trip-display-meta-notas_internas",
+          "trip-display-fecha",
+          "trip-display-hora",
+          "trip-display-vuelo",
         ].forEach((k) => {
           document.getElementById(k)?.classList.remove("hidden");
           document
@@ -3036,10 +3099,9 @@
         document.getElementById("trip-btn-edit-logistics").innerText =
           "Cancelar";
         [
-          "trip-display-meta-chofer",
-          "trip-display-meta-subchofer",
-          "trip-display-meta-nota_choferes",
-          "trip-display-meta-notas_internas",
+          "trip-display-fecha",
+          "trip-display-hora",
+          "trip-display-vuelo",
         ].forEach((k) => {
           document.getElementById(k)?.classList.add("hidden");
           document
@@ -3088,6 +3150,23 @@
       }
 
       // Verificar cambios en logística
+      if (!hasChanges) {
+        const tripDateInput = document.getElementById("trip-input-fecha");
+        const tripTimeInput = document.getElementById("trip-input-hora");
+        const tripFlightInput = document.getElementById("trip-input-vuelo");
+
+        if (tripDateInput && tripDateInput.value !== (tripOriginalValues["fecha"] || "")) {
+          hasChanges = true;
+        }
+        if (tripTimeInput && tripTimeInput.value !== (tripOriginalValues["hora"] || "")) {
+          hasChanges = true;
+        }
+        if (tripFlightInput && tripFlightInput.value !== (tripOriginalValues["vuelo"] || "")) {
+          hasChanges = true;
+        }
+
+      }
+
       if (!hasChanges) {
         const driverKey = currentTripIsArrival
           ? "chofer_llegada"
@@ -3246,6 +3325,9 @@
         // NUEVO: Si hay viaje_id, actualizar primero la tabla viajes
         if (currentViajeId) {
           const viajePayload = {
+            fecha: document.getElementById("trip-input-fecha")?.value || "",
+            hora: document.getElementById("trip-input-hora")?.value || "",
+            vuelo: document.getElementById("trip-input-vuelo")?.value?.trim() || "",
             chofer: document.getElementById("trip-input-meta-chofer").value,
             subchofer: document.getElementById("trip-input-meta-subchofer").value,
             nota_choferes: document.getElementById("trip-input-meta-nota_choferes").value,
@@ -3284,6 +3366,14 @@
         const savedCodriver = document.getElementById("trip-input-meta-subchofer").value;
         const savedDriverNotes = document.getElementById("trip-input-meta-nota_choferes").value;
         const savedInternalNotes = document.getElementById("trip-input-meta-notas_internas").value;
+        const savedFecha = document.getElementById("trip-input-fecha")?.value || "";
+        const savedHora = document.getElementById("trip-input-hora")?.value || "";
+        const savedVuelo = document.getElementById("trip-input-vuelo")?.value?.trim() || "";
+        const savedRawDate = parseFlexibleDate(savedFecha);
+        if (savedRawDate && savedHora) {
+          const [hours, mins] = savedHora.split(":");
+          savedRawDate.setHours(parseInt(hours || "0"), parseInt(mins || "0"));
+        }
 
         // Actualizar en allTrips
         const allTripIndex = allTrips.findIndex((t) => {
@@ -3306,6 +3396,12 @@
           allTrips[allTripIndex].subchofer = savedCodriver;
           allTrips[allTripIndex].nota_choferes = savedDriverNotes;
           allTrips[allTripIndex].notas_internas = savedInternalNotes;
+          allTrips[allTripIndex].flight = savedVuelo || "--";
+          allTrips[allTripIndex].time = savedHora ? formatTime12H(savedHora) : "--:--";
+          if (savedRawDate) {
+            allTrips[allTripIndex].raw_date = savedRawDate;
+            allTrips[allTripIndex].dateStr = formatDateStandard(savedRawDate);
+          }
         }
 
         const tripIndex = currentFilteredTrips.findIndex((t) => {
@@ -3334,6 +3430,12 @@
           currentFilteredTrips[tripIndex].subchofer = savedCodriver;
           currentFilteredTrips[tripIndex].nota_choferes = savedDriverNotes;
           currentFilteredTrips[tripIndex].notas_internas = savedInternalNotes;
+          currentFilteredTrips[tripIndex].flight = savedVuelo || "--";
+          currentFilteredTrips[tripIndex].time = savedHora ? formatTime12H(savedHora) : "--:--";
+          if (savedRawDate) {
+            currentFilteredTrips[tripIndex].raw_date = savedRawDate;
+            currentFilteredTrips[tripIndex].dateStr = formatDateStandard(savedRawDate);
+          }
 
           // Re-renderizar tabla
           renderTrips(currentFilteredTrips);
@@ -3352,7 +3454,7 @@
     }
 
     function resetFilters() {
-      datePicker.clear();
+      datePicker.setDate([new Date(), new Date()], true);
       document.getElementById("filter-type").value = "all";
       document.getElementById("search-text").value = "";
       applyFilters();

@@ -40,6 +40,7 @@
 
     <!-- CONEXIÓN AL MENÚ -->
     <script src="menu.js" defer></script>
+    <script src="phone-utils.js"></script>
 
     <style>
         :root {
@@ -518,6 +519,17 @@
         .input-editable:focus {
             border-color: var(--accent);
             background-color: white;
+        }
+
+        #input-precio-neto::-webkit-outer-spin-button,
+        #input-precio-neto::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        #input-precio-neto {
+            -moz-appearance: textfield;
+            appearance: textfield;
         }
 
         /* Searchable Select Dropdown */
@@ -1264,6 +1276,23 @@
             return `${hours}:${minutes} ${ampm}`;
         }
 
+        function autoResizeTextarea(textarea) {
+            if (!textarea) return;
+            if (!textarea.dataset.baseHeight) {
+                textarea.dataset.baseHeight = String(textarea.offsetHeight || 64);
+            }
+            const baseHeight = parseFloat(textarea.dataset.baseHeight) || 64;
+            textarea.style.overflowY = 'hidden';
+            textarea.style.height = 'auto';
+            textarea.style.height = `${Math.max(textarea.scrollHeight, baseHeight)}px`;
+        }
+
+        function resizeLogisticsNoteTextareas() {
+            const modal = document.getElementById('order-modal');
+            if (!modal) return;
+            modal.querySelectorAll('textarea[id*="nota_choferes"], textarea[id*="notas_internas"]').forEach(autoResizeTextarea);
+        }
+
         function generateViajeMessage(order, viaje) {
             const firstName = (order.billing?.first_name || '').trim();
             const pax = viaje.pax || 1;
@@ -1271,8 +1300,43 @@
             const vuelo = (viaje.vuelo || '').toUpperCase();
             const hora = viaje.hora ? formatTime12h(viaje.hora) : '';
             const fecha = viaje.fecha ? formatDateShort(viaje.fecha) : '';
-            const numViajes = (order.viajes && order.viajes.length > 0) ? order.viajes.length : 1;
-            const ratePerTrip = order.total ? `$${Math.round(parseFloat(order.total) / numViajes)}` : '$___';
+            const totalViajes = order.viajes?.length || order.line_items?.length || 1;
+            let ratePerTrip = '$___';
+
+            if (order.total) {
+                let tripSubtotal = null;
+                if (viaje.item_index !== undefined && order.line_items) {
+                    const originalIdx = viaje.item_index >= 1000 ? viaje.item_index - 1000 : viaje.item_index;
+                    if (order.line_items[originalIdx]) {
+                        tripSubtotal = parseFloat(order.line_items[originalIdx].subtotal || 0);
+                    }
+                }
+
+                let isRoundTrip = false;
+                if (viaje.item_index >= 1000) {
+                    isRoundTrip = true;
+                } else if (order.viajes && order.viajes.length > 0 && viaje.item_index !== undefined) {
+                    isRoundTrip = order.viajes.some(v => v.item_index === viaje.item_index + 1000);
+                }
+
+                const divisor = isRoundTrip ? 2 : 1;
+                const proportion = 1 / totalViajes;
+                let feeSum = 0;
+                let taxSum = 0;
+                let couponSum = 0;
+
+                if (order.fee_lines) order.fee_lines.forEach(f => feeSum += parseFloat(f.total || 0) * proportion);
+                if (order.tax_lines) order.tax_lines.forEach(t => taxSum += parseFloat(t.tax_total || 0) * proportion);
+                if (order.coupon_lines) order.coupon_lines.forEach(c => couponSum += parseFloat(c.discount || 0) * proportion);
+
+                if (tripSubtotal !== null) {
+                    const amount = (tripSubtotal / divisor) + feeSum + taxSum - couponSum;
+                    ratePerTrip = `$${amount % 1 === 0 ? amount.toFixed(0) : amount.toFixed(2)}`;
+                } else {
+                    const amount = parseFloat(order.total) / totalViajes;
+                    ratePerTrip = `$${amount % 1 === 0 ? amount.toFixed(0) : amount.toFixed(2)}`;
+                }
+            }
             const isArrival = viaje.tipo === 'llegada';
 
             if (isArrival) {
@@ -1298,9 +1362,10 @@
             if (!order) return;
             const viaje = (order.viajes || []).find(v => v.id === viajeId);
             if (!viaje) return;
-            const phone = (order.billing?.phone || '').replace(/\D/g, '');
             const msg = generateViajeMessage(order, viaje);
-            window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+            const whatsappUrl = PhoneUtils.buildWhatsappUrl(order.billing?.phone || '', order.billing?.country || '', msg);
+            if (!whatsappUrl) return;
+            window.open(whatsappUrl, '_blank');
         }
 
         function generateLegacyViajeObj(order, type) {
@@ -1329,9 +1394,10 @@
             const order = allOrders.find(o => o.id === orderId);
             if (!order) return;
             const viaje = generateLegacyViajeObj(order, type);
-            const phone = (order.billing?.phone || '').replace(/\D/g, '');
             const msg = generateViajeMessage(order, viaje);
-            window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+            const whatsappUrl = PhoneUtils.buildWhatsappUrl(order.billing?.phone || '', order.billing?.country || '', msg);
+            if (!whatsappUrl) return;
+            window.open(whatsappUrl, '_blank');
         }
 
         function normalizeForInput(val, type) {
@@ -1353,8 +1419,7 @@
             if (!phone) return 'N/A';
             const clean = phone.replace(/\D/g, '');
             const country = countryCode?.toUpperCase() || '';
-            const prefixes = { 'CR': '506', 'US': '1', 'CA': '1', 'MX': '52', 'ES': '34' };
-            const prefix = prefixes[country] || '';
+            const prefix = PhoneUtils.getDialCode(country);
             let raw = clean;
             if (prefix && clean.startsWith(prefix)) raw = clean.slice(prefix.length);
             if (country === 'CR') return `+506 ${raw.length === 8 ? `${raw.slice(0, 4)} ${raw.slice(4)}` : raw}`;
@@ -1863,7 +1928,7 @@
             document.getElementById('display-address').innerText = address;
 
             document.getElementById('det-email-link').href = `mailto:${email}`;
-            document.getElementById('det-whatsapp-link').href = `https://wa.me/${phone.replace(/\D/g, '')}`;
+            document.getElementById('det-whatsapp-link').href = PhoneUtils.buildWhatsappUrl(phone, country);
 
             // Privacy Controls
             // Privacy Controls
@@ -1890,6 +1955,7 @@
             const showFinancieroMeta = findMetaValue(o, ["privacy_show_financiero"]);
             const showFinanciero = showFinancieroMeta === null || showFinancieroMeta === '' || String(showFinancieroMeta) !== "0";
             originalValues.privacy_show_financiero = showFinanciero;
+            originalValues.precio_neto = String(findMetaValue(o, ["precio_neto"]) || '');
 
             const financieroCheck = document.getElementById('privacy-show-financiero');
             if (financieroCheck) {
@@ -1921,6 +1987,9 @@
             renderPaymentInfo(o);
 
             document.getElementById('order-modal').classList.remove('hidden');
+            requestAnimationFrame(() => {
+                resizeLogisticsNoteTextareas();
+            });
         }
 
         function renderLogisticsSections(o) {
@@ -2033,11 +2102,11 @@
                                 </div>
                                 <div>
                                     <p class="meta-field-label">📢 Nota Choferes</p>
-                                    <textarea id="input-${prefix}_nota_choferes" oninput="checkForChanges()" rows="2" class="input-editable bg-white resize-none h-16">${viaje.nota_choferes || ''}</textarea>
+                                    <textarea id="input-${prefix}_nota_choferes" oninput="checkForChanges(); autoResizeTextarea(this)" rows="2" class="input-editable bg-white resize-none h-16">${viaje.nota_choferes || ''}</textarea>
                                 </div>
                                 <div>
                                     <p class="meta-field-label">🔒 Notas Internas</p>
-                                    <textarea id="input-${prefix}_notas_internas" oninput="checkForChanges()" rows="2" class="input-editable bg-white resize-none h-16">${viaje.notas_internas || ''}</textarea>
+                                    <textarea id="input-${prefix}_notas_internas" oninput="checkForChanges(); autoResizeTextarea(this)" rows="2" class="input-editable bg-white resize-none h-16">${viaje.notas_internas || ''}</textarea>
                                 </div>
                                 <div class="flex gap-2 mt-3 pt-3 border-t border-dashed ${borderClass}">
                                     <button onclick="sendViajeEmail(${o.id}, ${viajeId})" class="flex-1 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all shadow-sm flex items-center justify-center gap-1">Recordatorio Correo</button>
@@ -2049,6 +2118,8 @@
                 `;
                 container.appendChild(card);
                 initSearchableSelect(`input-${prefix}_chofer`);
+                autoResizeTextarea(document.getElementById(`input-${prefix}_nota_choferes`));
+                autoResizeTextarea(document.getElementById(`input-${prefix}_notas_internas`));
             });
 
             // Layout grid si hay 2+ tarjetas
@@ -2150,11 +2221,11 @@
                             </div>
                             <div>
                                 <p class="meta-field-label">📢 Nota Choferes</p>
-                                <textarea id="input-meta-${notaKey}" oninput="checkForChanges()" rows="2" class="input-editable bg-white resize-none h-16">${deepScanMeta(o, notaKey) || ''}</textarea>
+                                <textarea id="input-meta-${notaKey}" oninput="checkForChanges(); autoResizeTextarea(this)" rows="2" class="input-editable bg-white resize-none h-16">${deepScanMeta(o, notaKey) || ''}</textarea>
                             </div>
                             <div>
                                 <p class="meta-field-label">🔒 Notas Internas</p>
-                                <textarea id="input-meta-${internasKey}" oninput="checkForChanges()" rows="2" class="input-editable bg-white resize-none h-16">${deepScanMeta(o, internasKey) || ''}</textarea>
+                                <textarea id="input-meta-${internasKey}" oninput="checkForChanges(); autoResizeTextarea(this)" rows="2" class="input-editable bg-white resize-none h-16">${deepScanMeta(o, internasKey) || ''}</textarea>
                             </div>
                             <div class="flex gap-2 mt-3 pt-3 border-t border-dashed ${borderClass}">
                                 <button onclick="sendLegacyEmail(${o.id}, '${type}')" class="flex-1 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all shadow-sm flex items-center justify-center gap-1">Recordatorio Correo</button>
@@ -2164,6 +2235,10 @@
                     </div>
                 </div>
             `;
+            requestAnimationFrame(() => {
+                autoResizeTextarea(document.getElementById(`input-meta-${notaKey}`));
+                autoResizeTextarea(document.getElementById(`input-meta-${internasKey}`));
+            });
             return card;
         }
 
@@ -2406,6 +2481,7 @@
             meta.push({ key: 'privacy_show_email', value: showEmail ? "1" : "0" });
             meta.push({ key: 'privacy_show_phone', value: showPhone ? "1" : "0" });
             meta.push({ key: 'privacy_show_financiero', value: showFinanciero ? "1" : "0" });
+            meta.push({ key: 'precio_neto', value: document.getElementById('input-precio-neto')?.value?.trim() || '' });
 
             // Agregar hotel name
             meta.push({ key: 'hotel_name', value: document.getElementById('input-hotel-name-edit').value });
@@ -2532,6 +2608,9 @@
             // Check Hotel Name
             if (document.getElementById('input-hotel-name-edit').value !== originalValues.hotel_name) changed = true;
 
+            const precioNetoInput = document.getElementById('input-precio-neto');
+            if (precioNetoInput && precioNetoInput.value.trim() !== (originalValues.precio_neto || '')) changed = true;
+
             document.getElementById('btn-save').classList.toggle('hidden', !changed);
         }
 
@@ -2583,6 +2662,23 @@
                 o.coupon_lines.forEach(coupon => addRow(`Cupón: ${coupon.code}`, coupon.discount, false, false, true));
             }
             addRow("Total Pagado", o.total, true);
+
+            const precioNetoVal = findMetaValue(o, ["precio_neto"]);
+            container.innerHTML += `
+                <div class="flex justify-between items-center pt-3 border-t border-dashed border-gray-200 mt-2">
+                    <span class="font-bold uppercase opacity-50 text-[10px] tracking-widest">PRECIO NETO</span>
+                    <div class="flex items-center gap-1 w-36">
+                        <span class="font-bold text-base text-[#002a3f]">$</span>
+                        <input
+                            type="number"
+                            step="0.01"
+                            id="input-precio-neto"
+                            value="${precioNetoVal ? String(precioNetoVal).replace(/"/g, '&quot;') : ''}"
+                            oninput="checkForChanges()"
+                            class="input-editable bg-white w-full text-left font-bold"
+                            placeholder="0.00">
+                    </div>
+                </div>`;
         }
 
         function closeModal() { document.getElementById('order-modal').classList.add('hidden'); document.body.style.overflow = ''; }

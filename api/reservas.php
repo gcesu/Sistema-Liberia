@@ -167,6 +167,7 @@ if ($method === 'PUT') {
             'privacy_show_email' => 'privacy_show_email',
             'privacy_show_phone' => 'privacy_show_phone',
             'privacy_show_financiero' => 'privacy_show_financiero',
+            'precio_neto' => 'precio_neto',
             'hotel_name' => 'hotel_manual',
         ];
 
@@ -348,6 +349,10 @@ function transformarReservaParaFrontend($r)
     $metaData[] = ['key' => 'privacy_show_phone', 'value' => (!empty($r['privacy_show_phone']) && $r['privacy_show_phone'] == '1') ? '1' : '0'];
     $metaData[] = ['key' => 'privacy_show_financiero', 'value' => (isset($r['privacy_show_financiero']) && $r['privacy_show_financiero'] == '0') ? '0' : '1'];
 
+    if (isset($r['precio_neto']) && $r['precio_neto'] !== null && $r['precio_neto'] !== '') {
+        $metaData[] = ['key' => 'precio_neto', 'value' => (string) $r['precio_neto']];
+    }
+
     if (!empty($r['hotel_manual'])) {
         $metaData[] = ['key' => 'hotel_manual', 'value' => $r['hotel_manual']];
     }
@@ -507,6 +512,10 @@ function buildMetaDataLegacy($r)
     $meta[] = ['key' => 'privacy_show_phone', 'value' => (!empty($r['privacy_show_phone']) && $r['privacy_show_phone'] == '1') ? '1' : '0'];
     // Default 1 (mostrar) si no existe. Solo 0 si es explícitamente 0 en BD (o '0')
     $meta[] = ['key' => 'privacy_show_financiero', 'value' => (isset($r['privacy_show_financiero']) && $r['privacy_show_financiero'] == '0') ? '0' : '1'];
+
+    if (isset($r['precio_neto']) && $r['precio_neto'] !== null && $r['precio_neto'] !== '') {
+        $meta[] = ['key' => 'precio_neto', 'value' => (string) $r['precio_neto']];
+    }
 
     // Hotel Manual
     if (!empty($r['hotel_manual'])) {
