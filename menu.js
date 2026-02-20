@@ -151,8 +151,8 @@ class AdminNavbar extends HTMLElement {
         </a>
         
         <nav class="nav-links-desktop">
+            <!-- <a href="/cotizaciones.html" class="nav-item">Cotizaciones</a> -->
             <a href="/index.html" class="nav-item">Reservas</a>
-            <a href="/cotizaciones.html" class="nav-item">Cotizaciones</a>
             <a href="/viajes.html" class="nav-item">Viajes</a>
             <a href="/choferes.html" class="nav-item">Choferes</a>
         </nav>

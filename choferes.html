@@ -237,6 +237,14 @@
             font-size: var(--font-base);
         }
 
+        .time-big {
+            font-weight: 900;
+            color: var(--primary);
+            font-size: 1.05rem;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+        }
+
         /* Modal */
         .modal-overlay {
             position: fixed;
@@ -854,6 +862,20 @@
                     <option value="Chayo">Chayo</option>
                     <option value="Alex Fila">Alex Fila</option>
                     <option value="Alex Montero">Alex Montero</option>
+                    <option value="Daniel (Guardia)">Daniel (Guardia)</option>
+                    <option value="Gabriela">Gabriela</option>
+                    <option value="Tatiana (La Cruz)">Tatiana (La Cruz)</option>
+                    <option value="Roger">Roger</option>
+                    <option value="Jose (Pelón)">Jose (Pelón)</option>
+                    <option value="Esteban">Esteban</option>
+                    <option value="Marcos (primo Fermín)">Marcos (primo Fermín)</option>
+                    <option value="Jose (Cartagena)">Jose (Cartagena)</option>
+                    <option value="Rafa">Rafa</option>
+                    <option value="Kenneth (Belén)">Kenneth (Belén)</option>
+                    <option value="Martín (La Cruz)">Martín (La Cruz)</option>
+                    <option value="Julio">Julio</option>
+                    <option value="Don Manuel">Don Manuel</option>
+                    <option value="Rigoberto">Rigoberto</option>
                     <option value="no_asignado">No asignado</option>
                 </select>
             </div>
@@ -875,7 +897,8 @@
                 <thead>
                     <tr>
                         <th class="w-64 pl-6">Cliente</th>
-                        <th>Fecha / Hora</th>
+                        <th>Fecha</th>
+                        <th>Hora</th>
                         <th>Origen</th>
                         <th>Destino</th>
                         <th>Hotel</th>
@@ -1104,7 +1127,21 @@
                 'Alban': 'Albán',
                 'Chayo': 'Chayo',
                 'AlexF': 'Alex Fila',
-                'AlexM': 'Alex Montero'
+                'AlexM': 'Alex Montero',
+                'DanielG': 'Daniel',
+                'Marcos': 'Marcos',
+                'JoseC': 'Jose',
+                'Rafa': 'Rafa',
+                'Kenneth': 'Kenneth',
+                'Martin': 'Martín',
+                'Gabriela': 'Gabriela',
+                'Tatiana': 'Tatiana',
+                'Roger': 'Roger',
+                'JoseP': 'Jose',
+                'Esteban': 'Esteban',
+                'Julio': 'Julio',
+                'Don Manuel': 'Don Manuel',
+                'Rigoberto': 'Rigoberto'
             };
             return driverMap[param] || param;
         }
@@ -1221,7 +1258,7 @@
                     if (Array.isArray(orders) && orders.length > 0) {
                         const newTrips = processBatch(orders);
                         allTrips = [...allTrips, ...newTrips];
-                        allTrips.sort((a, b) => a.raw_date - b.raw_date);
+                        sortTripsByClosestFirst(allTrips);
                         applyFilters();
 
                         const progress = Math.min(100, Math.round((page / totalPages) * 100));
@@ -1257,11 +1294,12 @@
                         const parsedDate = parseFlexibleDate(viaje.fecha);
                         if (parsedDate) {
                             const isArrival = viaje.tipo === "llegada";
-                            const hotel = viaje.hotel || "Hotel no especificado";
+                            // Nombre del producto (destino) desde line_items, NO desde viaje.hotel
+                            const originalItemIndex = viaje.item_index >= 1000 ? viaje.item_index - 1000 : viaje.item_index;
+                            const destName = order.line_items?.[originalItemIndex]?.name || "Hotel no especificado";
 
                             // Buscar el subtotal del line_item correspondiente
                             let tripPrice = 0;
-                            const originalItemIndex = viaje.item_index >= 1000 ? viaje.item_index - 1000 : viaje.item_index;
                             if (order.line_items && order.line_items[originalItemIndex]) {
                                 tripPrice = parseFloat(order.line_items[originalItemIndex].subtotal || 0);
                             }
@@ -1280,7 +1318,7 @@
                                 type: isArrival ? 'arrival' : 'departure',
                                 dateStr: formatDateStandard(parsedDate),
                                 time: formatTime12H(viaje.hora),
-                                route: isArrival ? `Aeropuerto LIR ➝ ${hotel}` : `${hotel} ➝ Aeropuerto LIR`,
+                                route: isArrival ? `Aeropuerto LIR ➝ ${destName}` : `${destName} ➝ Aeropuerto LIR`,
                                 flight: viaje.vuelo || '--',
                                 raw_date: parsedDate,
                                 driver: viaje.chofer || "",
@@ -1290,7 +1328,7 @@
                                 nota_choferes: viaje.nota_choferes || "",
                                 notas_internas: viaje.notas_internas || "",
                                 driverNotes: viaje.nota_choferes || '',
-                                hotel,
+                                hotel: viaje.hotel || "",
                                 hotelManual: '',
                                 pax: viaje.pax || 1,
                                 email,
@@ -1370,6 +1408,7 @@
                                 flight: findMetaValue(order, ["- Departure Flight Number"]) || '--',
                                 raw_date: parsedDate,
                                 driver: driver,
+                                subchofer: findMetaValue(order, ["subchofer_salida"]) || '',
                                 driverNotes: findMetaValue(order, ["nota_choferes_ida"]) || '',
                                 hotel,
                                 hotelManual,
@@ -1468,6 +1507,28 @@
             return `${hours}:${minutes} ${ampm}`;
         }
 
+        function time12ToMinutes(timeStr) {
+            if (!timeStr || timeStr === '--:--' || timeStr === '---') return 23 * 60 + 59;
+            const match = String(timeStr).trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+            if (!match) return 23 * 60 + 59;
+            let hours = parseInt(match[1], 10);
+            const minutes = parseInt(match[2], 10);
+            const ampm = match[3].toUpperCase();
+            if (ampm === 'PM' && hours !== 12) hours += 12;
+            if (ampm === 'AM' && hours === 12) hours = 0;
+            return (hours * 60) + minutes;
+        }
+
+        function tripDateTimeValue(trip) {
+            const base = new Date(trip.raw_date);
+            base.setHours(0, 0, 0, 0);
+            return base.getTime() + (time12ToMinutes(trip.time) * 60 * 1000);
+        }
+
+        function sortTripsByClosestFirst(trips) {
+            return trips.sort((a, b) => tripDateTimeValue(a) - tripDateTimeValue(b));
+        }
+
         function toggleIndexingUI(show) {
             const statusBar = document.getElementById('indexing-status');
             const apiBadge = document.getElementById('api-status-badge');
@@ -1535,12 +1596,19 @@
                 if (driverFilter === 'no_asignado') {
                     filtered = filtered.filter(t => !t.driver || t.driver.trim() === '' || t.driver === 'No asignado');
                 } else {
-                    filtered = filtered.filter(t => t.driver && t.driver.trim() === driverFilter);
+                    // Buscar en chofer O subchofer
+                    filtered = filtered.filter(t => 
+                        (t.driver && t.driver.trim() === driverFilter) || 
+                        (t.subchofer && t.subchofer.trim() === driverFilter)
+                    );
                 }
             }
             if (searchText) {
                 filtered = filtered.filter(t => t.client.toLowerCase().includes(searchText) || t.route.toLowerCase().includes(searchText) || t.id.toString().includes(searchText));
             }
+
+            // Orden fijo: del viaje más cercano al más antiguo
+            sortTripsByClosestFirst(filtered);
             renderTrips(filtered);
         }
 
@@ -1563,12 +1631,12 @@
                                 <span class="font-bold text-[#002a3f] text-base">${capitalizeName(trip.client)}</span>
                             </div>
                         </td>
-                        <td data-label="Fecha / Hora">
+                        <td data-label="Fecha">
                             <div class="date-cell">
                                 <span class="date-day">${trip.dateStr}</span>
-                                <span class="text-xs font-bold text-gray-400 uppercase">${trip.time}</span>
                             </div>
                         </td>
+                        <td data-label="Hora" class="time-big">${trip.time || '--:--'}</td>
                         <td data-label="Origen" class="text-sm font-semibold text-gray-600">${trip.route ? trip.route.split(' ➝ ')[0] : '--'}</td>
                         <td data-label="Destino" class="text-sm font-semibold text-gray-600">${trip.route ? trip.route.split(' ➝ ')[1] || '--' : '--'}</td>
                         <td data-label="Hotel" class="font-semibold text-gray-600 text-sm">${trip.hotel || '--'}</td>

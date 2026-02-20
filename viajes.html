@@ -1309,10 +1309,7 @@
                 <span class="text-gray-500 text-sm uppercase font-bold">Pax:</span>
                 <span id="trip-general-pax-value" class="font-black text-[#002a3f] text-lg"></span>
               </div>
-              <div id="trip-hotel-pill" class="info-pill bg-white shadow-sm hidden">
-                <span class="text-gray-500 text-sm uppercase font-bold">Hotel:</span>
-                <span id="trip-general-hotel-value" class="font-black text-[#002a3f] uppercase text-lg"></span>
-              </div>
+
               <div class="info-pill bg-white shadow-sm">
                 <span class="text-gray-500 text-sm uppercase font-bold">Proximidad:</span>
                 <span id="trip-general-relative" class="font-black text-[#002a3f] uppercase text-lg"></span>
@@ -2008,7 +2005,9 @@
               fullDate.setHours(th, tm);
 
               const isArrival = viaje.tipo === "llegada";
-              const hotel = viaje.hotel || "Hotel no especificado";
+              // Nombre del producto (destino) desde line_items, NO desde viaje.hotel
+              const itemIdx = viaje.item_index >= 1000 ? viaje.item_index - 1000 : viaje.item_index;
+              const destName = order.line_items?.[itemIdx]?.name || "Hotel no especificado";
 
               batchTrips.push({
                 id: order.id,
@@ -2021,11 +2020,11 @@
                 dateStr: formatDateStandard(parsedDate),
                 time: formatTime12H(viaje.hora),
                 route: isArrival
-                  ? `Aeropuerto LIR ➝ ${hotel}`
-                  : `${hotel} ➝ Aeropuerto LIR`,
+                  ? `Aeropuerto LIR ➝ ${destName}`
+                  : `${destName} ➝ Aeropuerto LIR`,
                 flight: viaje.vuelo || "--",
                 raw_date: fullDate,
-                hotel,
+                hotel: viaje.hotel || "",
                 pax: viaje.pax || 1,
                 email,
                 phone,
@@ -2609,10 +2608,9 @@
         : "🛫";
       document.getElementById("trip-route-separator-emoji").innerText = "➡️";
 
-      // Hotel Name Logic
-      const zoneName = order.line_items?.[0]?.name || 'Hotel no especificado';
-      const hotelManual = findMetaValue(order, ["hotel_manual"]) || "";
-      const displayHotelName = trip.hotel || hotelManual || zoneName;
+      // Hotel Name Logic - usar nombre del producto, NO trip.hotel
+      const itemIdx = trip.item_index >= 1000 ? trip.item_index - 1000 : trip.item_index;
+      const displayHotelName = order.line_items?.[itemIdx]?.name || order.line_items?.[0]?.name || 'Hotel no especificado';
 
       // Update Origin/Dest based on Trip Type
       if (trip.type === 'arrival') {
@@ -2637,14 +2635,7 @@
       document.getElementById("trip-general-pax-value").innerText = trip.pax || "1";
       document.getElementById("trip-general-relative").innerText = getRelativeTime(trip.raw_date);
 
-      // Hotel Pill Logic
-      const hotelPill = document.getElementById("trip-hotel-pill");
-      if (trip.hotel && trip.hotel !== 'Hotel no especificado') {
-        document.getElementById("trip-general-hotel-value").innerText = trip.hotel;
-        hotelPill.classList.remove("hidden");
-      } else {
-        hotelPill.classList.add("hidden");
-      }
+
 
       // Tarjeta de logística
       document.getElementById("trip-card-title").innerText = isArrival
@@ -2688,9 +2679,11 @@
       const normalizedTripTime = normalizeTime(trip.time || "");
       const tripTimeInputValue = normalizedTripTime !== "--:--" ? normalizedTripTime : "";
       const tripFlightInputValue = (trip.flight && trip.flight !== "--") ? trip.flight : "";
+      const tripHotelInputValue = trip.hotel || "";
       tripOriginalValues["fecha"] = tripDateInputValue;
       tripOriginalValues["hora"] = tripTimeInputValue;
       tripOriginalValues["vuelo"] = tripFlightInputValue;
+      tripOriginalValues["hotel"] = tripHotelInputValue;
 
       logisticsContainer.innerHTML += `
                 <div>
@@ -2709,6 +2702,11 @@
                   <input type="text" id="trip-input-vuelo" oninput="tripCheckForChanges()" value="${tripFlightInputValue}" class="hidden input-editable mt-1 uppercase">
                 </div>
                 <div><p class="meta-field-label">Ruta</p><p class="meta-field-value">${trip.route}</p></div>
+                <div class="col-span-2">
+                  <p class="meta-field-label">Hotel</p>
+                  <p id="trip-display-hotel" class="meta-field-value">${tripHotelInputValue || '<span class="text-gray-300">Sin especificar</span>'}</p>
+                  <input type="text" id="trip-input-hotel" oninput="tripCheckForChanges()" value="${tripHotelInputValue}" class="hidden input-editable mt-1" placeholder="Nombre del hotel">
+                </div>
             `;
 
 
@@ -3126,6 +3124,7 @@
           "trip-display-fecha",
           "trip-display-hora",
           "trip-display-vuelo",
+          "trip-display-hotel",
         ].forEach((k) => {
           document.getElementById(k)?.classList.remove("hidden");
           document
@@ -3139,6 +3138,7 @@
           "trip-display-fecha",
           "trip-display-hora",
           "trip-display-vuelo",
+          "trip-display-hotel",
         ].forEach((k) => {
           document.getElementById(k)?.classList.add("hidden");
           document
@@ -3191,6 +3191,7 @@
         const tripDateInput = document.getElementById("trip-input-fecha");
         const tripTimeInput = document.getElementById("trip-input-hora");
         const tripFlightInput = document.getElementById("trip-input-vuelo");
+        const tripHotelInput = document.getElementById("trip-input-hotel");
 
         if (tripDateInput && tripDateInput.value !== (tripOriginalValues["fecha"] || "")) {
           hasChanges = true;
@@ -3199,6 +3200,9 @@
           hasChanges = true;
         }
         if (tripFlightInput && tripFlightInput.value !== (tripOriginalValues["vuelo"] || "")) {
+          hasChanges = true;
+        }
+        if (tripHotelInput && tripHotelInput.value !== (tripOriginalValues["hotel"] || "")) {
           hasChanges = true;
         }
 
@@ -3444,10 +3448,12 @@
 
         // NUEVO: Si hay viaje_id, actualizar primero la tabla viajes
         currentViajeId = resolvedViajeId;
+        const tripHotelVal = document.getElementById("trip-input-hotel")?.value?.trim() || "";
         const viajePayload = {
           fecha: tripFechaVal,
           hora: tripHoraVal,
           vuelo: tripVueloVal,
+          hotel: tripHotelVal,
           chofer: document.getElementById("trip-input-meta-chofer").value,
           subchofer: document.getElementById("trip-input-meta-subchofer").value,
           nota_choferes: document.getElementById("trip-input-meta-nota_choferes").value,
@@ -3516,6 +3522,7 @@
           allTrips[allTripIndex].nota_choferes = savedDriverNotes;
           allTrips[allTripIndex].notas_internas = savedInternalNotes;
           allTrips[allTripIndex].flight = savedVuelo || "--";
+          allTrips[allTripIndex].hotel = tripHotelVal;
           allTrips[allTripIndex].time = savedHora ? formatTime12H(savedHora) : "--:--";
           if (savedRawDate) {
             allTrips[allTripIndex].raw_date = savedRawDate;

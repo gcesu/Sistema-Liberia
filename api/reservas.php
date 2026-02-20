@@ -297,7 +297,7 @@ function transformarReservaParaFrontend($r)
     $metaData = [];
 
     if (!empty($viajes)) {
-        foreach ($viajes as $viaje) {
+        foreach ($viajes as $idx => $viaje) {
             // Buscar el subtotal del line_item original
             $itemIndex = $viaje['item_index'];
             $subtotal = '0.00';
@@ -305,17 +305,53 @@ function transformarReservaParaFrontend($r)
             // Para roundtrip departures, el item_index real es item_index - 1000
             $originalItemIndex = $itemIndex >= 1000 ? $itemIndex - 1000 : $itemIndex;
 
-            if (isset($originalLineItems[$originalItemIndex])) {
-                $subtotal = $originalLineItems[$originalItemIndex]['subtotal'] ?? '0.00';
+            $candidateIndexes = [$originalItemIndex];
+            if ($originalItemIndex > 0) {
+                $candidateIndexes[] = $originalItemIndex - 1;
+            }
+            $candidateIndexes[] = 0;
+            $candidateIndexes = array_values(array_unique($candidateIndexes));
+
+            foreach ($candidateIndexes as $candidateIdx) {
+                if (isset($originalLineItems[$candidateIdx])) {
+                    $subtotal = $originalLineItems[$candidateIdx]['subtotal'] ?? '0.00';
+                    break;
+                }
+            }
+
+            // Resolver destino robustamente:
+            // 1) viaje.destino (nuevo campo), 2) raw_data line_items.name, 3) viaje.hotel (legacy contaminado)
+            $productName = 'Transfer';
+            if (!empty($viaje['destino']) && strtolower(trim($viaje['destino'])) !== 'transfer') {
+                $productName = $viaje['destino'];
+            } else {
+                foreach ($candidateIndexes as $candidateIdx) {
+                    if (!isset($originalLineItems[$candidateIdx])) {
+                        continue;
+                    }
+                    $rawName = trim((string) ($originalLineItems[$candidateIdx]['name'] ?? ''));
+                    if ($rawName !== '' && strtolower($rawName) !== 'transfer') {
+                        $productName = $rawName;
+                        break;
+                    }
+                }
+            }
+
+            if ($productName === 'Transfer' && !empty($viaje['hotel']) && strtolower(trim($viaje['hotel'])) !== 'transfer') {
+                $productName = $viaje['hotel'];
             }
 
             $lineItems[] = [
                 'id' => $viaje['id'],
-                'name' => $viaje['hotel'] ?? 'Transfer',
+                'name' => $productName,
+                'item_index' => (int) $originalItemIndex,
                 'quantity' => (int) ($viaje['pax'] ?? 1),
                 'subtotal' => $subtotal,
                 'meta_data' => buildViajeMetaData($viaje)
             ];
+
+            // Guardar destino resuelto para que el frontend no dependa de datos legacy
+            $viajes[$idx]['destino_resuelto'] = $productName;
 
             // Agregar metadata del viaje al array principal
             $viajeMetaPrefix = "viaje_{$viaje['item_index']}_";
@@ -372,7 +408,8 @@ function transformarReservaParaFrontend($r)
             'notas_internas' => $v['notas_internas'],
             'status' => $v['status'],
             'pax' => (int) ($v['pax'] ?? 1),
-            'hotel' => $v['hotel']
+            'hotel' => $v['hotel'],
+            'destino' => $v['destino_resuelto'] ?? ($v['destino'] ?? '')
         ];
     }, $viajes);
 

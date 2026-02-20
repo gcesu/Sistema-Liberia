@@ -302,6 +302,155 @@ function saveOrderToDB($pdo, $order)
 
         $stmt = $pdo->prepare($sql);
         $stmt->execute(array_values($data));
+
+        // =====================================================================
+        // NUEVO: Crear/actualizar registros en tabla `viajes` (igual que webhook.php)
+        // =====================================================================
+        $lineItems = $order['line_items'] ?? [];
+        $savedTrips = [];
+
+        // Parser de hora
+        $parseTime = function ($timeStr) {
+            if (!$timeStr)
+                return null;
+            $timeStr = trim($timeStr);
+            if (preg_match('/^(\d{1,2}):(\d{2})/', $timeStr, $matches)) {
+                return str_pad($matches[1], 2, '0', STR_PAD_LEFT) . ':' . $matches[2] . ':00';
+            }
+            return null;
+        };
+
+        // Helper para buscar meta en un array de metadatos
+        $findItemMeta = function ($metaArray, $key) {
+            $clean = strtolower(preg_replace('/[^a-z0-9]/i', '', $key));
+            foreach ($metaArray as $m) {
+                $mClean = strtolower(preg_replace('/[^a-z0-9]/i', '', $m['key'] ?? ''));
+                $dClean = strtolower(preg_replace('/[^a-z0-9]/i', '', $m['display_key'] ?? ''));
+                if ($mClean === $clean || $dClean === $clean) {
+                    return $m['value'] ?? $m['display_value'] ?? null;
+                }
+            }
+            return null;
+        };
+
+        foreach ($lineItems as $itemIndex => $item) {
+            $itemMeta = $item['meta_data'] ?? [];
+            $hotelName = $item['name'] ?? 'Transfer';
+
+            $tripType = $findItemMeta($itemMeta, '- Type of Trip') ?? $findItemMeta($itemMeta, 'Type of Trip') ?? '';
+            $tripTypeLower = strtolower($tripType);
+
+            $paxStr = $findItemMeta($itemMeta, 'Passengers') ?? '1';
+            $pax = intval(preg_replace('/[^0-9]/', '', $paxStr)) ?: 1;
+
+            $hasArrival = strpos($tripTypeLower, 'hotel') !== false || strpos($tripTypeLower, 'roundtrip') !== false || strpos($tripTypeLower, 'round trip') !== false;
+            $hasDeparture = strpos($tripTypeLower, 'airport') !== false || strpos($tripTypeLower, 'roundtrip') !== false || strpos($tripTypeLower, 'round trip') !== false;
+
+            $arrivalDate = $parseDate($findItemMeta($itemMeta, '- Arrival Date'));
+            $departureDate = $parseDate($findItemMeta($itemMeta, '- Departure Date'));
+
+            if ($arrivalDate && !$hasArrival)
+                $hasArrival = true;
+            if ($departureDate && !$hasDeparture)
+                $hasDeparture = true;
+
+            if ($hasArrival && $arrivalDate) {
+                $arrivalTime = $parseTime($findItemMeta($itemMeta, '- Arrival Time') ?? $findItemMeta($itemMeta, 'Arrival Time'));
+                $arrivalFlight = $findItemMeta($itemMeta, '- Arrival Flight Number') ?? $findItemMeta($itemMeta, 'Arrival Flight');
+
+                saveTripSync($pdo, [
+                    'reserva_id' => $order['id'],
+                    'item_index' => $itemIndex,
+                    'tipo' => 'llegada',
+                    'fecha' => $arrivalDate,
+                    'hora' => $arrivalTime,
+                    'vuelo' => $arrivalFlight,
+                    'pax' => $pax,
+                    'hotel' => $hotelName
+                ]);
+                $savedTrips[] = ['item_index' => $itemIndex, 'tipo' => 'llegada'];
+            }
+
+            if ($hasDeparture && $departureDate) {
+                $departureTime = $parseTime($findItemMeta($itemMeta, '- Pick-up Time at Hotel') ?? $findItemMeta($itemMeta, 'Pick up Time'));
+                $departureFlight = $findItemMeta($itemMeta, '- Departure Flight Number') ?? $findItemMeta($itemMeta, 'Departure Flight');
+
+                $tripItemIndex = ($hasArrival && $arrivalDate) ? $itemIndex + 1000 : $itemIndex;
+
+                saveTripSync($pdo, [
+                    'reserva_id' => $order['id'],
+                    'item_index' => $tripItemIndex,
+                    'tipo' => 'salida',
+                    'fecha' => $departureDate,
+                    'hora' => $departureTime,
+                    'vuelo' => $departureFlight,
+                    'pax' => $pax,
+                    'hotel' => $hotelName
+                ]);
+                $savedTrips[] = ['item_index' => $tripItemIndex, 'tipo' => 'salida'];
+            }
+        }
+
+        // Limpiar viajes huérfanos
+        if (!empty($savedTrips)) {
+            $conditions = [];
+            $cleanParams = [$order['id']];
+            foreach ($savedTrips as $trip) {
+                $conditions[] = "(item_index = ? AND tipo = ?)";
+                $cleanParams[] = $trip['item_index'];
+                $cleanParams[] = $trip['tipo'];
+            }
+            $keepCondition = implode(' OR ', $conditions);
+            $deleteStmt = $pdo->prepare(
+                "DELETE FROM viajes WHERE reserva_id = ? AND NOT ($keepCondition)"
+            );
+            $deleteStmt->execute($cleanParams);
+        }
+    }
+}
+
+/**
+ * Guarda un viaje individual en la tabla viajes (usado por sync)
+ */
+function saveTripSync($pdo, $data)
+{
+    // Verificar si ya existe el viaje (no hay UNIQUE constraint en (reserva_id, item_index))
+    $checkStmt = $pdo->prepare("SELECT id FROM viajes WHERE reserva_id = ? AND item_index = ? LIMIT 1");
+    $checkStmt->execute([$data['reserva_id'], $data['item_index']]);
+    $existing = $checkStmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($existing) {
+        // UPDATE: actualizar solo campos de sync, preservar chofer/notas/status editados manualmente
+        $updateSql = "
+            UPDATE viajes SET
+                tipo = ?, fecha = ?, hora = ?, vuelo = ?, pax = ?, hotel = ?
+            WHERE id = ?
+        ";
+        $pdo->prepare($updateSql)->execute([
+            $data['tipo'],
+            $data['fecha'],
+            $data['hora'],
+            $data['vuelo'],
+            $data['pax'],
+            $data['hotel'],
+            $existing['id']
+        ]);
+    } else {
+        // INSERT: nuevo viaje
+        $insertSql = "
+            INSERT INTO viajes (reserva_id, item_index, tipo, fecha, hora, vuelo, pax, hotel)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ";
+        $pdo->prepare($insertSql)->execute([
+            $data['reserva_id'],
+            $data['item_index'],
+            $data['tipo'],
+            $data['fecha'],
+            $data['hora'],
+            $data['vuelo'],
+            $data['pax'],
+            $data['hotel']
+        ]);
     }
 }
 ?>

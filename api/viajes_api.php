@@ -247,7 +247,12 @@ function syncViajeToWooCommerce($pdo, $viaje, $changes)
     // Mapear campos de viaje a keys de WooCommerce
     $keyPrefix = "viaje_{$orderId}_{$itemIndex}_";
 
+    // Campos que NO se sincronizan a WooCommerce (solo locales)
+    $localOnlyFields = ['hotel'];
+
     foreach ($changes as $field => $value) {
+        if (in_array($field, $localOnlyFields))
+            continue;
         $metaData[] = ['key' => $keyPrefix . $field, 'value' => $value];
     }
 

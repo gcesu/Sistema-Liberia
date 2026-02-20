@@ -1303,7 +1303,8 @@
         function generateViajeMessage(order, viaje) {
             const firstName = (order.billing?.first_name || '').trim();
             const pax = viaje.pax || 1;
-            const hotel = viaje.hotel || 'el hotel';
+            // Para mensajes: preferir hotel manual, luego destino (producto WooCommerce)
+            const hotel = viaje.hotel || viaje.destino || 'el hotel';
             const vuelo = (viaje.vuelo || '').toUpperCase();
             const hora = viaje.hora ? formatTime12h(viaje.hora) : '';
             const fecha = viaje.fecha ? formatDateShort(viaje.fecha) : '';
@@ -1314,8 +1315,11 @@
                 let tripSubtotal = null;
                 if (viaje.item_index !== undefined && order.line_items) {
                     const originalIdx = viaje.item_index >= 1000 ? viaje.item_index - 1000 : viaje.item_index;
-                    if (order.line_items[originalIdx]) {
-                        tripSubtotal = parseFloat(order.line_items[originalIdx].subtotal || 0);
+                    const lineItems = Array.isArray(order.line_items) ? order.line_items : [];
+                    const byItemIndex = lineItems.find(li => Number(li?.item_index) === Number(originalIdx));
+                    const lineItem = byItemIndex || lineItems[originalIdx];
+                    if (lineItem) {
+                        tripSubtotal = parseFloat(lineItem.subtotal || 0);
                     }
                 }
 
@@ -1383,7 +1387,8 @@
                 hora: deepScanMeta(order, isArrival ? '- Arrival Time' : '- Pick-up Time at Hotel') || '',
                 vuelo: deepScanMeta(order, isArrival ? '- Arrival Flight Number' : '- Departure Flight Number') || '',
                 pax: parseInt(deepScanMeta(order, 'Passengers') || deepScanMeta(order, 'passengers') || '1'),
-                hotel: deepScanMeta(order, 'hotel_manual') || (order.line_items?.[0]?.name || 'el hotel')
+                hotel: deepScanMeta(order, 'hotel_manual') || (order.line_items?.[0]?.name || 'el hotel'),
+                destino: order.line_items?.[0]?.name || ''
             };
         }
 
@@ -1752,7 +1757,9 @@
                     const name = resolveName(o).toLowerCase();
                     const id = o.id.toString();
                     const hotel = (o.line_items?.[0]?.name || '').toLowerCase();
-                    return name.includes(searchText) || id.includes(searchText) || hotel.includes(searchText);
+                    // Buscar también en destino de viajes
+                    const destinos = (o.viajes || []).map(v => (v.destino || '').toLowerCase()).join(' ');
+                    return name.includes(searchText) || id.includes(searchText) || hotel.includes(searchText) || destinos.includes(searchText);
                 });
             }
 
@@ -1805,13 +1812,32 @@
         }
 
         function formatTripTypeTable(order) {
-            let hotel = order.line_items?.[0]?.name || 'Hotel no especificado';
-            // Usar hoteles de viajes individuales
+            // Obtener nombre del destino: preferir viajes.destino, luego line_items.name, luego fallback
+            let hotel = 'Hotel no especificado';
             if (order.viajes && order.viajes.length > 0) {
-                const uniqueHotels = [...new Set(order.viajes.map(v => v.hotel).filter(h => h && h.trim()))];
-                if (uniqueHotels.length > 0) hotel = uniqueHotels.join(' · ');
+                const uniqueDestinos = [...new Set(order.viajes.map(v => v.destino).filter(d => d && d !== 'Transfer'))];
+                if (uniqueDestinos.length > 0) {
+                    hotel = uniqueDestinos.join(' · ');
+                } else {
+                    const uniqueViajeHotel = [...new Set(order.viajes.map(v => v.hotel).filter(h => h && h !== 'Transfer'))];
+                    if (uniqueViajeHotel.length > 0) hotel = uniqueViajeHotel.join(' · ');
+                    // Fallback a line_items.name
+                    if (hotel === 'Hotel no especificado') {
+                        const uniqueNames = [...new Set((order.line_items || []).map(li => li.name).filter(n => n && n !== 'Transfer'))];
+                        if (uniqueNames.length > 0) hotel = uniqueNames.join(' · ');
+                    }
+                }
+            } else {
+                // Legacy: sin viajes, usar line_items
+                const firstName = order.line_items?.[0]?.name || '';
+                if (order.line_items && order.line_items.length > 1) {
+                    const uniqueNames = [...new Set(order.line_items.map(li => li.name).filter(n => n && n !== 'Transfer'))];
+                    if (uniqueNames.length > 0) hotel = uniqueNames.join(' · ');
+                } else if (firstName && firstName !== 'Transfer') {
+                    hotel = firstName;
+                }
             }
-            if (hotel === 'Transfer') {
+            if (hotel === 'Hotel no especificado' || hotel === 'Transfer') {
                 const hotelManual = deepScanMeta(order, 'hotel_manual');
                 hotel = hotelManual || 'Hotel no especificado';
             }
@@ -2041,6 +2067,7 @@
                 const prefix = `viaje_${viajeId}`;
 
                 // Guardar valores originales para detección de cambios
+                // Guardar valores originales para detección de cambios
                 originalValues[`${prefix}_chofer`] = viaje.chofer || '';
                 originalValues[`${prefix}_subchofer`] = viaje.subchofer || '';
                 originalValues[`${prefix}_nota_choferes`] = viaje.nota_choferes || '';
@@ -2055,6 +2082,7 @@
                 const horaDisplay = viaje.hora ? formatTime12h(viaje.hora) : '--';
                 const vueloDisplay = (viaje.vuelo || '--').toUpperCase();
                 const hotelDisplay = viaje.hotel || '';
+                const destinoDisplay = viaje.destino || '';
 
                 // Opciones de chofer
                 let choferOptions = '<option value="">No asignado</option>';
@@ -2073,7 +2101,7 @@
                     <div class="operation-card-header">
                         <div class="operation-card-title">
                             <span class="${dotClass}"></span> ${label}
-                            ${hotelDisplay ? `<span class="text-gray-400 font-normal text-xs ml-2">· ${hotelDisplay}</span>` : ''}
+                            ${destinoDisplay ? `<span class="text-gray-400 font-normal text-xs ml-2">· ${destinoDisplay}</span>` : ''}
                         </div>
                         <button onclick="toggleViajeEdit(${viajeId})" id="btn-edit-viaje-${viajeId}" class="btn-section-edit">Editar</button>
                     </div>
@@ -2095,8 +2123,8 @@
                                 <input type="text" id="input-${prefix}_vuelo" oninput="checkForChanges()" value="${viaje.vuelo || ''}" class="hidden input-editable mt-1 uppercase">
                             </div>
                             <div class="col-span-2">
-                                <p class="meta-field-label text-gray-400">🏨 Hotel</p>
-                                <p id="display-${prefix}_hotel" class="meta-field-value text-base">${viaje.hotel || '<span class="text-gray-300">Sin especificar</span>'}</p>
+                                <p class="meta-field-label text-gray-400">Hotel</p>
+                                <p id="display-${prefix}_hotel" class="meta-field-value text-base">${hotelDisplay || '<span class="text-gray-300">Sin especificar</span>'}</p>
                                 <input type="text" id="input-${prefix}_hotel" oninput="checkForChanges()" value="${viaje.hotel || ''}" class="hidden input-editable mt-1" placeholder="Nombre del hotel">
                             </div>
                         </div>
@@ -2295,13 +2323,25 @@
         }
 
         function renderGeneralInfo(o) {
-            const zoneName = o.line_items?.[0]?.name || 'Hotel no especificado';
-
-            // Para mostrar en el banner azul: usar hoteles de viajes individuales, luego zona
-            let displayHotelName = zoneName;
+            // Para el banner azul: preferir destino de viajes, luego line_items.name
+            let displayHotelName = 'Hotel no especificado';
             if (o.viajes && o.viajes.length > 0) {
-                const uniqueHotels = [...new Set(o.viajes.map(v => v.hotel).filter(h => h && h.trim()))];
-                if (uniqueHotels.length > 0) displayHotelName = uniqueHotels.join(' · ');
+                const uniqueDestinos = [...new Set(o.viajes.map(v => v.destino).filter(d => d && d !== 'Transfer'))];
+                if (uniqueDestinos.length > 0) {
+                    displayHotelName = uniqueDestinos.join(' · ');
+                } else {
+                    const uniqueViajeHotel = [...new Set(o.viajes.map(v => v.hotel).filter(h => h && h !== 'Transfer'))];
+                    if (uniqueViajeHotel.length > 0) displayHotelName = uniqueViajeHotel.join(' · ');
+                }
+            }
+            if (displayHotelName === 'Hotel no especificado') {
+                const zoneName = o.line_items?.[0]?.name || '';
+                if (o.line_items && o.line_items.length > 1) {
+                    const uniqueNames = [...new Set(o.line_items.map(li => li.name).filter(n => n && n !== 'Transfer'))];
+                    if (uniqueNames.length > 0) displayHotelName = uniqueNames.join(' · ');
+                } else if (zoneName && zoneName !== 'Transfer') {
+                    displayHotelName = zoneName;
+                }
             }
             if (displayHotelName === 'Transfer') displayHotelName = 'Hotel no especificado';
 
@@ -2376,17 +2416,20 @@
                 const isSimpleRoundTrip = sortedTrips.length === 2 && arrivals === 1 && departures === 1;
 
                 if (isSimpleRoundTrip) {
-                    const roundHotel = sortedTrips.find(v => v.tipo === 'llegada')?.hotel || displayHotelName;
+                    // Para ida y vuelta simple, usar destino del viaje de llegada
+                    const arrivalViaje = sortedTrips.find(v => v.tipo === 'llegada');
+                    const roundHotel = arrivalViaje?.destino || arrivalViaje?.hotel || displayHotelName;
                     routeDisplay.className = 'route-visualizer';
                     routeDisplay.innerHTML = buildRouteContent('✈️', 'Aeropuerto LIR', '🏨', roundHotel, '🔄');
                 } else {
                     routeDisplay.className = 'route-cards-stack';
-                    routeDisplay.innerHTML = `${sortedTrips.map(v => {
-                        const hotel = v.hotel || zoneName || 'Hotel no especificado';
+                    routeDisplay.innerHTML = `${sortedTrips.map((v, sortedIdx) => {
+                        // Usar destino del viaje directamente
+                        const destName = v.destino || v.hotel || displayHotelName || 'Hotel no especificado';
                         if (v.tipo === 'llegada') {
-                            return buildRouteCard('🛬', 'Aeropuerto LIR', '🏨', hotel, '➡️');
+                            return buildRouteCard('🛬', 'Aeropuerto LIR', '🏨', destName, '➡️');
                         }
-                        return buildRouteCard('🏨', hotel, '🛫', 'Aeropuerto LIR', '➡️');
+                        return buildRouteCard('🏨', destName, '🛫', 'Aeropuerto LIR', '➡️');
                     }).join('')}`;
                 }
             } else {
@@ -2695,11 +2738,17 @@
             let subtotal = 0;
             if (o.viajes && o.viajes.length > 0) {
                 const seen = new Set();
+                const lineItems = Array.isArray(o.line_items) ? o.line_items : [];
+                const findSubtotalByOriginalIndex = (origIdx) => {
+                    const byItemIndex = lineItems.find(li => Number(li?.item_index) === Number(origIdx));
+                    const lineItem = byItemIndex || lineItems[origIdx];
+                    return parseFloat((lineItem || {}).subtotal || 0);
+                };
                 o.viajes.forEach((v, i) => {
                     const origIdx = v.item_index >= 1000 ? v.item_index - 1000 : v.item_index;
                     if (!seen.has(origIdx)) {
                         seen.add(origIdx);
-                        subtotal += parseFloat((o.line_items[i] || {}).subtotal || 0);
+                        subtotal += findSubtotalByOriginalIndex(origIdx);
                     }
                 });
             } else {

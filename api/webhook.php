@@ -288,7 +288,8 @@ function saveOrderToDB($pdo, $order)
 
     foreach ($lineItems as $itemIndex => $item) {
         $itemMeta = $item['meta_data'] ?? [];
-        $hotelName = $item['name'] ?? 'Hotel no especificado';
+        // Extraer el nombre del destino desde el nombre del producto de WooCommerce
+        $destinoName = $item['name'] ?? 'Transfer';
 
         // Determinar tipo de viaje
         $tripType = $findMeta($itemMeta, '- Type of Trip') ?? $findMeta($itemMeta, 'Type of Trip') ?? '';
@@ -324,7 +325,8 @@ function saveOrderToDB($pdo, $order)
                 'hora' => $arrivalTime,
                 'vuelo' => $arrivalFlight,
                 'pax' => $pax,
-                'hotel' => $hotelName
+                'hotel' => $destinoName,
+                'destino' => $destinoName
             ]);
             $savedTrips[] = ['item_index' => $itemIndex, 'tipo' => 'llegada'];
         }
@@ -345,7 +347,8 @@ function saveOrderToDB($pdo, $order)
                 'hora' => $departureTime,
                 'vuelo' => $departureFlight,
                 'pax' => $pax,
-                'hotel' => $hotelName
+                'hotel' => $destinoName,
+                'destino' => $destinoName
             ]);
             $savedTrips[] = ['item_index' => $tripItemIndex, 'tipo' => 'salida'];
         }
@@ -378,24 +381,43 @@ function saveOrderToDB($pdo, $order)
  */
 function saveTrip($pdo, $data)
 {
-    $sql = "
-        INSERT INTO viajes (reserva_id, item_index, tipo, fecha, hora, vuelo, pax, hotel)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ON DUPLICATE KEY UPDATE
-            pax = VALUES(pax),
-            hotel = VALUES(hotel)
-    ";
+    // Verificar si ya existe el viaje (no hay UNIQUE constraint en (reserva_id, item_index))
+    $checkStmt = $pdo->prepare("SELECT id FROM viajes WHERE reserva_id = ? AND item_index = ? LIMIT 1");
+    $checkStmt->execute([$data['reserva_id'], $data['item_index']]);
+    $existing = $checkStmt->fetch(PDO::FETCH_ASSOC);
 
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([
-        $data['reserva_id'],
-        $data['item_index'],
-        $data['tipo'],
-        $data['fecha'],
-        $data['hora'],
-        $data['vuelo'],
-        $data['pax'],
-        $data['hotel']
-    ]);
+    if ($existing) {
+        // UPDATE: actualizar solo campos de sync básicos
+        // NO sobrescribir fecha/hora/vuelo/chofer/notas/status (editables manualmente)
+        // Solo actualizar tipo, pax y destino (nombre del producto)
+        $updateSql = "
+            UPDATE viajes SET
+                tipo = ?, pax = ?, destino = ?
+            WHERE id = ?
+        ";
+        $pdo->prepare($updateSql)->execute([
+            $data['tipo'],
+            $data['pax'],
+            $data['destino'] ?? $data['hotel'],
+            $existing['id']
+        ]);
+    } else {
+        // INSERT: nuevo viaje - destino = nombre producto WooCommerce, hotel = vacío (se edita manualmente)
+        $insertSql = "
+            INSERT INTO viajes (reserva_id, item_index, tipo, fecha, hora, vuelo, pax, hotel, destino)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ";
+        $pdo->prepare($insertSql)->execute([
+            $data['reserva_id'],
+            $data['item_index'],
+            $data['tipo'],
+            $data['fecha'],
+            $data['hora'],
+            $data['vuelo'],
+            $data['pax'],
+            '',
+            $data['destino'] ?? $data['hotel']
+        ]);
+    }
 }
 ?>
