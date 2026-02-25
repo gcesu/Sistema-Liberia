@@ -521,16 +521,6 @@
             background-color: white;
         }
 
-        #input-precio-neto::-webkit-outer-spin-button,
-        #input-precio-neto::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
-
-        #input-precio-neto {
-            -moz-appearance: textfield;
-            appearance: textfield;
-        }
 
         /* Searchable Select Dropdown */
         .searchable-select-wrapper {
@@ -1986,7 +1976,6 @@
             const showFinancieroMeta = findMetaValue(o, ["privacy_show_financiero"]);
             const showFinanciero = showFinancieroMeta === null || showFinancieroMeta === '' || String(showFinancieroMeta) !== "0";
             originalValues.privacy_show_financiero = showFinanciero;
-            originalValues.precio_neto = String(findMetaValue(o, ["precio_neto"]) || '');
 
             const financieroCheck = document.getElementById('privacy-show-financiero');
             if (financieroCheck) {
@@ -2578,7 +2567,6 @@
             meta.push({ key: 'privacy_show_email', value: showEmail ? "1" : "0" });
             meta.push({ key: 'privacy_show_phone', value: showPhone ? "1" : "0" });
             meta.push({ key: 'privacy_show_financiero', value: showFinanciero ? "1" : "0" });
-            meta.push({ key: 'precio_neto', value: document.getElementById('input-precio-neto')?.value?.trim() || '' });
 
 
 
@@ -2708,8 +2696,6 @@
 
 
 
-            const precioNetoInput = document.getElementById('input-precio-neto');
-            if (precioNetoInput && precioNetoInput.value.trim() !== (originalValues.precio_neto || '')) changed = true;
 
             document.getElementById('btn-save').classList.toggle('hidden', !changed);
         }
@@ -2754,7 +2740,7 @@
             } else {
                 subtotal = (o.line_items || []).reduce((acc, item) => acc + parseFloat(item.subtotal || 0), 0);
             }
-            addRow("Subtotal Servicios", subtotal);
+            addRow("Subtotal Servicios", subtotal, true);
 
             if (o.fee_lines && o.fee_lines.length > 0) {
                 o.fee_lines.forEach(fee => addRow(fee.name || 'Cargo Adicional', fee.total));
@@ -2767,24 +2753,9 @@
             if (o.coupon_lines && o.coupon_lines.length > 0) {
                 o.coupon_lines.forEach(coupon => addRow(`Cupón: ${coupon.code}`, coupon.discount, false, false, true));
             }
-            addRow("Total Pagado", o.total, true);
+            addRow("Total Pagado", o.total);
 
-            const precioNetoVal = findMetaValue(o, ["precio_neto"]);
-            container.innerHTML += `
-                <div class="flex justify-between items-center pt-3 border-t border-dashed border-gray-200 mt-2">
-                    <span class="font-bold uppercase opacity-50 text-[10px] tracking-widest">PRECIO NETO</span>
-                    <div class="flex items-center gap-1 w-36">
-                        <span class="font-bold text-base text-[#002a3f]">$</span>
-                        <input
-                            type="number"
-                            step="0.01"
-                            id="input-precio-neto"
-                            value="${precioNetoVal ? String(precioNetoVal).replace(/"/g, '&quot;') : ''}"
-                            oninput="checkForChanges()"
-                            class="input-editable bg-white w-full text-left font-bold"
-                            placeholder="0.00">
-                    </div>
-                </div>`;
+
         }
 
         function closeModal() { document.getElementById('order-modal').classList.add('hidden'); document.body.style.overflow = ''; }

@@ -141,7 +141,8 @@ if ($method === 'PUT') {
         'notas_internas',
         'status',
         'pax',
-        'hotel'
+        'hotel',
+        'precio_neto'
     ];
 
     $updates = [];

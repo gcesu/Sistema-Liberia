@@ -1904,10 +1904,10 @@
 
             // Usar el subtotal del line_item específico si está disponible
             if (tripSubtotal !== null) {
-                addRow("Subtotal Este Servicio", tripSubtotal);
+                addRow("Subtotal Este Servicio", tripSubtotal, true);
             } else {
                 const subtotal = (order.line_items || []).reduce((acc, item) => acc + parseFloat(item.subtotal || 0), 0);
-                addRow("Subtotal Servicios", subtotal);
+                addRow("Subtotal Servicios", subtotal, true);
             }
 
             // Proporcionar cargos adicionales e impuestos entre todos los viajes
@@ -1938,9 +1938,9 @@
             // Total de este viaje
             if (tripSubtotal !== null) {
                 const tripTotal = tripSubtotal / divisor;
-                addRow("Total Este Viaje", tripTotal * divisor, true);
+                addRow("Total Este Viaje", tripTotal * divisor);
             } else {
-                addRow("Total Este Viaje", order.total, true);
+                addRow("Total Este Viaje", order.total);
             }
         }
 

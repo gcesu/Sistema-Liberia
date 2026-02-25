@@ -457,6 +457,17 @@
       border-color: #fed7aa !important;
     }
 
+    #trip-input-precio-neto::-webkit-outer-spin-button,
+    #trip-input-precio-neto::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    #trip-input-precio-neto {
+      -moz-appearance: textfield;
+      appearance: textfield;
+    }
+
     .modal-overlay {
       position: fixed;
       inset: 0;
@@ -2033,6 +2044,7 @@
                 subchofer: viaje.subchofer || "",
                 nota_choferes: viaje.nota_choferes || "",
                 notas_internas: viaje.notas_internas || "",
+                precio_neto: viaje.precio_neto || "",
               });
             }
           });
@@ -2082,6 +2094,7 @@
                 subchofer: findMetaValue(order, ["subchofer_llegada"]) || "",
                 nota_choferes: findMetaValue(order, ["nota_choferes_llegada"]) || "",
                 notas_internas: findMetaValue(order, ["notas_internas_llegada"]) || "",
+                precio_neto: "",
               });
             }
           }
@@ -2120,6 +2133,7 @@
                 subchofer: findMetaValue(order, ["subchofer_salida"]) || "",
                 nota_choferes: findMetaValue(order, ["nota_choferes_ida"]) || "",
                 notas_internas: findMetaValue(order, ["notas_internas_salida"]) || "",
+                precio_neto: "",
               });
             }
           }
@@ -2538,6 +2552,7 @@
       };
       tripOriginalValues["status_reserva"] = statusReservaVal;
       tripOriginalValues["status_viaje"] = statusViajeVal;
+      tripOriginalValues["precio_neto"] = String(trip.precio_neto || '');
 
       // Privacy settings
       const privacyShowEmail = findMetaValue(order, ["privacy_show_email"]);
@@ -2923,10 +2938,10 @@
 
       // Usar el subtotal del line_item específico si está disponible
       if (tripSubtotal !== null) {
-        addRow("Subtotal Este Servicio", tripSubtotal);
+        addRow("Subtotal Este Servicio", tripSubtotal, true);
       } else {
         const subtotal = (order.line_items || []).reduce((acc, item) => acc + parseFloat(item.subtotal || 0), 0);
-        addRow("Subtotal Servicios", subtotal);
+        addRow("Subtotal Servicios", subtotal, true);
       }
 
       // Proporcionar cargos adicionales e impuestos entre todos los viajes
@@ -2968,56 +2983,26 @@
 
 
 
-        addRow("Total Este Viaje", tripTotal, true, false, false, true);
+        addRow("Total Este Viaje", tripTotal, false, false, false, true);
       } else {
-        addRow("Total Este Viaje", order.total, true);
+        addRow("Total Este Viaje", order.total);
       }
 
-      const precioNetoVal = parseFloat(findMetaValue(order, ["precio_neto"]) || 0);
-      // Distribución proporcional del precio neto basado en el subtotal de cada viaje
-      // Usa redondeo por residuo para que la suma sea exacta (sin exceder ni faltar centavos)
-      let precioNetoPorViaje = 0;
-      if (precioNetoVal > 0 && order.viajes && order.viajes.length > 0 && order.line_items && order.line_items.length > 0) {
-        const orderSubtotal = (order.line_items || []).reduce((acc, item) => acc + parseFloat(item.subtotal || 0), 0);
-        if (orderSubtotal > 0) {
-          // Calcular las proporciones de TODOS los viajes, redondeando hacia abajo
-          const allShares = [];
-          let sumFloor = 0;
-          for (let i = 0; i < order.viajes.length; i++) {
-            const li = order.line_items[i];
-            const sub = li ? parseFloat(li.subtotal || 0) : 0;
-            const rawShare = precioNetoVal * (sub / orderSubtotal);
-            const floored = Math.floor(rawShare * 100) / 100; // redondear hacia abajo
-            allShares.push(floored);
-            sumFloor += floored;
-          }
-          // El último viaje recibe el residuo exacto para que la suma sea perfecta
-          const remainder = Math.round((precioNetoVal - sumFloor) * 100) / 100;
-          allShares[allShares.length - 1] = Math.round((allShares[allShares.length - 1] + remainder) * 100) / 100;
-
-          // Buscar el índice del viaje actual
-          const currentIdx = order.viajes.findIndex(v =>
-            (trip.viaje_id && v.id == trip.viaje_id) || v.item_index === trip.item_index
-          );
-          precioNetoPorViaje = currentIdx >= 0 ? allShares[currentIdx] : allShares[0];
-        } else {
-          // Fallback: dividir equitativamente
-          precioNetoPorViaje = precioNetoVal / order.viajes.length;
-        }
-      } else if (precioNetoVal > 0) {
-        // Fallback: dividir equitativamente si no hay viajes disponibles
-        let totalViajesForNet = order.viajes?.length || 0;
-        if (!totalViajesForNet) {
-          const hasArrival = !!findMetaValue(order, ["- Arrival Date"]);
-          const hasDeparture = !!findMetaValue(order, ["- Departure Date"]);
-          totalViajesForNet = hasArrival && hasDeparture ? 2 : 1;
-        }
-        precioNetoPorViaje = totalViajesForNet > 0 ? (precioNetoVal / totalViajesForNet) : 0;
-      }
+      const precioNetoVal = trip.precio_neto || '';
       container.innerHTML += `
         <div class="flex justify-between items-center pt-3 border-t border-dashed border-gray-200 mt-2">
           <span class="font-bold uppercase opacity-50 text-[10px] tracking-widest">PRECIO NETO</span>
-          <span class="font-bold text-base text-[#002a3f]">$${precioNetoPorViaje.toFixed(2)}</span>
+          <div class="flex items-center gap-1 w-36">
+            <span class="font-bold text-base text-[#002a3f]">$</span>
+            <input
+              type="number"
+              step="0.01"
+              id="trip-input-precio-neto"
+              value="${precioNetoVal ? String(precioNetoVal).replace(/"/g, '&quot;') : ''}"
+              oninput="tripCheckForChanges()"
+              class="input-editable bg-white w-full text-left font-bold"
+              placeholder="0.00">
+          </div>
         </div>`;
     }
 
@@ -3254,6 +3239,14 @@
         }
       }
 
+      // Verificar cambios en precio neto
+      if (!hasChanges) {
+        const precioNetoInput = document.getElementById("trip-input-precio-neto");
+        if (precioNetoInput && precioNetoInput.value.trim() !== (tripOriginalValues["precio_neto"] || '')) {
+          hasChanges = true;
+        }
+      }
+
       document
         .getElementById("trip-btn-save")
         .classList.toggle(
@@ -3459,6 +3452,7 @@
           nota_choferes: document.getElementById("trip-input-meta-nota_choferes").value,
           notas_internas: document.getElementById("trip-input-meta-notas_internas").value,
           status: statusViajeVal,
+          precio_neto: document.getElementById("trip-input-precio-neto")?.value?.trim() || '',
         };
 
         const viajeResp = await fetch(
@@ -3523,6 +3517,7 @@
           allTrips[allTripIndex].notas_internas = savedInternalNotes;
           allTrips[allTripIndex].flight = savedVuelo || "--";
           allTrips[allTripIndex].hotel = tripHotelVal;
+          allTrips[allTripIndex].precio_neto = document.getElementById("trip-input-precio-neto")?.value?.trim() || '';
           allTrips[allTripIndex].time = savedHora ? formatTime12H(savedHora) : "--:--";
           if (savedRawDate) {
             allTrips[allTripIndex].raw_date = savedRawDate;
@@ -3557,6 +3552,7 @@
           currentFilteredTrips[tripIndex].nota_choferes = savedDriverNotes;
           currentFilteredTrips[tripIndex].notas_internas = savedInternalNotes;
           currentFilteredTrips[tripIndex].flight = savedVuelo || "--";
+          currentFilteredTrips[tripIndex].precio_neto = document.getElementById("trip-input-precio-neto")?.value?.trim() || '';
           currentFilteredTrips[tripIndex].time = savedHora ? formatTime12H(savedHora) : "--:--";
           if (savedRawDate) {
             currentFilteredTrips[tripIndex].raw_date = savedRawDate;
