@@ -13,6 +13,9 @@ header('Content-Type: application/json');
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
 header('X-XSS-Protection: 1; mode=block');
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
 
 // Solo permitir métodos específicos
 $allowed_methods = ['GET', 'PUT', 'POST'];
@@ -30,28 +33,30 @@ define('WOO_CONSUMER_SECRET', 'cs_0e121a30c38b1948f60da3f10ef3744ef9d8be7e');
 /**
  * Construye la URL completa de la API de WooCommerce
  */
-function buildWooApiUrl($endpoint, $params = []) {
+function buildWooApiUrl($endpoint, $params = [])
+{
     $base = WOO_SITE_URL . '/wp-json/wc/v3/orders';
-    
+
     // Si hay un ID de orden específico en el endpoint
     if ($endpoint && $endpoint !== '') {
         $base .= '/' . $endpoint;
     }
-    
+
     // Agregar parámetros de query
     if (!empty($params)) {
         $base .= '?' . http_build_query($params);
     }
-    
+
     return $base;
 }
 
 /**
  * Realiza la petición a WooCommerce
  */
-function makeWooRequest($url, $method = 'GET', $body = null) {
+function makeWooRequest($url, $method = 'GET', $body = null)
+{
     $auth = base64_encode(WOO_CONSUMER_KEY . ':' . WOO_CONSUMER_SECRET);
-    
+
     $options = [
         'http' => [
             'method' => $method,
@@ -63,14 +68,14 @@ function makeWooRequest($url, $method = 'GET', $body = null) {
             'ignore_errors' => true
         ]
     ];
-    
+
     if ($body && in_array($method, ['POST', 'PUT'])) {
         $options['http']['content'] = is_string($body) ? $body : json_encode($body);
     }
-    
+
     $context = stream_context_create($options);
     $response = @file_get_contents($url, false, $context);
-    
+
     // Extraer headers de respuesta
     $headers = [];
     if (isset($http_response_header)) {
@@ -83,7 +88,7 @@ function makeWooRequest($url, $method = 'GET', $body = null) {
             }
         }
     }
-    
+
     return [
         'body' => $response,
         'headers' => $headers,
@@ -122,7 +127,7 @@ $status_code = 200;
 if (isset($result['http_response_header'][0])) {
     preg_match('/\d{3}/', $result['http_response_header'][0], $matches);
     if (isset($matches[0])) {
-        $status_code = (int)$matches[0];
+        $status_code = (int) $matches[0];
     }
 }
 http_response_code($status_code);

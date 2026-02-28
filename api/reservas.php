@@ -11,6 +11,9 @@ require_once '../config/env.php';
 // Headers
 header('Content-Type: application/json');
 header('X-Content-Type-Options: nosniff');
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
 
 // Verificar autenticación
 if (!isset($_SESSION['user_id'])) {
