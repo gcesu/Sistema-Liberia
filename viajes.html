@@ -2268,6 +2268,52 @@
       return `${hours}:${minutes} ${ampm}`;
     }
 
+    function getOrdinalSuffix(day) {
+      if (day > 3 && day < 21) return 'th';
+      switch (day % 10) {
+        case 1: return 'st';
+        case 2: return 'nd';
+        case 3: return 'rd';
+        default: return 'th';
+      }
+    }
+
+    function formatDateUSFull(d) {
+      if (!d) return '---';
+      let dateObj = d instanceof Date ? new Date(d) : new Date(d);
+      if (typeof d === 'string') {
+        const datePart = d.split('T')[0];
+        if (datePart.includes('-')) {
+          const parts = datePart.split('-');
+          if (parts.length === 3) {
+            dateObj = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+          }
+        }
+      }
+      if (isNaN(dateObj.getTime())) return String(d);
+      const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      const day = dateObj.getDate();
+      return `${months[dateObj.getMonth()]} ${day}${getOrdinalSuffix(day)}`;
+    }
+
+    function formatDateUSShort(d) {
+      if (!d) return '---';
+      let dateObj = d instanceof Date ? new Date(d) : new Date(d);
+      if (typeof d === 'string') {
+        const datePart = d.split('T')[0];
+        if (datePart.includes('-')) {
+          const parts = datePart.split('-');
+          if (parts.length === 3) {
+            dateObj = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+          }
+        }
+      }
+      if (isNaN(dateObj.getTime())) return String(d);
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const day = dateObj.getDate();
+      return `${months[dateObj.getMonth()]} ${day}${getOrdinalSuffix(day)}`;
+    }
+
     function generateTripMessage(trip, order) {
       const firstName = (order.billing?.first_name || '').trim();
       const pax = trip.pax || 1;
@@ -2298,29 +2344,80 @@
 
         const divisor = isRoundTrip ? 2 : 1;
 
-        // Calcular cargos, impuestos y cupones proporcionales (igual que el resumen financiero)
-        const proportion = 1 / totalViajes;
-        let feeSum = 0;
-        let taxSum = 0;
-        let couponSum = 0;
-        if (order.fee_lines) order.fee_lines.forEach(f => feeSum += parseFloat(f.total || 0) * proportion);
-        if (order.tax_lines) order.tax_lines.forEach(t => taxSum += parseFloat(t.tax_total || 0) * proportion);
-        if (order.coupon_lines) order.coupon_lines.forEach(c => couponSum += parseFloat(c.discount || 0) * proportion);
-
         if (tripSubtotal !== null) {
-          const amount = (tripSubtotal / divisor) + feeSum + taxSum - couponSum;
+          const amount = tripSubtotal / divisor;
           ratePerTrip = `$${amount % 1 === 0 ? amount.toFixed(0) : amount.toFixed(2)}`;
         } else {
-          const amount = parseFloat(order.total) / totalViajes;
+          // Fallback: usar subtotal de la orden entre total de viajes
+          const orderSubtotal = parseFloat(order.subtotal || order.total);
+          const amount = orderSubtotal / totalViajes;
           ratePerTrip = `$${amount % 1 === 0 ? amount.toFixed(0) : amount.toFixed(2)}`;
         }
       }
       const isArrival = trip.type === 'arrival';
+      const isCash = !order.payment_method_title || order.payment_method_title.toLowerCase().includes('cash');
+      const rateLine = isCash ? `\n\n\u2022The one-way rate is ${ratePerTrip} USD, payable to your driver in USD cash.` : '';
 
       if (isArrival) {
-        return `Hi ${firstName}. This is M\u00f3nica, with Liberia Airport Shuttle (Costa Rica). We are all set to pick *${pax} people* up at Liberia Airport (LIR) tomorrow, *${fecha}*, on flight ${vuelo} (arriving at ${hora}), to be taken to *${hotel}*. Please confirm that everything is still on.\n\n\u2022The one-way rate is ${ratePerTrip} USD, payable to your driver in USD cash.\n\n\u2022Your driver will be outside of customs area holding a sign with your name on it. If having trouble finding the driver, please contact us and head to the outside of the Bar Imperial/Britt caf\u00e9. You will see a set of tables and chairs in that outside part.\n\n\u2022For safety reasons, do not accept help from anyone other than a representative of Liberia Airport Shuttle. (There are people outside offering help to carry the luggage, but for YOUR SAFETY, I recommend you not to give your luggage to any of them as they do not work with our company).`;
+        return `Hi ${firstName}. This is M\u00f3nica, with Liberia Airport Shuttle (Costa Rica). We are all set to pick *${pax} people* up at Liberia Airport (LIR) tomorrow, *${fecha}*, on flight ${vuelo} (arriving at ${hora}), to be taken to *${hotel}*. _Please confirm that everything is still on._${rateLine}\n\n\u2022Your driver will be outside of customs area holding a sign with your name on it. If having trouble finding the driver, please contact us and head to the outside of the Bar Imperial/Britt caf\u00e9. You will see a set of tables and chairs in that outside part.\n\n\u2022For safety reasons, do not accept help from anyone other than a representative of Liberia Airport Shuttle.\n(There are people outside offering help to carry the luggage, but for YOUR SAFETY, I recommend you not to give your luggage to any of them as they do not work with our company).`;
       } else {
-        return `Hi ${firstName}. This is M\u00f3nica, with Liberia Airport Shuttle. I hope you're enjoying your time in Costa Rica! We are all set to pick *${pax} people* up at ${hotel} tomorrow, ${fecha}, at ${hora}. The rate is ${ratePerTrip} USD, payable to your driver in USD cash.\n\nMay I have your room number, please? Your driver will need it at the entrance, but he will meet you at the lobby.`;
+        const departureRate = isCash ? ` The rate is ${ratePerTrip} USD, payable to your driver in USD cash.` : '';
+        return `Hi ${firstName}. This is M\u00f3nica, with Liberia Airport Shuttle. I hope you're enjoying your time in Costa Rica! We are all set to pick *${pax} people* up at ${hotel} tomorrow, ${fecha}, at ${hora}.${departureRate}\n\nMay I have your room number, please? Your driver will need it at the entrance, but he will meet you at the lobby.`;
+      }
+    }
+
+    function generateTripEmailMessage(trip, order) {
+      const firstName = (order.billing?.first_name || '').trim();
+      const pax = trip.pax || 1;
+      const hotel = trip.hotel || 'the hotel';
+      const vuelo = (trip.flight || '').toUpperCase();
+      const hora = trip.time || '';
+      const fecha = formatDateUSFull(trip.raw_date);
+      const fechaShort = formatDateUSShort(trip.raw_date);
+      const totalViajes = order.viajes?.length || order.line_items?.length || 1;
+      let ratePerTrip = '$___';
+
+      if (order.total) {
+        let tripSubtotal = null;
+        if (trip.item_index !== undefined && order.line_items) {
+          const originalIdx = trip.item_index >= 1000 ? trip.item_index - 1000 : trip.item_index;
+          if (order.line_items[originalIdx]) {
+            tripSubtotal = parseFloat(order.line_items[originalIdx].subtotal || 0);
+          }
+        }
+        let isRoundTrip = false;
+        if (trip.item_index >= 1000) {
+          isRoundTrip = true;
+        } else if (order.viajes && order.viajes.length > 0) {
+          isRoundTrip = order.viajes.some(v => v.item_index === trip.item_index + 1000);
+        }
+        const divisor = isRoundTrip ? 2 : 1;
+        if (tripSubtotal !== null) {
+          const amount = tripSubtotal / divisor;
+          ratePerTrip = `$${amount % 1 === 0 ? amount.toFixed(0) : amount.toFixed(2)}`;
+        } else {
+          const orderSubtotal = parseFloat(order.subtotal || order.total);
+          const amount = orderSubtotal / totalViajes;
+          ratePerTrip = `$${amount % 1 === 0 ? amount.toFixed(0) : amount.toFixed(2)}`;
+        }
+      }
+
+      const isArrival = trip.type === 'arrival';
+      const isCash = !order.payment_method_title || order.payment_method_title.toLowerCase().includes('cash');
+      const signature = `\n\nBest regards,\nM\u00f3nica B.\n\nwww.LiberiaAirportShuttle.com\nAirport Shuttles | Private Transfers | Tours\nPhone number: +506 8913-1480\nWhatsApp: +506 8913-1480\nTripadvisor reviews: https://www.tripadvisor.com/Attraction_Review-g309240-d16916659-Reviews-Liberia_Airport_Shuttle-Liberia_Province_of_Guanacaste.html`;
+
+      if (isArrival) {
+        const emailRateLine = isCash ? `\n\n*The one-way rate is ${ratePerTrip} USD, payable to your driver in USD cash.` : '';
+        return {
+          subject: `Your arrival tomorrow, ${fechaShort}`,
+          body: `Hi ${firstName},\n\nI hope this email finds you well. We are all set to pick ${pax} people up at Liberia Airport (LIR) tomorrow, ${fecha}, on flight ${vuelo} (arriving at ${hora}), to be taken to ${hotel}. Please confirm that everything is still on.${emailRateLine}\n\n*Your driver will be outside of customs area holding a sign with your name on it. If having trouble finding the driver, please contact us and head to the outside of the Bar Imperial/Britt caf\u00e9. You will see a set of tables and chairs in that outside part.\n\n*For safety reasons, do not accept help from anyone other than a representative of LiberiaAirportShuttle.com.\n(There are people outside offering help to carry the luggage, but for YOUR SAFETY, I recommend you not to give your luggage to any of them as they do not work with our company).${signature}`
+        };
+      } else {
+        const emailDepartureRate = isCash ? `\n\n- The rate is ${ratePerTrip} USD, payable to your driver in USD cash.` : '';
+        return {
+          subject: `Return to LIR Airport tomorrow, ${fechaShort}.`,
+          body: `Hi ${firstName} ,\n\nI hope you're enjoying your time in Costa Rica! We are all set to pick ${pax} people up at ${hotel} tomorrow, ${fecha}  at ${hora}.\n\nMay I have your room number (if applicable), please? Your driver will need it at the entrance, but he will meet you at the lobby/front desk area.${emailDepartureRate}${signature}`
+        };
       }
     }
 
@@ -2344,8 +2441,7 @@
     function sendTripEmail() {
       if (!currentTrip || !currentTripOrder) return;
       const email = (currentTrip.email || '').toLowerCase();
-      const subject = currentTripIsArrival ? 'Liberia Airport Shuttle - Arrival Confirmation' : 'Liberia Airport Shuttle - Departure Confirmation';
-      const body = generateTripMessage(currentTrip, currentTripOrder);
+      const { subject, body } = generateTripEmailMessage(currentTrip, currentTripOrder);
       window.open(`mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
     }
 

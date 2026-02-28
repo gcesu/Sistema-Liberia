@@ -151,10 +151,10 @@ class AdminNavbar extends HTMLElement {
         </a>
         
         <nav class="nav-links-desktop">
-            <!-- <a href="/cotizaciones.html" class="nav-item">Cotizaciones</a> -->
-            <a href="/index.html" class="nav-item">Reservas</a>
-            <a href="/viajes.html" class="nav-item">Viajes</a>
-            <a href="/choferes.html" class="nav-item">Choferes</a>
+            <!-- <a href="/cotizaciones" class="nav-item">Cotizaciones</a> -->
+            <a href="/reservas" class="nav-item">Reservas</a>
+            <a href="/viajes" class="nav-item">Viajes</a>
+            <a href="/choferes" class="nav-item">Choferes</a>
         </nav>
 
         <div class="ml-auto flex items-center gap-2 md:gap-4">
@@ -339,9 +339,9 @@ class AdminNavbar extends HTMLElement {
         links.forEach(link => {
             const href = link.getAttribute('href');
             // Check for reservas/index page
-            if ((currentPath === '/' || currentPath === '/reservas' || currentPath.endsWith('index.html')) && (href === '/reservas' || href === 'index.html')) {
+            if ((currentPath === '/' || currentPath === '/reservas' || currentPath.endsWith('index.html')) && href === '/reservas') {
                 link.classList.add('active');
-            } else if (href !== '#' && currentPath === href) {
+            } else if (href !== '#' && (currentPath === href || currentPath === href + '.html')) {
                 link.classList.add('active');
             }
         });
