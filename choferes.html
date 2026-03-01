@@ -1128,16 +1128,16 @@
                 'Chayo': 'Chayo',
                 'AlexF': 'Alex Fila',
                 'AlexM': 'Alex Montero',
-                'DanielG': 'Daniel',
-                'Marcos': 'Marcos',
-                'JoseC': 'Jose',
+                'DanielG': 'Daniel (Guardia)',
+                'Marcos': 'Marcos (primo Fermín)',
+                'JoseC': 'Jose (Cartagena)',
                 'Rafa': 'Rafa',
-                'Kenneth': 'Kenneth',
-                'Martin': 'Martín',
+                'Kenneth': 'Kenneth (Belén)',
+                'Martin': 'Martín (La Cruz)',
                 'Gabriela': 'Gabriela',
-                'Tatiana': 'Tatiana',
+                'Tatiana': 'Tatiana (La Cruz)',
                 'Roger': 'Roger',
-                'JoseP': 'Jose',
+                'JoseP': 'Jose (Pelón)',
                 'Esteban': 'Esteban',
                 'Julio': 'Julio',
                 'Don Manuel': 'Don Manuel',
@@ -1170,7 +1170,8 @@
                 // Mostrar header del chofer con su nombre
                 if (driverHeader) {
                     driverHeader.classList.remove('hidden');
-                    document.getElementById('driver-schedule-title').innerText = `CRONOGRAMA DE ${realDriverName.toUpperCase()}`;
+                    const displayName = realDriverName.replace(/\s*\(.*\)/, '');
+                    document.getElementById('driver-schedule-title').innerText = `CRONOGRAMA DE ${displayName.toUpperCase()}`;
                 }
 
                 // Inicializar date picker para chofer
@@ -1580,10 +1581,10 @@
             const driverFilter = document.getElementById('filter-driver').value;
             const searchText = document.getElementById('search-text').value.toLowerCase();
 
-            // Filtro estricto: Solo mostrar viajes confirmados o contactados
-            const ALLOWED_STATUSES = ['confirmado', 'contactado_whatsapp', 'contactado_email', 'contactado_todos'];
+            // Filtro estricto: Solo mostrar viajes confirmados o contactados, y excluir reservas canceladas
+            const ALLOWED_STATUSES = ['confirmado', 'contactado_whatsapp', 'contactado_email', 'contactado_todos', 'contactado_ambos'];
             console.log('Aplicando filtros. Total antes:', allTrips.length);
-            let filtered = allTrips.filter(t => ALLOWED_STATUSES.includes(t.trip_status));
+            let filtered = allTrips.filter(t => ALLOWED_STATUSES.includes(t.trip_status) && t.order_status !== 'cancelled');
             console.log('Total después de filtro estricto:', filtered.length);
 
             if (range.length === 2) {
@@ -1669,7 +1670,8 @@
                 'cancelado': 'Cancelado',
                 'contactado_whatsapp': 'Contactado WhatsApp',
                 'contactado_email': 'Contactado Email',
-                'contactado_todos': 'Contactado Todos'
+                'contactado_todos': 'Contactado Todos',
+                'contactado_ambos': 'Contactado Ambos'
             };
             return map[s] || 'Sin estatus';
         }
@@ -1680,7 +1682,8 @@
                 'cancelado': 'cancelled',
                 'contactado_whatsapp': 'processing',
                 'contactado_email': 'on-hold',
-                'contactado_todos': 'on-hold'
+                'contactado_todos': 'on-hold',
+                'contactado_ambos': 'processing'
             };
             return map[s] || 'pending';
         }

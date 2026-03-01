@@ -1470,6 +1470,7 @@
       contactado_whatsapp: "Contactado Por WhatsApp",
       contactado_email: "Contactado Por Email",
       contactado_todos: "Contactado Por Todos Los Medios",
+      contactado_ambos: "Contactado Ambos",
     };
 
     const TRIP_STATUS_ARRIVAL = TRIP_STATUS_OPTIONS;
@@ -3154,6 +3155,8 @@
         colorClass = "bg-yellow-500";
       } else if (statusVal === "contactado_todos") {
         colorClass = "bg-purple-500";
+      } else if (statusVal === "contactado_ambos") {
+        colorClass = "bg-teal-500";
       } else if (statusVal === "cancelado") {
         colorClass = "bg-red-500";
       }
@@ -3710,6 +3713,7 @@
         contactado_whatsapp: "Contactado WhatsApp",
         contactado_email: "Contactado Email",
         contactado_todos: "Contactado Todos Los Medios",
+        contactado_ambos: "Contactado Ambos",
       };
       return map[s] || "Sin estatus";
     }
@@ -3721,6 +3725,7 @@
         contactado_whatsapp: "processing",
         contactado_email: "on-hold",
         contactado_todos: "refunded",
+        contactado_ambos: "processing",
       };
       return map[s] || "pending";
     }
