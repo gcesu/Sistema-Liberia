@@ -899,11 +899,13 @@
                         <th class="w-64 pl-6">Cliente</th>
                         <th>Fecha</th>
                         <th>Hora</th>
+                        <th>Pax</th>
                         <th>Origen</th>
                         <th>Destino</th>
                         <th>Hotel</th>
                         <th>Vuelo</th>
                         <th>Chofer</th>
+                        <th>Subchofer</th>
                         <th>Precio</th>
                         <th>Método</th>
                         <th>Notas</th>
@@ -1583,9 +1585,7 @@
 
             // Filtro estricto: Solo mostrar viajes confirmados o contactados, y excluir reservas canceladas
             const ALLOWED_STATUSES = ['confirmado', 'contactado_whatsapp', 'contactado_email', 'contactado_todos', 'contactado_ambos'];
-            console.log('Aplicando filtros. Total antes:', allTrips.length);
             let filtered = allTrips.filter(t => ALLOWED_STATUSES.includes(t.trip_status) && t.order_status !== 'cancelled');
-            console.log('Total después de filtro estricto:', filtered.length);
 
             if (range.length === 2) {
                 const start = range[0]; start.setHours(0, 0, 0, 0);
@@ -1638,11 +1638,13 @@
                             </div>
                         </td>
                         <td data-label="Hora" class="time-big">${trip.time || '--:--'}</td>
+                        <td data-label="Pax" class="text-sm font-bold text-[#002a3f]">${trip.pax || 1}</td>
                         <td data-label="Origen" class="text-sm font-semibold text-gray-600">${trip.route ? trip.route.split(' ➝ ')[0] : '--'}</td>
                         <td data-label="Destino" class="text-sm font-semibold text-gray-600">${trip.route ? trip.route.split(' ➝ ')[1] || '--' : '--'}</td>
                         <td data-label="Hotel" class="font-semibold text-gray-600 text-sm">${trip.hotel || '--'}</td>
                         <td data-label="Vuelo" class="text-sm text-gray-500 font-semibold">${(trip.flight || '').toUpperCase()}</td>
                         <td data-label="Chofer" class="text-sm font-semibold text-gray-700">${trip.driver && trip.driver.trim() !== '' ? trip.driver : 'No asignado'}</td>
+                        <td data-label="Subchofer" class="text-sm font-semibold text-gray-500">${trip.subchofer && trip.subchofer.trim() !== '' ? trip.subchofer : '--'}</td>
                         <td data-label="Precio" class="text-sm font-bold text-green-600">${trip.showFinanciero ? '$' + trip.tripPrice.toFixed(2) : '$ ***'}</td>
                         <td data-label="Método" class="text-sm ${trip.showFinanciero && trip.paymentMethod && !trip.paymentMethod.toLowerCase().includes('cash') ? 'font-extrabold text-gray-800' : 'font-semibold text-gray-500'}">${trip.showFinanciero ? trip.paymentMethod : '***'}</td>
                         <td data-label="Notas" class="text-sm text-gray-600 font-semibold" title="${trip.driverNotes || ''}">
