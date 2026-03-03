@@ -1284,6 +1284,13 @@
                   <textarea id="trip-input-address" oninput="tripCheckForChanges()" rows="2"
                     class="hidden input-editable resize-none" placeholder="Dirección completa"></textarea>
                 </div>
+
+                <div id="trip-customer-note-container"
+                  class="p-3 bg-amber-50 rounded-lg border border-amber-200 shadow-sm hidden">
+                  <p class="meta-field-label text-amber-600">📝 Nota del Cliente</p>
+                  <div id="trip-display-customer-note"
+                    class="meta-field-value text-sm text-amber-900 whitespace-pre-wrap"></div>
+                </div>
               </div>
             </div>
           </div>
@@ -2675,6 +2682,17 @@
         country || "---";
       document.getElementById("trip-display-address").innerText =
         addressOnlyLine1 || "---";
+
+      // Customer Note
+      const customerNote = order.customer_note || '';
+      const noteContainer = document.getElementById('trip-customer-note-container');
+      const noteDisplay = document.getElementById('trip-display-customer-note');
+      if (customerNote.trim()) {
+        noteDisplay.innerText = customerNote;
+        noteContainer.classList.remove('hidden');
+      } else {
+        noteContainer.classList.add('hidden');
+      }
 
       document.getElementById("trip-det-email-link").href = `mailto:${email}`;
       document.getElementById("trip-det-whatsapp-link").href =

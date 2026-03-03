@@ -243,6 +243,7 @@ function saveOrderToDB($pdo, $order)
         'descuentos' => floatval(array_sum(array_column($order['coupon_lines'] ?? [], 'discount'))),
         'total' => floatval($order['total']),
         'raw_data' => json_encode($order),
+        'nota_cliente' => $order['customer_note'] ?? '',
         'privacy_show_email' => '0',
         'privacy_show_phone' => '0'
     ];
@@ -250,15 +251,15 @@ function saveOrderToDB($pdo, $order)
     $sqlReserva = "
         INSERT INTO reservas (id, status, date_created, cliente_nombre, cliente_email, cliente_telefono, 
             cliente_pais, cliente_direccion, metodo_pago, subtotal, cargos_adicionales, impuestos, 
-            descuentos, total, raw_data, privacy_show_email, privacy_show_phone)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            descuentos, total, raw_data, nota_cliente, privacy_show_email, privacy_show_phone)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
             status = VALUES(status), cliente_nombre = VALUES(cliente_nombre), cliente_email = VALUES(cliente_email),
             cliente_telefono = VALUES(cliente_telefono), cliente_pais = VALUES(cliente_pais), 
             cliente_direccion = VALUES(cliente_direccion), metodo_pago = VALUES(metodo_pago), 
             subtotal = VALUES(subtotal), cargos_adicionales = VALUES(cargos_adicionales),
             impuestos = VALUES(impuestos), descuentos = VALUES(descuentos), total = VALUES(total), 
-            raw_data = VALUES(raw_data)
+            raw_data = VALUES(raw_data), nota_cliente = VALUES(nota_cliente)
     ";
 
     $stmt = $pdo->prepare($sqlReserva);
@@ -278,6 +279,7 @@ function saveOrderToDB($pdo, $order)
         $reservaData['descuentos'],
         $reservaData['total'],
         $reservaData['raw_data'],
+        $reservaData['nota_cliente'],
         $reservaData['privacy_show_email'],
         $reservaData['privacy_show_phone']
     ]);

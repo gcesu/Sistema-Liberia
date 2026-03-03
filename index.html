@@ -1130,6 +1130,13 @@
                                     class="hidden input-editable resize-none"
                                     placeholder="Dirección completa"></textarea>
                             </div>
+
+                            <div id="customer-note-container"
+                                class="p-3 bg-amber-50 rounded-lg border border-amber-200 shadow-sm hidden">
+                                <p class="meta-field-label text-amber-600">📝 Nota del Cliente</p>
+                                <div id="display-customer-note"
+                                    class="meta-field-value text-sm text-amber-900 whitespace-pre-wrap"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2046,6 +2053,17 @@
             document.getElementById('display-phone').innerHTML = `<a href="tel:${phone}" class="hover:text-accent">${formatPhoneNumber(phone, country)}</a>`;
             document.getElementById('display-country').innerText = getCountryDisplayName(country);
             document.getElementById('display-address').innerText = address;
+
+            // Customer Note
+            const customerNote = o.customer_note || '';
+            const noteContainer = document.getElementById('customer-note-container');
+            const noteDisplay = document.getElementById('display-customer-note');
+            if (customerNote.trim()) {
+                noteDisplay.innerText = customerNote;
+                noteContainer.classList.remove('hidden');
+            } else {
+                noteContainer.classList.add('hidden');
+            }
 
             document.getElementById('det-email-link').href = `mailto:${email}`;
             document.getElementById('det-whatsapp-link').href = PhoneUtils.buildWhatsappUrl(phone, country);

@@ -111,6 +111,7 @@
 
         table {
             width: 100%;
+            min-width: 1400px;
             border-collapse: collapse;
         }
 
@@ -678,6 +679,15 @@
                 min-width: 70px;
                 flex-shrink: 0;
             }
+
+            td.bold-label:before {
+                color: #002a3f;
+                font-weight: 900;
+            }
+
+            table {
+                min-width: 0;
+            }
         }
 
         /* Tablets en orientación vertical (iPad portrait) - misma vista que móviles */
@@ -742,6 +752,15 @@
                 margin-right: 10px;
                 min-width: 70px;
                 flex-shrink: 0;
+            }
+
+            td.bold-label:before {
+                color: #002a3f;
+                font-weight: 900;
+            }
+
+            table {
+                min-width: 0;
             }
 
             .filter-container {
@@ -892,7 +911,7 @@
             </div>
         </div>
 
-        <div class="table-wrapper shadow-sm overflow-hidden">
+        <div class="table-wrapper shadow-sm overflow-x-auto">
             <table id="trips-table">
                 <thead>
                     <tr>
@@ -900,8 +919,8 @@
                         <th>Fecha</th>
                         <th>Hora</th>
                         <th>Pax</th>
-                        <th>Origen</th>
-                        <th>Destino</th>
+                        <th class="text-[#002a3f]">Origen</th>
+                        <th class="text-[#002a3f]">Destino</th>
                         <th>Hotel</th>
                         <th>Vuelo</th>
                         <th>Chofer</th>
@@ -975,6 +994,13 @@
                                 <div class="p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
                                     <p class="meta-field-label">📍 Dirección</p>
                                     <div id="trip-display-address" class="meta-field-value text-sm"></div>
+                                </div>
+
+                                <div id="trip-customer-note-container"
+                                    class="p-3 bg-amber-50 rounded-lg border border-amber-200 shadow-sm hidden">
+                                    <p class="meta-field-label text-amber-600">📝 Nota del Cliente</p>
+                                    <div id="trip-display-customer-note"
+                                        class="meta-field-value text-sm text-amber-900 whitespace-pre-wrap"></div>
                                 </div>
                             </div>
                         </div>
@@ -1639,8 +1665,8 @@
                         </td>
                         <td data-label="Hora" class="time-big">${trip.time || '--:--'}</td>
                         <td data-label="Pax" class="text-sm font-bold text-[#002a3f]">${trip.pax || 1}</td>
-                        <td data-label="Origen" class="text-sm font-semibold text-gray-600">${trip.route ? trip.route.split(' ➝ ')[0] : '--'}</td>
-                        <td data-label="Destino" class="text-sm font-semibold text-gray-600">${trip.route ? trip.route.split(' ➝ ')[1] || '--' : '--'}</td>
+                        <td data-label="Origen" class="bold-label font-extrabold text-[#002a3f]">${trip.route ? trip.route.split(' ➝ ')[0] : '--'}</td>
+                        <td data-label="Destino" class="bold-label font-extrabold text-[#002a3f]">${trip.route ? trip.route.split(' ➝ ')[1] || '--' : '--'}</td>
                         <td data-label="Hotel" class="font-semibold text-gray-600 text-sm">${trip.hotel || '--'}</td>
                         <td data-label="Vuelo" class="text-sm text-gray-500 font-semibold">${(trip.flight || '').toUpperCase()}</td>
                         <td data-label="Chofer" class="text-sm font-semibold text-gray-700">${trip.driver && trip.driver.trim() !== '' ? trip.driver : 'No asignado'}</td>
@@ -1721,6 +1747,17 @@
             document.getElementById('trip-display-name').innerText = fullName;
             document.getElementById('trip-display-country').innerText = country && COUNTRY_MAP[country] ? COUNTRY_MAP[country].name : (country || '---');
             document.getElementById('trip-display-address').innerText = addressOnlyLine1 || '---';
+
+            // Customer Note
+            const customerNote = order.customer_note || '';
+            const noteContainerEl = document.getElementById('trip-customer-note-container');
+            const noteDisplayEl = document.getElementById('trip-display-customer-note');
+            if (customerNote.trim()) {
+                noteDisplayEl.innerText = customerNote;
+                noteContainerEl.classList.remove('hidden');
+            } else {
+                noteContainerEl.classList.add('hidden');
+            }
 
             // Privacy Check
             const showEmail = String(findMetaValue(order, ["privacy_show_email"])) === "1";

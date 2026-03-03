@@ -416,6 +416,7 @@ function transformarReservaParaFrontend($r)
         'id' => (int) $r['id'],
         'status' => $r['status'],
         'date_created' => $r['date_created'],
+        'customer_note' => $r['nota_cliente'] ?? '',
         'billing' => [
             'first_name' => explode(' ', $r['cliente_nombre'] ?? '')[0] ?? '',
             'last_name' => implode(' ', array_slice(explode(' ', $r['cliente_nombre'] ?? ''), 1)),
