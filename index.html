@@ -40,6 +40,7 @@
 
     <!-- CONEXIÓN AL MENÚ -->
     <script src="menu.js" defer></script>
+    <script src="phone-utils.js"></script>
 
     <style>
         :root {
@@ -520,6 +521,55 @@
             background-color: white;
         }
 
+
+        /* Searchable Select Dropdown */
+        .searchable-select-wrapper {
+            position: relative;
+        }
+
+        .searchable-select-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            z-index: 999;
+            background: white;
+            border: 1px solid #cbd5e1;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .searchable-select-option {
+            padding: 8px 12px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--primary);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .searchable-select-option:hover,
+        .searchable-select-option.active {
+            background: #eef4ff;
+            color: var(--accent);
+        }
+
+        .searchable-select-option.selected {
+            background: var(--accent);
+            color: white;
+        }
+
+        .searchable-select-empty {
+            padding: 10px 12px;
+            font-size: 13px;
+            color: #94a3b8;
+            text-align: center;
+            font-style: italic;
+        }
+
         #input-email,
         #display-email {
             text-transform: lowercase;
@@ -619,6 +669,18 @@
             border-radius: 12px;
             margin-bottom: 20px;
             box-shadow: 0 4px 12px rgba(0, 42, 63, 0.15);
+        }
+
+        .route-cards-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .route-visualizer.route-card-item {
+            margin-bottom: 0;
         }
 
         .route-point {
@@ -728,12 +790,12 @@
         }
 
         .modal-sidebar {
-            background-color: white;
-            border-right: 1px solid #f1f5f9;
+            background-color: #f8fafc;
+            border-right: 1px solid #e2e8f0;
         }
 
         .modal-main-content {
-            background-color: #f8fafc;
+            background-color: white;
         }
 
         /* En pantallas grandes: sidebar fijo, contenido con scroll */
@@ -944,8 +1006,6 @@
                     <button id="btn-clear-search" onclick="clearSearch()"
                         class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 text-xl transition-all">&times;</button>
                 </div>
-                <button onclick="applyFilters()"
-                    class="bg-[#002a3f] text-white px-6 h-12 rounded-xl font-bold uppercase text-[11px] tracking-widest hover:bg-[#ed4441] transition-all shadow-md">Buscar</button>
             </div>
         </div>
 
@@ -1031,7 +1091,7 @@
                         </div>
 
                         <div class="space-y-6">
-                            <div class="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                            <div class="p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
                                 <p class="meta-field-label">📧 Correo</p>
                                 <div id="display-email" class="meta-field-value break-all"></div>
                                 <input type="email" id="input-email" oninput="handleEmailInput()"
@@ -1043,7 +1103,7 @@
                                 </div>
                             </div>
 
-                            <div class="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                            <div class="p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
                                 <p class="meta-field-label">📞 Teléfono</p>
                                 <div id="display-phone" class="meta-field-value"></div>
                                 <input type="text" id="input-phone" oninput="checkForChanges()"
@@ -1055,7 +1115,7 @@
                                 </div>
                             </div>
 
-                            <div class="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                            <div class="p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
                                 <p class="meta-field-label">🌍 País</p>
                                 <div id="display-country" class="meta-field-value"></div>
                                 <select id="input-country" onchange="checkForChanges()" class="hidden input-editable">
@@ -1063,12 +1123,19 @@
                                 </select>
                             </div>
 
-                            <div class="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                            <div class="p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
                                 <p class="meta-field-label">📍 Dirección</p>
                                 <div id="display-address" class="meta-field-value text-sm"></div>
                                 <textarea id="input-address" oninput="checkForChanges()" rows="2"
                                     class="hidden input-editable resize-none"
                                     placeholder="Dirección completa"></textarea>
+                            </div>
+
+                            <div id="customer-note-container"
+                                class="p-3 bg-amber-50 rounded-lg border border-amber-200 shadow-sm hidden">
+                                <p class="meta-field-label text-amber-600">📝 Nota del Cliente</p>
+                                <div id="display-customer-note"
+                                    class="meta-field-value text-sm text-amber-900 whitespace-pre-wrap"></div>
                             </div>
                         </div>
                     </div>
@@ -1106,113 +1173,12 @@
                                 <span class="text-gray-500 text-sm uppercase font-bold">Pax:</span>
                                 <span id="general-pax-value" class="font-black text-[#002a3f] text-lg"></span>
                             </div>
-                            <div class="info-pill bg-white shadow-sm flex items-center gap-2">
-                                <span class="text-gray-500 text-sm uppercase font-bold">Hotel:</span>
-                                <input type="text" id="input-hotel-name-edit" oninput="checkForChanges()"
-                                    class="font-black text-[#002a3f] uppercase bg-transparent outline-none border-b border-transparent focus:border-blue-300 transition-colors w-64 text-lg placeholder-gray-300"
-                                    placeholder="NOMBRE DEL HOTEL">
-                            </div>
+
                         </div>
                     </div>
 
-                    <!-- Grid de Logística y Asignación -->
-                    <div id="logistics-container" class="grid grid-cols-1 gap-6 mb-8">
-                        <!-- Tarjeta Llegada -->
-                        <div id="col-arrival" class="operation-card">
-                            <div class="operation-card-header">
-                                <div class="operation-card-title">
-                                    <span class="title-dot-arrival"></span> LLEGADA
-                                </div>
-                                <button id="btn-edit-arrival" onclick="toggleArrivalEdit()"
-                                    class="btn-section-edit">Editar</button>
-                            </div>
-                            <div class="operation-card-body space-y-5">
-                                <!-- Logística -->
-                                <div>
-                                    <div id="arrival-fields-list" class="grid grid-cols-2 gap-4"></div>
-                                </div>
-
-                                <!-- Asignación -->
-                                <div class="bg-blue-50/50 -mx-5 -mb-5 p-5 border-t border-blue-100">
-                                    <div class="operation-section-label text-blue-400 border-blue-200">Asignación
-                                        Operativa</div>
-                                    <div class="space-y-4">
-                                        <div class="field-group-row">
-                                            <div>
-                                                <p class="meta-field-label">🚐 Chofer</p>
-                                                <select id="input-meta-chofer_llegada" onchange="checkForChanges()"
-                                                    class="input-editable bg-white"></select>
-                                            </div>
-                                            <div>
-                                                <p class="meta-field-label">👥 Subchofer</p>
-                                                <input type="text" id="input-meta-subchofer_llegada"
-                                                    oninput="checkForChanges()" class="input-editable bg-white"
-                                                    placeholder="Nombre del subchofer">
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <p class="meta-field-label">📢 Nota Choferes</p>
-                                            <textarea id="input-meta-nota_choferes_llegada" oninput="checkForChanges()"
-                                                rows="2" class="input-editable bg-white resize-none h-16"></textarea>
-                                        </div>
-                                        <div>
-                                            <p class="meta-field-label">🔒 Notas Internas</p>
-                                            <textarea id="input-meta-notas_internas_llegada" oninput="checkForChanges()"
-                                                rows="2" class="input-editable bg-white resize-none h-16"></textarea>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Tarjeta Salida -->
-                        <div id="col-departure" class="operation-card">
-                            <div class="operation-card-header">
-                                <div class="operation-card-title">
-                                    <span class="title-dot-departure"></span> SALIDA
-                                </div>
-                                <button id="btn-edit-departure" onclick="toggleDepartureEdit()"
-                                    class="btn-section-edit">Editar</button>
-                            </div>
-                            <div class="operation-card-body space-y-5">
-                                <!-- Logística -->
-                                <div>
-                                    <div id="departure-fields-list" class="grid grid-cols-2 gap-4"></div>
-                                </div>
-
-                                <!-- Asignación -->
-                                <div class="bg-orange-50/50 -mx-5 -mb-5 p-5 border-t border-orange-100">
-                                    <div class="operation-section-label text-orange-400 border-orange-200">Asignación
-                                        Operativa</div>
-                                    <div class="space-y-4">
-                                        <div class="field-group-row">
-                                            <div>
-                                                <p class="meta-field-label">🚐 Chofer</p>
-                                                <select id="input-meta-chofer_salida" onchange="checkForChanges()"
-                                                    class="input-editable bg-white"></select>
-                                            </div>
-                                            <div>
-                                                <p class="meta-field-label">👥 Subchofer</p>
-                                                <input type="text" id="input-meta-subchofer_salida"
-                                                    oninput="checkForChanges()" class="input-editable bg-white"
-                                                    placeholder="Nombre del subchofer">
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <p class="meta-field-label">📢 Nota Choferes</p>
-                                            <textarea id="input-meta-nota_choferes_ida" oninput="checkForChanges()"
-                                                rows="2" class="input-editable bg-white resize-none h-16"></textarea>
-                                        </div>
-                                        <div>
-                                            <p class="meta-field-label">🔒 Notas Internas</p>
-                                            <textarea id="input-meta-notas_internas_salida" oninput="checkForChanges()"
-                                                rows="2" class="input-editable bg-white resize-none h-16"></textarea>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <!-- Grid de Logística y Asignación (generado dinámicamente) -->
+                    <div id="logistics-container" class="grid grid-cols-1 gap-6 mb-8"></div>
 
                     <!-- Información de Pago -->
                     <div id="order-totals-container" class="mt-4">
@@ -1267,6 +1233,10 @@
     <script>
         // API Local - Lee desde la base de datos MySQL
         const API_PROXY = "api/reservas.php";
+        const VIAJES_API = "api/viajes_api.php";
+
+        // Almacenar viajes de la orden actual para guardar cambios
+        let currentOrderViajes = [];
 
         // CALCULAR FECHA DE INICIO (7 meses atrás)
         const startDate = new Date();
@@ -1310,6 +1280,276 @@
             return `${hours}:${minutes} ${ampm}`;
         }
 
+        function getOrdinalSuffix(day) {
+            if (day > 3 && day < 21) return 'th';
+            switch (day % 10) {
+                case 1: return 'st';
+                case 2: return 'nd';
+                case 3: return 'rd';
+                default: return 'th';
+            }
+        }
+
+        function formatDateUSFull(d) {
+            if (!d) return '---';
+            let dateObj = d instanceof Date ? new Date(d) : new Date(d);
+            if (typeof d === 'string') {
+                const datePart = d.split('T')[0];
+                if (datePart.includes('-')) {
+                    const parts = datePart.split('-');
+                    if (parts.length === 3) {
+                        dateObj = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                    }
+                }
+            }
+            if (isNaN(dateObj.getTime())) return String(d);
+            const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            const day = dateObj.getDate();
+            return `${months[dateObj.getMonth()]} ${day}${getOrdinalSuffix(day)}`;
+        }
+
+        function formatDateUSShort(d) {
+            if (!d) return '---';
+            let dateObj = d instanceof Date ? new Date(d) : new Date(d);
+            if (typeof d === 'string') {
+                const datePart = d.split('T')[0];
+                if (datePart.includes('-')) {
+                    const parts = datePart.split('-');
+                    if (parts.length === 3) {
+                        dateObj = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                    }
+                }
+            }
+            if (isNaN(dateObj.getTime())) return String(d);
+            const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            const day = dateObj.getDate();
+            return `${months[dateObj.getMonth()]} ${day}${getOrdinalSuffix(day)}`;
+        }
+
+        function autoResizeTextarea(textarea) {
+            if (!textarea) return;
+            if (!textarea.dataset.baseHeight) {
+                textarea.dataset.baseHeight = String(textarea.offsetHeight || 64);
+            }
+            const baseHeight = parseFloat(textarea.dataset.baseHeight) || 64;
+            textarea.style.overflowY = 'hidden';
+            textarea.style.height = 'auto';
+            textarea.style.height = `${Math.max(textarea.scrollHeight, baseHeight)}px`;
+        }
+
+        function resizeLogisticsNoteTextareas() {
+            const modal = document.getElementById('order-modal');
+            if (!modal) return;
+            modal.querySelectorAll('textarea[id*="nota_choferes"], textarea[id*="notas_internas"]').forEach(autoResizeTextarea);
+        }
+
+        function generateViajeMessage(order, viaje) {
+            const firstName = (order.billing?.first_name || '').trim();
+            const pax = viaje.pax || 1;
+            // Para mensajes: preferir hotel manual, luego destino, luego line_items name
+            const itemIdx = viaje.item_index >= 1000 ? viaje.item_index - 1000 : viaje.item_index;
+            const hotel = viaje.hotel || viaje.destino || order.line_items?.[itemIdx]?.name || 'el hotel';
+            const vuelo = (viaje.vuelo || '').toUpperCase();
+            const hora = viaje.hora ? formatTime12h(viaje.hora) : '';
+            const fecha = viaje.fecha ? formatDateShort(viaje.fecha) : '';
+            const totalViajes = order.viajes?.length || order.line_items?.length || 1;
+            let ratePerTrip = '$___';
+
+            if (order.total) {
+                let tripSubtotal = null;
+                if (viaje.item_index !== undefined && order.line_items) {
+                    const originalIdx = viaje.item_index >= 1000 ? viaje.item_index - 1000 : viaje.item_index;
+                    const lineItems = Array.isArray(order.line_items) ? order.line_items : [];
+                    const byItemIndex = lineItems.find(li => Number(li?.item_index) === Number(originalIdx));
+                    const lineItem = byItemIndex || lineItems[originalIdx];
+                    if (lineItem) {
+                        tripSubtotal = parseFloat(lineItem.subtotal || 0);
+                    }
+                }
+
+                let isRoundTrip = false;
+                if (viaje.item_index >= 1000) {
+                    isRoundTrip = true;
+                } else if (order.viajes && order.viajes.length > 0 && viaje.item_index !== undefined) {
+                    isRoundTrip = order.viajes.some(v => v.item_index === viaje.item_index + 1000);
+                }
+
+                const divisor = isRoundTrip ? 2 : 1;
+
+                if (tripSubtotal !== null) {
+                    const amount = tripSubtotal / divisor;
+                    ratePerTrip = `$${amount % 1 === 0 ? amount.toFixed(0) : amount.toFixed(2)}`;
+                } else {
+                    // Fallback: usar subtotal de la orden entre total de viajes
+                    const orderSubtotal = parseFloat(order.subtotal || order.total);
+                    const amount = orderSubtotal / totalViajes;
+                    ratePerTrip = `$${amount % 1 === 0 ? amount.toFixed(0) : amount.toFixed(2)}`;
+                }
+            }
+            const isArrival = viaje.tipo === 'llegada';
+            const isCash = !order.payment_method_title || order.payment_method_title.toLowerCase().includes('cash');
+            const rateLine = isCash ? `\n\n•The one-way rate is ${ratePerTrip} USD, payable to your driver in USD cash.` : '';
+
+            if (isArrival) {
+                return `Hi ${firstName}. This is Mónica, with Liberia Airport Shuttle (Costa Rica). We are all set to pick *${pax} people* up at Liberia Airport (LIR) tomorrow, *${fecha}*, on flight ${vuelo} (arriving at ${hora}), to be taken to *${hotel}*. _Please confirm that everything is still on._${rateLine}\n\n•Your driver will be outside of customs area holding a sign with your name on it. If having trouble finding the driver, please contact us and head to the outside of the Bar Imperial/Britt café. You will see a set of tables and chairs in that outside part.\n\n•For safety reasons, do not accept help from anyone other than a representative of Liberia Airport Shuttle.\n(There are people outside offering help to carry the luggage, but for YOUR SAFETY, I recommend you not to give your luggage to any of them as they do not work with our company).`;
+            } else {
+                const departureRate = isCash ? ` The rate is ${ratePerTrip} USD, payable to your driver in USD cash.` : '';
+                return `Hi ${firstName}. This is Mónica, with Liberia Airport Shuttle. I hope you're enjoying your time in Costa Rica! We are all set to pick *${pax} people* up at ${hotel} tomorrow, ${fecha}, at ${hora}.${departureRate}\n\nMay I have your room number, please? Your driver will need it at the entrance, but he will meet you at the lobby.`;
+            }
+        }
+
+        function generateViajeEmailMessage(order, viaje) {
+            const firstName = (order.billing?.first_name || '').trim();
+            const pax = viaje.pax || 1;
+            const itemIdx = viaje.item_index >= 1000 ? viaje.item_index - 1000 : viaje.item_index;
+            const hotel = viaje.hotel || viaje.destino || order.line_items?.[itemIdx]?.name || 'the hotel';
+            const vuelo = (viaje.vuelo || '').toUpperCase();
+            const hora = viaje.hora ? formatTime12h(viaje.hora) : '';
+            const fecha = viaje.fecha ? formatDateUSFull(viaje.fecha) : '';
+            const fechaShort = viaje.fecha ? formatDateUSShort(viaje.fecha) : '';
+            const totalViajes = order.viajes?.length || order.line_items?.length || 1;
+            let ratePerTrip = '$___';
+
+            if (order.total) {
+                let tripSubtotal = null;
+                if (viaje.item_index !== undefined && order.line_items) {
+                    const originalIdx = viaje.item_index >= 1000 ? viaje.item_index - 1000 : viaje.item_index;
+                    const lineItems = Array.isArray(order.line_items) ? order.line_items : [];
+                    const byItemIndex = lineItems.find(li => Number(li?.item_index) === Number(originalIdx));
+                    const lineItem = byItemIndex || lineItems[originalIdx];
+                    if (lineItem) {
+                        tripSubtotal = parseFloat(lineItem.subtotal || 0);
+                    }
+                }
+                let isRoundTrip = false;
+                if (viaje.item_index >= 1000) {
+                    isRoundTrip = true;
+                } else if (order.viajes && order.viajes.length > 0 && viaje.item_index !== undefined) {
+                    isRoundTrip = order.viajes.some(v => v.item_index === viaje.item_index + 1000);
+                }
+                const divisor = isRoundTrip ? 2 : 1;
+                if (tripSubtotal !== null) {
+                    const amount = tripSubtotal / divisor;
+                    ratePerTrip = `$${amount % 1 === 0 ? amount.toFixed(0) : amount.toFixed(2)}`;
+                } else {
+                    const orderSubtotal = parseFloat(order.subtotal || order.total);
+                    const amount = orderSubtotal / totalViajes;
+                    ratePerTrip = `$${amount % 1 === 0 ? amount.toFixed(0) : amount.toFixed(2)}`;
+                }
+            }
+
+            const isArrival = viaje.tipo === 'llegada';
+            const isCash = !order.payment_method_title || order.payment_method_title.toLowerCase().includes('cash');
+            const signature = `\n\nBest regards,\nMónica B.\n\nwww.LiberiaAirportShuttle.com\nAirport Shuttles | Private Transfers | Tours\nPhone number: +506 8913-1480\nWhatsApp: +506 8913-1480\nTripadvisor reviews: https://www.tripadvisor.com/Attraction_Review-g309240-d16916659-Reviews-Liberia_Airport_Shuttle-Liberia_Province_of_Guanacaste.html`;
+
+            if (isArrival) {
+                const emailRateLine = isCash ? `\n\n*The one-way rate is ${ratePerTrip} USD, payable to your driver in USD cash.` : '';
+                return {
+                    subject: `Your arrival tomorrow, ${fechaShort}`,
+                    body: `Hi ${firstName},\n\nI hope this email finds you well. We are all set to pick ${pax} people up at Liberia Airport (LIR) tomorrow, ${fecha}, on flight ${vuelo} (arriving at ${hora}), to be taken to ${hotel}. Please confirm that everything is still on.${emailRateLine}\n\n*Your driver will be outside of customs area holding a sign with your name on it. If having trouble finding the driver, please contact us and head to the outside of the Bar Imperial/Britt café. You will see a set of tables and chairs in that outside part.\n\n*For safety reasons, do not accept help from anyone other than a representative of LiberiaAirportShuttle.com.\n(There are people outside offering help to carry the luggage, but for YOUR SAFETY, I recommend you not to give your luggage to any of them as they do not work with our company).${signature}`
+                };
+            } else {
+                const emailDepartureRate = isCash ? `\n\n- The rate is ${ratePerTrip} USD, payable to your driver in USD cash.` : '';
+                return {
+                    subject: `Return to LIR Airport tomorrow, ${fechaShort}.`,
+                    body: `Hi ${firstName} ,\n\nI hope you're enjoying your time in Costa Rica! We are all set to pick ${pax} people up at ${hotel} tomorrow, ${fecha}  at ${hora}.\n\nMay I have your room number (if applicable), please? Your driver will need it at the entrance, but he will meet you at the lobby/front desk area.${emailDepartureRate}${signature}`
+                };
+            }
+        }
+
+        function sendViajeEmail(orderId, viajeId) {
+            const order = allOrders.find(o => o.id === orderId);
+            if (!order) return;
+            const viaje = (order.viajes || []).find(v => v.id === viajeId);
+            if (!viaje) return;
+            const email = (order.billing?.email || '').toLowerCase();
+            const { subject, body } = generateViajeEmailMessage(order, viaje);
+            window.open(`mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+        }
+
+        function sendViajeWhatsApp(orderId, viajeId) {
+            const order = allOrders.find(o => o.id === orderId);
+            if (!order) return;
+            const viaje = (order.viajes || []).find(v => v.id === viajeId);
+            if (!viaje) return;
+            const msg = generateViajeMessage(order, viaje);
+            const whatsappUrl = PhoneUtils.buildWhatsappUrl(order.billing?.phone || '', order.billing?.country || '', msg);
+            if (!whatsappUrl) return;
+            window.open(whatsappUrl, '_blank');
+        }
+
+        // Limpiar nombre de chofer (quitar paréntesis y contenido)
+        function cleanDriverName(name) {
+            if (!name) return '';
+            return name.replace(/\s*\(.*?\)\s*/g, '').trim();
+        }
+
+        function sendDriverContactWhatsApp(orderId, viajeId) {
+            const order = allOrders.find(o => o.id === orderId);
+            if (!order) return;
+            const viaje = (order.viajes || []).find(v => v.id === viajeId);
+            if (!viaje) return;
+            const choferName = viaje.chofer || '';
+            if (!choferName) { alert('No hay chofer asignado a este viaje.'); return; }
+            const phone = CHOFERES_PHONE[choferName];
+            if (!phone) { alert(`No se encontró teléfono para el chofer "${choferName}".`); return; }
+            const cleanPhone = phone.replace(/[\s\-]/g, '');
+            const displayName = cleanDriverName(choferName);
+            const firstName = (order.billing?.first_name || '').trim();
+            const msg = `Hi ${firstName},\n\nThis is your driver's WhatsApp for tomorrow: wa.me/${cleanPhone}, or if you need to call him directly: ${phone}. His name is ${displayName}. Please use this number only in case of an emergency. See you tomorrow!\n\nBest regards,\nMónica B.`;
+            const whatsappUrl = PhoneUtils.buildWhatsappUrl(order.billing?.phone || '', order.billing?.country || '', msg);
+            if (!whatsappUrl) return;
+            window.open(whatsappUrl, '_blank');
+        }
+
+        function sendDriverContactLegacyWhatsApp(orderId, choferKey) {
+            const order = allOrders.find(o => o.id === orderId);
+            if (!order) return;
+            const choferName = deepScanMeta(order, choferKey) || '';
+            if (!choferName) { alert('No hay chofer asignado a este viaje.'); return; }
+            const phone = CHOFERES_PHONE[choferName];
+            if (!phone) { alert(`No se encontró teléfono para el chofer "${choferName}".`); return; }
+            const cleanPhone = phone.replace(/[\s\-]/g, '');
+            const displayName = cleanDriverName(choferName);
+            const firstName = (order.billing?.first_name || '').trim();
+            const msg = `Hi ${firstName},\n\nThis is your driver's WhatsApp for tomorrow: wa.me/${cleanPhone}, or if you need to call him directly: ${phone}. His name is ${displayName}. Please use this number only in case of an emergency. See you tomorrow!\n\nBest regards,\nMónica B.`;
+            const whatsappUrl = PhoneUtils.buildWhatsappUrl(order.billing?.phone || '', order.billing?.country || '', msg);
+            if (!whatsappUrl) return;
+            window.open(whatsappUrl, '_blank');
+        }
+
+        function generateLegacyViajeObj(order, type) {
+            const isArrival = type === 'arrival';
+            return {
+                tipo: isArrival ? 'llegada' : 'salida',
+                fecha: deepScanMeta(order, isArrival ? '- Arrival Date' : '- Departure Date') || '',
+                hora: deepScanMeta(order, isArrival ? '- Arrival Time' : '- Pick-up Time at Hotel') || '',
+                vuelo: deepScanMeta(order, isArrival ? '- Arrival Flight Number' : '- Departure Flight Number') || '',
+                pax: parseInt(deepScanMeta(order, 'Passengers') || deepScanMeta(order, 'passengers') || '1'),
+                hotel: deepScanMeta(order, 'hotel_manual') || (order.line_items?.[0]?.name || 'el hotel'),
+                destino: order.line_items?.[0]?.name || ''
+            };
+        }
+
+        function sendLegacyEmail(orderId, type) {
+            const order = allOrders.find(o => o.id === orderId);
+            if (!order) return;
+            const viaje = generateLegacyViajeObj(order, type);
+            const email = (order.billing?.email || '').toLowerCase();
+            const { subject, body } = generateViajeEmailMessage(order, viaje);
+            window.open(`mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+        }
+
+        function sendLegacyWhatsApp(orderId, type) {
+            const order = allOrders.find(o => o.id === orderId);
+            if (!order) return;
+            const viaje = generateLegacyViajeObj(order, type);
+            const msg = generateViajeMessage(order, viaje);
+            const whatsappUrl = PhoneUtils.buildWhatsappUrl(order.billing?.phone || '', order.billing?.country || '', msg);
+            if (!whatsappUrl) return;
+            window.open(whatsappUrl, '_blank');
+        }
+
         function normalizeForInput(val, type) {
             if (!val) return "";
             if (type === 'date') return val.split('T')[0].split(' ')[0];
@@ -1329,8 +1569,7 @@
             if (!phone) return 'N/A';
             const clean = phone.replace(/\D/g, '');
             const country = countryCode?.toUpperCase() || '';
-            const prefixes = { 'CR': '506', 'US': '1', 'CA': '1', 'MX': '52', 'ES': '34' };
-            const prefix = prefixes[country] || '';
+            const prefix = PhoneUtils.getDialCode(country);
             let raw = clean;
             if (prefix && clean.startsWith(prefix)) raw = clean.slice(prefix.length);
             if (country === 'CR') return `+506 ${raw.length === 8 ? `${raw.slice(0, 4)} ${raw.slice(4)}` : raw}`;
@@ -1349,6 +1588,7 @@
 
         // Choferes se cargan desde la BD
         let CHOFERES = [];
+        let CHOFERES_PHONE = {}; // Mapa nombre -> telefono
 
         const ARRIVAL_FIELDS = [
             { label: "Fecha", key: "- Arrival Date", emoji: "📅", type: "date" },
@@ -1368,6 +1608,46 @@
         ];
 
         const PASSENGER_EDIT_KEYS = ["name", "email", "phone", "country", "address"];
+
+        // Inyectar metadata legacy desde viajes para compatibilidad con renderGeneralInfo y tabla
+        function injectLegacyMetaFromViajes(order) {
+            if (!order.viajes || order.viajes.length === 0) return;
+            if (order._legacyMetaInjected) return;
+            order._legacyMetaInjected = true;
+
+            const arrivals = order.viajes.filter(v => v.tipo === 'llegada');
+            const departures = order.viajes.filter(v => v.tipo === 'salida');
+            const hasArrival = arrivals.length > 0;
+            const hasDeparture = departures.length > 0;
+
+            const addMeta = (key, value) => {
+                if (value !== null && value !== undefined && value !== '') {
+                    order.meta_data = order.meta_data.filter(m => m.key !== key);
+                    order.meta_data.push({ key, value });
+                }
+            };
+
+            // Inyectar tipo de viaje general (para tabla y renderGeneralInfo)
+            if (hasArrival && hasDeparture) {
+                addMeta('- Type of Trip', 'Round Trip');
+            } else if (hasArrival) {
+                addMeta('- Type of Trip', 'One way to hotel');
+            } else if (hasDeparture) {
+                addMeta('- Type of Trip', 'One way to airport');
+            }
+
+            // Pasajeros total de todos los viajes
+            const totalPax = order.viajes.reduce((sum, v) => sum + (v.pax || 1), 0);
+            addMeta('Passengers', String(totalPax));
+
+            // Inyectar primera fecha de cada tipo para que renderGeneralInfo detecte tipo
+            if (hasArrival) {
+                addMeta('- Arrival Date', arrivals[0].fecha);
+            }
+            if (hasDeparture) {
+                addMeta('- Departure Date', departures[0].fecha);
+            }
+        }
 
         let allOrders = [];  // Todas las órdenes indexadas
         let currentFilteredOrders = [];  // Órdenes después de aplicar filtros
@@ -1396,6 +1676,7 @@
                 if (response.ok) {
                     const data = await response.json();
                     CHOFERES = data.map(c => c.nombre);
+                    data.forEach(c => { if (c.telefono) CHOFERES_PHONE[c.nombre] = c.telefono; });
                 }
             } catch (err) {
                 console.error('Error cargando choferes:', err);
@@ -1433,6 +1714,105 @@
             });
         }
 
+        // Convierte un <select> de chofer en un dropdown buscable
+        function initSearchableSelect(selectId) {
+            const hiddenSelect = document.getElementById(selectId);
+            if (!hiddenSelect) return;
+
+            const currentValue = hiddenSelect.value || '';
+            hiddenSelect.classList.add('hidden');
+
+            // Crear wrapper
+            const wrapper = document.createElement('div');
+            wrapper.className = 'searchable-select-wrapper';
+
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'input-editable bg-white';
+            input.placeholder = 'Buscar chofer...';
+            input.autocomplete = 'off';
+            input.value = currentValue;
+
+            const dropdown = document.createElement('div');
+            dropdown.className = 'searchable-select-dropdown hidden';
+
+            wrapper.appendChild(input);
+            wrapper.appendChild(dropdown);
+            hiddenSelect.parentNode.insertBefore(wrapper, hiddenSelect);
+
+            let activeIdx = -1;
+
+            function renderOptions(filter = '') {
+                const filterLower = filter.toLowerCase();
+                const noAssign = { value: '', label: 'No asignado' };
+                const allOptions = [noAssign, ...CHOFERES.map(c => ({ value: c, label: c }))];
+                const filtered = allOptions.filter(o => o.label.toLowerCase().includes(filterLower));
+                dropdown.innerHTML = '';
+                activeIdx = -1;
+                if (filtered.length === 0) {
+                    dropdown.innerHTML = '<div class="searchable-select-empty">Sin resultados</div>';
+                    return;
+                }
+                filtered.forEach((opt, idx) => {
+                    const div = document.createElement('div');
+                    div.className = 'searchable-select-option' + (opt.value === hiddenSelect.value ? ' selected' : '');
+                    div.textContent = opt.label;
+                    div.dataset.value = opt.value;
+                    div.addEventListener('mousedown', (e) => {
+                        e.preventDefault();
+                        selectOption(opt.value, opt.label);
+                    });
+                    dropdown.appendChild(div);
+                });
+            }
+
+            function selectOption(value, label) {
+                hiddenSelect.value = value;
+                input.value = label === 'No asignado' ? '' : label;
+                dropdown.classList.add('hidden');
+                hiddenSelect.dispatchEvent(new Event('change'));
+            }
+
+            input.addEventListener('focus', () => { input.select(); renderOptions(input.value); dropdown.classList.remove('hidden'); });
+            input.addEventListener('input', () => { renderOptions(input.value); dropdown.classList.remove('hidden'); });
+            input.addEventListener('blur', () => {
+                setTimeout(() => {
+                    dropdown.classList.add('hidden');
+                    input.value = hiddenSelect.value || '';
+                    activeIdx = -1;
+                }, 150);
+            });
+            input.addEventListener('keydown', (e) => {
+                const items = dropdown.querySelectorAll('.searchable-select-option');
+                if (items.length === 0) return;
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    activeIdx = Math.min(activeIdx + 1, items.length - 1);
+                    items.forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+                    items[activeIdx]?.scrollIntoView({ block: 'nearest' });
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    activeIdx = Math.max(activeIdx - 1, 0);
+                    items.forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+                    items[activeIdx]?.scrollIntoView({ block: 'nearest' });
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (activeIdx >= 0 && items[activeIdx]) {
+                        selectOption(items[activeIdx].dataset.value, items[activeIdx].textContent);
+                        input.blur();
+                    }
+                } else if (e.key === 'Escape') {
+                    dropdown.classList.add('hidden');
+                    input.blur();
+                }
+            });
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.searchable-select-wrapper') || !wrapper.contains(e.target)) {
+                    dropdown.classList.add('hidden');
+                }
+            });
+        }
+
         function getCountryDisplayName(code) { return code ? (COUNTRY_MAP[code.toUpperCase()]?.name || code.toUpperCase()) : 'N/A'; }
 
         async function startBackgroundIndexing(force = false) {
@@ -1462,6 +1842,7 @@
                     if (runId !== indexingRunId) break;
 
                     if (Array.isArray(orders) && orders.length > 0) {
+                        orders.forEach(o => injectLegacyMetaFromViajes(o));
                         allOrders = [...allOrders, ...orders];
                         // Ordenar por fecha de creación (más recientes primero)
                         allOrders.sort((a, b) => new Date(b.date_created) - new Date(a.date_created));
@@ -1516,7 +1897,9 @@
                     const name = resolveName(o).toLowerCase();
                     const id = o.id.toString();
                     const hotel = (o.line_items?.[0]?.name || '').toLowerCase();
-                    return name.includes(searchText) || id.includes(searchText) || hotel.includes(searchText);
+                    // Buscar también en destino de viajes
+                    const destinos = (o.viajes || []).map(v => (v.destino || '').toLowerCase()).join(' ');
+                    return name.includes(searchText) || id.includes(searchText) || hotel.includes(searchText) || destinos.includes(searchText);
                 });
             }
 
@@ -1536,6 +1919,7 @@
             currentPage = page;
             renderTable();
             updatePaginationUI();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         function updateProgressUI(percent, text) {
@@ -1568,23 +1952,60 @@
         }
 
         function formatTripTypeTable(order) {
-            const tripRaw = deepScanMeta(order, "- Type of Trip") || "";
-            const hotel = order.line_items?.[0]?.name || 'Hotel no especificado';
-            const isRound = tripRaw.toLowerCase().includes('round');
-            const hasArrival = deepScanMeta(order, "- Arrival Date") !== null;
+            // Obtener nombre del destino: preferir viajes.destino, luego line_items.name, luego fallback
+            let hotel = 'Hotel no especificado';
+            if (order.viajes && order.viajes.length > 0) {
+                const uniqueDestinos = [...new Set(order.viajes.map(v => v.destino).filter(d => d && d !== 'Transfer'))];
+                if (uniqueDestinos.length > 0) {
+                    hotel = uniqueDestinos.join(' · ');
+                } else {
+                    const uniqueViajeHotel = [...new Set(order.viajes.map(v => v.hotel).filter(h => h && h !== 'Transfer'))];
+                    if (uniqueViajeHotel.length > 0) hotel = uniqueViajeHotel.join(' · ');
+                    // Fallback a line_items.name
+                    if (hotel === 'Hotel no especificado') {
+                        const uniqueNames = [...new Set((order.line_items || []).map(li => li.name).filter(n => n && n !== 'Transfer'))];
+                        if (uniqueNames.length > 0) hotel = uniqueNames.join(' · ');
+                    }
+                }
+            } else {
+                // Legacy: sin viajes, usar line_items
+                const firstName = order.line_items?.[0]?.name || '';
+                if (order.line_items && order.line_items.length > 1) {
+                    const uniqueNames = [...new Set(order.line_items.map(li => li.name).filter(n => n && n !== 'Transfer'))];
+                    if (uniqueNames.length > 0) hotel = uniqueNames.join(' · ');
+                } else if (firstName && firstName !== 'Transfer') {
+                    hotel = firstName;
+                }
+            }
+            if (hotel === 'Hotel no especificado' || hotel === 'Transfer') {
+                const hotelManual = deepScanMeta(order, 'hotel_manual');
+                hotel = hotelManual || 'Hotel no especificado';
+            }
 
             let routeHTML = "";
             let label = "";
 
-            if (isRound) {
+            // Multi-viaje
+            if (order.viajes && order.viajes.length > 2) {
+                const arrivals = order.viajes.filter(v => v.tipo === 'llegada').length;
+                const departures = order.viajes.filter(v => v.tipo === 'salida').length;
                 routeHTML = `<span>Aeropuerto 🔄</span> <span class="font-bold">${hotel}</span>`;
-                label = "Ida y Vuelta";
-            } else if (hasArrival) {
-                routeHTML = `<span>🛬 Aeropuerto ➡️</span> <span class="font-bold">${hotel}</span>`;
-                label = "Solo Llegada";
+                label = `${order.viajes.length} Viajes (${arrivals}⬇️ ${departures}⬆️)`;
             } else {
-                routeHTML = `<span class="font-bold">${hotel}</span> <span>➡️ Aeropuerto 🛫</span>`;
-                label = "Solo Salida";
+                const tripRaw = deepScanMeta(order, "- Type of Trip") || "";
+                const isRound = tripRaw.toLowerCase().includes('round');
+                const hasArrival = deepScanMeta(order, "- Arrival Date") !== null;
+
+                if (isRound) {
+                    routeHTML = `<span>Aeropuerto 🔄</span> <span class="font-bold">${hotel}</span>`;
+                    label = "Ida y Vuelta";
+                } else if (hasArrival) {
+                    routeHTML = `<span>🛬 Aeropuerto ➡️</span> <span class="font-bold">${hotel}</span>`;
+                    label = "Solo Llegada";
+                } else {
+                    routeHTML = `<span class="font-bold">${hotel}</span> <span>➡️ Aeropuerto 🛫</span>`;
+                    label = "Solo Salida";
+                }
             }
 
             return `
@@ -1669,11 +2090,7 @@
 
 
 
-            // Hotel Logic
-            const zoneName = o.line_items?.[0]?.name || '';
-            const hotelManual = findMetaValue(o, ["hotel_manual"]) || "";
-
-            originalValues = { name: fullName, email, phone, country, address, status: o.status, hotel_name: hotelManual };
+            originalValues = { name: fullName, email, phone, country, address, status: o.status };
 
             document.getElementById('display-name').innerText = fullName;
             document.getElementById('display-email').innerText = email;
@@ -1681,8 +2098,19 @@
             document.getElementById('display-country').innerText = getCountryDisplayName(country);
             document.getElementById('display-address').innerText = address;
 
+            // Customer Note
+            const customerNote = o.customer_note || '';
+            const noteContainer = document.getElementById('customer-note-container');
+            const noteDisplay = document.getElementById('display-customer-note');
+            if (customerNote.trim()) {
+                noteDisplay.innerText = customerNote;
+                noteContainer.classList.remove('hidden');
+            } else {
+                noteContainer.classList.add('hidden');
+            }
+
             document.getElementById('det-email-link').href = `mailto:${email}`;
-            document.getElementById('det-whatsapp-link').href = `https://wa.me/${phone.replace(/\D/g, '')}`;
+            document.getElementById('det-whatsapp-link').href = PhoneUtils.buildWhatsappUrl(phone, country);
 
             // Privacy Controls
             // Privacy Controls
@@ -1740,109 +2168,436 @@
             renderPaymentInfo(o);
 
             document.getElementById('order-modal').classList.remove('hidden');
+            // Scroll modal content to top
+            document.querySelectorAll('#modal-box .modal-main-content, #modal-box .modal-sidebar').forEach(el => el.scrollTop = 0);
+            document.getElementById('modal-box').scrollTop = 0;
+            requestAnimationFrame(() => {
+                resizeLogisticsNoteTextareas();
+            });
         }
 
         function renderLogisticsSections(o) {
-            const listArr = document.getElementById('arrival-fields-list');
-            const listDep = document.getElementById('departure-fields-list');
-            listArr.innerHTML = ''; listDep.innerHTML = '';
-
-            const renderLogistics = (fields, container) => {
-                fields.forEach(f => {
-                    const key = f.key;
-                    const val = deepScanMeta(o, key);
-                    originalValues[key] = val || "";
-                    if (val !== null) {
-                        const display = f.type === 'date' ? formatDateShort(val) : (f.type === 'time' ? formatTime12h(val) : (f.key.includes('Flight') ? val.toUpperCase() : val));
-                        const flightClass = f.key.includes('Flight') ? 'uppercase' : '';
-                        container.innerHTML += `
-                            <div>
-                                <p class="meta-field-label text-gray-400">${f.label}</p>
-                                <p id="display-meta-${key}" class="meta-field-value text-base">${display}</p>
-                                <input type="${f.type}" id="input-meta-${key}" oninput="checkForChanges()" value="${normalizeForInput(val, f.type)}" class="hidden input-editable mt-1 ${flightClass}">
-                            </div>`;
-                    }
-                });
-            };
-
-            renderLogistics(ARRIVAL_FIELDS, listArr);
-            renderLogistics(DEPARTURE_FIELDS, listDep);
-
-            ASSIGN_KEYS.forEach(key => {
-                const val = deepScanMeta(o, key);
-                originalValues[key] = val || "";
-                const inputEl = document.getElementById(`input-meta-${key}`);
-                if (inputEl) {
-                    inputEl.value = val || "";
-                    inputEl.classList.remove('hidden');
-                }
-            });
-
-            [document.getElementById('btn-edit-arrival'), document.getElementById('btn-edit-departure')].forEach(btn => {
-                btn.innerText = "Editar";
-                btn.classList.remove('editing');
-            });
-
-            const hasArrival = deepScanMeta(o, "- Arrival Date") !== null;
-            const hasDeparture = deepScanMeta(o, "- Departure Date") !== null;
-
-            document.getElementById('col-arrival').classList.toggle('hidden', !hasArrival);
-            document.getElementById('col-departure').classList.toggle('hidden', !hasDeparture);
-
             const container = document.getElementById('logistics-container');
-            if (hasArrival && hasDeparture) {
+            container.innerHTML = '';
+            container.classList.remove('xl:grid-cols-2');
+
+            // Guardar viajes de la orden actual
+            currentOrderViajes = o.viajes || [];
+
+            // ── MODO VIAJES (nuevo sistema) ──
+            if (o.viajes && o.viajes.length > 0) {
+                renderViajesCards(o, container);
+                return;
+            }
+
+            // ── MODO LEGACY (órdenes antiguas sin tabla viajes) ──
+            renderLegacyCards(o, container);
+        }
+
+        function renderViajesCards(o, container) {
+            // Ordenar viajes por fecha más cercana primero
+            const sorted = [...o.viajes].sort((a, b) => {
+                const da = a.fecha ? new Date(a.fecha) : new Date('9999-12-31');
+                const db = b.fecha ? new Date(b.fecha) : new Date('9999-12-31');
+                if (da - db !== 0) return da - db;
+                // Misma fecha → ordenar por hora
+                const ha = a.hora || '99:99';
+                const hb = b.hora || '99:99';
+                return ha.localeCompare(hb);
+            });
+
+            sorted.forEach((viaje, idx) => {
+                const isArrival = viaje.tipo === 'llegada';
+                const label = isArrival ? 'LLEGADA' : 'SALIDA';
+                const dotClass = isArrival ? 'title-dot-arrival' : 'title-dot-departure';
+                const bgClass = isArrival ? 'bg-blue-50/50' : 'bg-orange-50/50';
+                const borderClass = isArrival ? 'border-blue-100' : 'border-orange-100';
+                const labelClass = isArrival ? 'text-blue-400 border-blue-200' : 'text-orange-400 border-orange-200';
+                const viajeId = viaje.id;
+                const prefix = `viaje_${viajeId}`;
+
+                // Guardar valores originales para detección de cambios
+                // Guardar valores originales para detección de cambios
+                originalValues[`${prefix}_chofer`] = viaje.chofer || '';
+                originalValues[`${prefix}_subchofer`] = viaje.subchofer || '';
+                originalValues[`${prefix}_nota_choferes`] = viaje.nota_choferes || '';
+                originalValues[`${prefix}_notas_internas`] = viaje.notas_internas || '';
+                originalValues[`${prefix}_fecha`] = viaje.fecha || '';
+                originalValues[`${prefix}_hora`] = viaje.hora || '';
+                originalValues[`${prefix}_vuelo`] = viaje.vuelo || '';
+                originalValues[`${prefix}_hotel`] = viaje.hotel || '';
+
+                // Fecha y hora formateadas
+                const fechaDisplay = viaje.fecha ? formatDateShort(viaje.fecha) : '--';
+                const horaDisplay = viaje.hora ? formatTime12h(viaje.hora) : '--';
+                const vueloDisplay = (viaje.vuelo || '--').toUpperCase();
+                const hotelDisplay = viaje.hotel || '';
+                const destinoDisplay = viaje.destino || '';
+
+                // Opciones de chofer
+                let choferOptions = '<option value="">No asignado</option>';
+                CHOFERES.forEach(c => {
+                    const selected = (viaje.chofer === c) ? 'selected' : '';
+                    choferOptions += `<option value="${c}" ${selected}>${c}</option>`;
+                });
+
+                const fechaLabel = isArrival ? 'Fecha' : 'Fecha de Recogida';
+                const horaLabel = isArrival ? 'Hora' : 'Hora de Recogida';
+
+                const card = document.createElement('div');
+                card.className = 'operation-card';
+                card.id = `col-viaje-${viajeId}`;
+                card.innerHTML = `
+                    <div class="operation-card-header">
+                        <div class="operation-card-title">
+                            <span class="${dotClass}"></span> ${label}
+                            ${destinoDisplay ? `<span class="text-gray-400 font-normal text-xs ml-2">· ${destinoDisplay}</span>` : ''}
+                        </div>
+                        <button onclick="toggleViajeEdit(${viajeId})" id="btn-edit-viaje-${viajeId}" class="btn-section-edit">Editar</button>
+                    </div>
+                    <div class="operation-card-body space-y-5">
+                        <div class="grid grid-cols-2 gap-4" id="viaje-fields-${viajeId}">
+                            <div>
+                                <p class="meta-field-label text-gray-400">${fechaLabel}</p>
+                                <p id="display-${prefix}_fecha" class="meta-field-value text-base">${fechaDisplay}</p>
+                                <input type="date" id="input-${prefix}_fecha" oninput="checkForChanges()" value="${normalizeForInput(viaje.fecha || '', 'date')}" class="hidden input-editable mt-1">
+                            </div>
+                            <div>
+                                <p class="meta-field-label text-gray-400">${horaLabel}</p>
+                                <p id="display-${prefix}_hora" class="meta-field-value text-base">${horaDisplay}</p>
+                                <input type="time" id="input-${prefix}_hora" oninput="checkForChanges()" value="${normalizeForInput(viaje.hora || '', 'time')}" class="hidden input-editable mt-1">
+                            </div>
+                            <div>
+                                <p class="meta-field-label text-gray-400">Vuelo</p>
+                                <p id="display-${prefix}_vuelo" class="meta-field-value text-base">${vueloDisplay}</p>
+                                <input type="text" id="input-${prefix}_vuelo" oninput="checkForChanges()" value="${viaje.vuelo || ''}" class="hidden input-editable mt-1 uppercase">
+                            </div>
+                            <div class="col-span-2">
+                                <p class="meta-field-label text-gray-400">Hotel</p>
+                                <p id="display-${prefix}_hotel" class="meta-field-value text-base">${hotelDisplay || '<span class="text-gray-300">Sin especificar</span>'}</p>
+                                <input type="text" id="input-${prefix}_hotel" oninput="checkForChanges()" value="${viaje.hotel || ''}" class="hidden input-editable mt-1" placeholder="Nombre del hotel">
+                            </div>
+                        </div>
+
+                        <div class="${bgClass} -mx-5 -mb-5 p-5 border-t ${borderClass}">
+                            <div class="operation-section-label ${labelClass}">Asignación Operativa</div>
+                            <div class="space-y-4">
+                                <div class="field-group-row">
+                                    <div>
+                                        <p class="meta-field-label">🚐 Chofer</p>
+                                        <select id="input-${prefix}_chofer" onchange="checkForChanges()" class="input-editable bg-white">${choferOptions}</select>
+                                    </div>
+                                    <div>
+                                        <p class="meta-field-label">👥 Subchofer</p>
+                                        <input type="text" id="input-${prefix}_subchofer" oninput="checkForChanges()" class="input-editable bg-white" placeholder="Nombre del subchofer" value="${viaje.subchofer || ''}">
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="meta-field-label">📢 Nota Choferes</p>
+                                    <textarea id="input-${prefix}_nota_choferes" oninput="checkForChanges(); autoResizeTextarea(this)" rows="2" class="input-editable bg-white resize-none h-16">${viaje.nota_choferes || ''}</textarea>
+                                </div>
+                                <div>
+                                    <p class="meta-field-label">🔒 Notas Internas</p>
+                                    <textarea id="input-${prefix}_notas_internas" oninput="checkForChanges(); autoResizeTextarea(this)" rows="2" class="input-editable bg-white resize-none h-16">${viaje.notas_internas || ''}</textarea>
+                                </div>
+                                <div class="flex flex-wrap gap-2 mt-3 pt-3 border-t border-dashed ${borderClass}">
+                                    <button onclick="sendViajeEmail(${o.id}, ${viajeId})" class="flex-1 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all shadow-sm flex items-center justify-center gap-1">Recordatorio Correo</button>
+                                    <button onclick="sendViajeWhatsApp(${o.id}, ${viajeId})" class="flex-1 px-3 py-2 bg-green-500 hover:bg-green-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all shadow-sm flex items-center justify-center gap-1">Recordatorio WhatsApp</button>
+                                    <button onclick="sendDriverContactWhatsApp(${o.id}, ${viajeId})" class="flex-1 px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all shadow-sm flex items-center justify-center gap-1">📞 Contacto Chofer</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+                initSearchableSelect(`input-${prefix}_chofer`);
+                autoResizeTextarea(document.getElementById(`input-${prefix}_nota_choferes`));
+                autoResizeTextarea(document.getElementById(`input-${prefix}_notas_internas`));
+            });
+
+            // Layout grid si hay 2+ tarjetas
+            if (o.viajes.length >= 2) {
                 container.classList.add('xl:grid-cols-2');
-            } else {
-                container.classList.remove('xl:grid-cols-2');
             }
         }
 
+        function renderLegacyCards(o, container) {
+            const hasArrival = deepScanMeta(o, "- Arrival Date") !== null;
+            const hasDeparture = deepScanMeta(o, "- Departure Date") !== null;
+
+            if (hasArrival) {
+                const card = createLegacyCard('arrival', 'LLEGADA', ARRIVAL_FIELDS, o, [
+                    'chofer_llegada', 'subchofer_llegada', 'nota_choferes_llegada', 'notas_internas_llegada'
+                ]);
+                container.appendChild(card);
+                initSearchableSelect('input-meta-chofer_llegada');
+            }
+
+            if (hasDeparture) {
+                const card = createLegacyCard('departure', 'SALIDA', DEPARTURE_FIELDS, o, [
+                    'chofer_salida', 'subchofer_salida', 'nota_choferes_ida', 'notas_internas_salida'
+                ]);
+                container.appendChild(card);
+                initSearchableSelect('input-meta-chofer_salida');
+            }
+
+            if (hasArrival && hasDeparture) {
+                container.classList.add('xl:grid-cols-2');
+            }
+        }
+
+        function createLegacyCard(type, label, fields, o, assignKeys) {
+            const isArrival = type === 'arrival';
+            const dotClass = isArrival ? 'title-dot-arrival' : 'title-dot-departure';
+            const bgClass = isArrival ? 'bg-blue-50/50' : 'bg-orange-50/50';
+            const borderClass = isArrival ? 'border-blue-100' : 'border-orange-100';
+            const labelClass = isArrival ? 'text-blue-400 border-blue-200' : 'text-orange-400 border-orange-200';
+
+            // Build logistics fields
+            let fieldsHTML = '';
+            fields.forEach(f => {
+                const val = deepScanMeta(o, f.key);
+                originalValues[f.key] = val || '';
+                if (val !== null) {
+                    const display = f.type === 'date' ? formatDateShort(val) : (f.type === 'time' ? formatTime12h(val) : (f.key.includes('Flight') ? val.toUpperCase() : val));
+                    const flightClass = f.key.includes('Flight') ? 'uppercase' : '';
+                    fieldsHTML += `
+                        <div>
+                            <p class="meta-field-label text-gray-400">${f.label}</p>
+                            <p id="display-meta-${f.key}" class="meta-field-value text-base">${display}</p>
+                            <input type="${f.type}" id="input-meta-${f.key}" oninput="checkForChanges()" value="${normalizeForInput(val, f.type)}" class="hidden input-editable mt-1 ${flightClass}">
+                        </div>`;
+                }
+            });
+
+            // Build assignment fields
+            const choferKey = assignKeys[0];
+            const subchoferKey = assignKeys[1];
+            const notaKey = assignKeys[2];
+            const internasKey = assignKeys[3];
+
+            assignKeys.forEach(key => {
+                const val = deepScanMeta(o, key);
+                originalValues[key] = val || '';
+            });
+
+            let choferOptions = '<option value="">No asignado</option>';
+            CHOFERES.forEach(c => {
+                const selected = (deepScanMeta(o, choferKey) === c) ? 'selected' : '';
+                choferOptions += `<option value="${c}" ${selected}>${c}</option>`;
+            });
+
+            const card = document.createElement('div');
+            card.className = 'operation-card';
+            card.id = `col-${type}`;
+            card.innerHTML = `
+                <div class="operation-card-header">
+                    <div class="operation-card-title">
+                        <span class="${dotClass}"></span> ${label}
+                    </div>
+                    <button onclick="toggleLegacyEdit('${type}')" id="btn-edit-${type}" class="btn-section-edit">Editar</button>
+                </div>
+                <div class="operation-card-body space-y-5">
+                    <div class="grid grid-cols-2 gap-4" id="${type}-fields-list">${fieldsHTML}</div>
+                    <div class="${bgClass} -mx-5 -mb-5 p-5 border-t ${borderClass}">
+                        <div class="operation-section-label ${labelClass}">Asignación Operativa</div>
+                        <div class="space-y-4">
+                            <div class="field-group-row">
+                                <div>
+                                    <p class="meta-field-label">🚐 Chofer</p>
+                                    <select id="input-meta-${choferKey}" onchange="checkForChanges()" class="input-editable bg-white">${choferOptions}</select>
+                                </div>
+                                <div>
+                                    <p class="meta-field-label">👥 Subchofer</p>
+                                    <input type="text" id="input-meta-${subchoferKey}" oninput="checkForChanges()" class="input-editable bg-white" placeholder="Nombre del subchofer" value="${deepScanMeta(o, subchoferKey) || ''}">
+                                </div>
+                            </div>
+                            <div>
+                                <p class="meta-field-label">📢 Nota Choferes</p>
+                                <textarea id="input-meta-${notaKey}" oninput="checkForChanges(); autoResizeTextarea(this)" rows="2" class="input-editable bg-white resize-none h-16">${deepScanMeta(o, notaKey) || ''}</textarea>
+                            </div>
+                            <div>
+                                <p class="meta-field-label">🔒 Notas Internas</p>
+                                <textarea id="input-meta-${internasKey}" oninput="checkForChanges(); autoResizeTextarea(this)" rows="2" class="input-editable bg-white resize-none h-16">${deepScanMeta(o, internasKey) || ''}</textarea>
+                            </div>
+                            <div class="flex flex-wrap gap-2 mt-3 pt-3 border-t border-dashed ${borderClass}">
+                                <button onclick="sendLegacyEmail(${o.id}, '${type}')" class="flex-1 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all shadow-sm flex items-center justify-center gap-1">Recordatorio Correo</button>
+                                <button onclick="sendLegacyWhatsApp(${o.id}, '${type}')" class="flex-1 px-3 py-2 bg-green-500 hover:bg-green-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all shadow-sm flex items-center justify-center gap-1">Recordatorio WhatsApp</button>
+                                <button onclick="sendDriverContactLegacyWhatsApp(${o.id}, '${choferKey}')" class="flex-1 px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all shadow-sm flex items-center justify-center gap-1">📞 Contacto Chofer</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            requestAnimationFrame(() => {
+                autoResizeTextarea(document.getElementById(`input-meta-${notaKey}`));
+                autoResizeTextarea(document.getElementById(`input-meta-${internasKey}`));
+            });
+            return card;
+        }
+
+        function toggleViajeEdit(viajeId) {
+            const prefix = `viaje_${viajeId}`;
+            const btn = document.getElementById(`btn-edit-viaje-${viajeId}`);
+            const isEditing = btn.classList.contains('editing');
+
+            const fieldKeys = ['fecha', 'hora', 'vuelo', 'hotel'];
+            fieldKeys.forEach(k => {
+                const display = document.getElementById(`display-${prefix}_${k}`);
+                const input = document.getElementById(`input-${prefix}_${k}`);
+                if (display) display.classList.toggle('hidden', !isEditing);
+                if (input) input.classList.toggle('hidden', isEditing);
+                // Reset on cancel
+                if (isEditing && input) input.value = normalizeForInput(originalValues[`${prefix}_${k}`] || '', k === 'fecha' ? 'date' : (k === 'hora' ? 'time' : 'text'));
+            });
+
+            btn.innerText = isEditing ? 'Editar' : 'Cancelar';
+            btn.classList.toggle('editing', !isEditing);
+            checkForChanges();
+        }
+
+        function toggleLegacyEdit(type) {
+            const isArrival = type === 'arrival';
+            const btn = document.getElementById(`btn-edit-${type}`);
+            const isEditing = btn.classList.contains('editing');
+            const fields = isArrival ? ARRIVAL_FIELDS : DEPARTURE_FIELDS;
+
+            fields.forEach(f => {
+                const display = document.getElementById(`display-meta-${f.key}`);
+                const input = document.getElementById(`input-meta-${f.key}`);
+                if (display) display.classList.toggle('hidden', !isEditing);
+                if (input) input.classList.toggle('hidden', isEditing);
+            });
+
+            btn.innerText = isEditing ? 'Editar' : 'Cancelar';
+            btn.classList.toggle('editing', !isEditing);
+            checkForChanges();
+        }
+
         function renderGeneralInfo(o) {
-            const zoneName = o.line_items?.[0]?.name || 'Hotel no especificado';
-            const hotelManual = findMetaValue(o, ["hotel_manual"]) || "";
+            // Para el banner azul: preferir destino de viajes, luego line_items.name
+            let displayHotelName = 'Hotel no especificado';
+            if (o.viajes && o.viajes.length > 0) {
+                const uniqueDestinos = [...new Set(o.viajes.map(v => v.destino).filter(d => d && d !== 'Transfer'))];
+                if (uniqueDestinos.length > 0) {
+                    displayHotelName = uniqueDestinos.join(' · ');
+                } else {
+                    const uniqueViajeHotel = [...new Set(o.viajes.map(v => v.hotel).filter(h => h && h !== 'Transfer'))];
+                    if (uniqueViajeHotel.length > 0) displayHotelName = uniqueViajeHotel.join(' · ');
+                }
+            }
+            if (displayHotelName === 'Hotel no especificado') {
+                const zoneName = o.line_items?.[0]?.name || '';
+                if (o.line_items && o.line_items.length > 1) {
+                    const uniqueNames = [...new Set(o.line_items.map(li => li.name).filter(n => n && n !== 'Transfer'))];
+                    if (uniqueNames.length > 0) displayHotelName = uniqueNames.join(' · ');
+                } else if (zoneName && zoneName !== 'Transfer') {
+                    displayHotelName = zoneName;
+                }
+            }
+            if (displayHotelName === 'Transfer') displayHotelName = 'Hotel no especificado';
 
-            // El input muestra el manual (o vacío)
-            document.getElementById('input-hotel-name-edit').value = hotelManual;
+            // Calcular tipo de viaje y pax
+            let tripTypeFormatted, paxDisplay;
 
-            // Para mostrar en el banner azul (Origen/Destino), SIEMPRE la zona
-            const displayHotelName = zoneName;
+            if (o.viajes && o.viajes.length > 0) {
+                const arrivals = o.viajes.filter(v => v.tipo === 'llegada').length;
+                const departures = o.viajes.filter(v => v.tipo === 'salida').length;
+                const totalViajes = o.viajes.length;
 
-            const tripRaw = deepScanMeta(o, "- Type of Trip");
-            const paxRaw = (deepScanMeta(o, "Passengers") || o.line_items?.[0]?.quantity || '1').toString().split('-')[0].trim();
-            const tripTypeFormatted = translateTripType(o, tripRaw);
+                if (totalViajes === 1) {
+                    tripTypeFormatted = arrivals ? 'Solo ida al Hotel' : 'Solo ida al Aeropuerto';
+                } else if (arrivals > 0 && departures > 0) {
+                    if (totalViajes === 2 && arrivals === 1 && departures === 1) {
+                        tripTypeFormatted = 'Ida y Vuelta';
+                    } else {
+                        tripTypeFormatted = `${totalViajes} Viajes (${arrivals}⬇️ ${departures}⬆️)`;
+                    }
+                } else if (arrivals > 1) {
+                    tripTypeFormatted = `${arrivals} Llegadas`;
+                } else if (departures > 1) {
+                    tripTypeFormatted = `${departures} Salidas`;
+                } else {
+                    tripTypeFormatted = `${totalViajes} Viajes`;
+                }
+
+                // Pax: mostrar el máximo pax de los viajes individuales
+                paxDisplay = Math.max(...o.viajes.map(v => v.pax || 1));
+            } else {
+                const tripRaw = deepScanMeta(o, "- Type of Trip");
+                tripTypeFormatted = translateTripType(o, tripRaw);
+                paxDisplay = (deepScanMeta(o, "Passengers") || o.line_items?.[0]?.quantity || '1').toString().split('-')[0].trim();
+            }
 
             document.getElementById('general-service-info').classList.remove('hidden');
             document.getElementById('general-trip-type').innerText = tripTypeFormatted;
-            document.getElementById('general-pax-value').innerText = paxRaw;
-            document.getElementById('general-pax-value').innerText = paxRaw;
+            document.getElementById('general-pax-value').innerText = paxDisplay;
 
-            const originNameEl = document.getElementById('origin-name');
-            const destNameEl = document.getElementById('dest-name');
-            const originIconEl = document.getElementById('origin-icon');
-            const destIconEl = document.getElementById('dest-icon');
-            const separatorEmojiEl = document.getElementById('route-separator-emoji');
+            const routeDisplay = document.getElementById('route-display');
+            const buildRouteContent = (originIcon, originName, destIcon, destName, separatorEmoji = '➡️') => `
+                    <div class="route-point">
+                        <span class="text-3xl">${originIcon}</span>
+                        <span class="route-point-label">Origen</span>
+                        <span class="route-point-name">${originName}</span>
+                    </div>
+                    <div class="route-separator-container">
+                        <span>${separatorEmoji}</span>
+                    </div>
+                    <div class="route-point">
+                        <span class="text-3xl">${destIcon}</span>
+                        <span class="route-point-label">Destino</span>
+                        <span class="route-point-name">${destName}</span>
+                    </div>
+                `;
 
-            const isRoundTrip = tripTypeFormatted.includes('Vuelta');
-            const isToHotel = deepScanMeta(o, "- Arrival Date") !== null;
+            const buildRouteCard = (originIcon, originName, destIcon, destName, separatorEmoji = '➡️') =>
+                `<div class="route-visualizer route-card-item">${buildRouteContent(originIcon, originName, destIcon, destName, separatorEmoji)}</div>`;
 
-            if (isRoundTrip) {
-                originIconEl.innerText = "✈️";
-                originNameEl.innerText = "Aeropuerto LIR";
-                destIconEl.innerText = "🏨";
-                destNameEl.innerText = displayHotelName;
-                separatorEmojiEl.innerText = "🔄";
-            } else if (isToHotel) {
-                originIconEl.innerText = "🛬";
-                originNameEl.innerText = "Aeropuerto LIR";
-                destIconEl.innerText = "🏨";
-                destNameEl.innerText = displayHotelName;
-                separatorEmojiEl.innerText = "➡️";
+            if (o.viajes && o.viajes.length > 0) {
+                const sortedTrips = [...o.viajes].sort((a, b) => {
+                    const da = a.fecha ? new Date(a.fecha) : new Date('9999-12-31');
+                    const db = b.fecha ? new Date(b.fecha) : new Date('9999-12-31');
+                    if (da - db !== 0) return da - db;
+                    const ha = a.hora || '99:99';
+                    const hb = b.hora || '99:99';
+                    return ha.localeCompare(hb);
+                });
+
+                const arrivals = sortedTrips.filter(v => v.tipo === 'llegada').length;
+                const departures = sortedTrips.filter(v => v.tipo === 'salida').length;
+                const isSimpleRoundTrip = sortedTrips.length === 2 && arrivals === 1 && departures === 1;
+
+                if (isSimpleRoundTrip) {
+                    // Para ida y vuelta simple, usar destino del viaje de llegada
+                    const arrivalViaje = sortedTrips.find(v => v.tipo === 'llegada');
+                    const roundHotel = arrivalViaje?.destino || arrivalViaje?.hotel || displayHotelName;
+                    routeDisplay.className = 'route-visualizer';
+                    routeDisplay.innerHTML = buildRouteContent('✈️', 'Aeropuerto LIR', '🏨', roundHotel, '🔄');
+                } else {
+                    routeDisplay.className = 'route-cards-stack';
+                    routeDisplay.innerHTML = `${sortedTrips.map((v, sortedIdx) => {
+                        // Usar destino del viaje directamente
+                        const destName = v.destino || v.hotel || displayHotelName || 'Hotel no especificado';
+                        if (v.tipo === 'llegada') {
+                            return buildRouteCard('🛬', 'Aeropuerto LIR', '🏨', destName, '➡️');
+                        }
+                        return buildRouteCard('🏨', destName, '🛫', 'Aeropuerto LIR', '➡️');
+                    }).join('')}`;
+                }
             } else {
-                originIconEl.innerText = "🏨";
-                originNameEl.innerText = displayHotelName;
-                destIconEl.innerText = "🛫";
-                destNameEl.innerText = "Aeropuerto LIR";
-                separatorEmojiEl.innerText = "➡️";
+                const hasArrival = deepScanMeta(o, "- Arrival Date") !== null;
+                const hasDeparture = deepScanMeta(o, "- Departure Date") !== null;
+                const isRoundTrip = hasArrival && hasDeparture;
+
+                routeDisplay.className = 'route-visualizer';
+
+                if (isRoundTrip) {
+                    routeDisplay.innerHTML = buildRouteContent('✈️', 'Aeropuerto LIR', '🏨', displayHotelName, '🔄');
+                } else if (hasArrival) {
+                    routeDisplay.innerHTML = buildRouteContent('🛬', 'Aeropuerto LIR', '🏨', displayHotelName, '➡️');
+                } else {
+                    routeDisplay.innerHTML = buildRouteContent('🏨', displayHotelName, '🛫', 'Aeropuerto LIR', '➡️');
+                }
             }
         }
 
@@ -1906,11 +2661,66 @@
             const addressVal = document.getElementById('input-address').value.trim();
 
             let meta = [];
-            const allMetaKeys = [...ARRIVAL_FIELDS.map(f => f.key), ...DEPARTURE_FIELDS.map(f => f.key), ...ASSIGN_KEYS];
-            allMetaKeys.forEach(k => {
-                const inp = document.getElementById(`input-meta-${k}`);
-                if (inp) meta.push({ key: k, value: inp.value });
-            });
+            let viajesSaveErrors = [];
+
+            // ── Guardar viajes individuales (nuevo sistema) ──
+            if (currentOrderViajes.length > 0) {
+                for (const viaje of currentOrderViajes) {
+                    const prefix = `viaje_${viaje.id}`;
+                    const viajePayload = {};
+                    let viajeChanged = false;
+
+                    const fieldsMap = {
+                        chofer: 'chofer', subchofer: 'subchofer',
+                        nota_choferes: 'nota_choferes', notas_internas: 'notas_internas',
+                        fecha: 'fecha', hora: 'hora', vuelo: 'vuelo',
+                        hotel: 'hotel'
+                    };
+
+                    for (const [fieldKey, apiKey] of Object.entries(fieldsMap)) {
+                        const inp = document.getElementById(`input-${prefix}_${fieldKey}`);
+                        if (inp) {
+                            const original = originalValues[`${prefix}_${fieldKey}`] || '';
+                            if (inp.value !== original && inp.value !== normalizeForInput(original, fieldKey === 'fecha' ? 'date' : (fieldKey === 'hora' ? 'time' : 'text'))) {
+                                viajePayload[apiKey] = inp.value;
+                                viajeChanged = true;
+                            }
+                        }
+                    }
+
+                    if (viajeChanged) {
+                        try {
+                            const viajeResp = await fetch(`${VIAJES_API}?viaje_id=${viaje.id}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(viajePayload)
+                            });
+                            if (!viajeResp.ok) {
+                                const errData = await viajeResp.json().catch(() => ({}));
+                                throw new Error(errData.error || `Error guardando viaje ${viaje.id}`);
+                            }
+                        } catch (e) {
+                            console.error(`Error guardando viaje ${viaje.id}:`, e);
+                            viajesSaveErrors.push(`Viaje #${viaje.id}: ${e.message || 'Error desconocido'}`);
+                        }
+                    }
+                }
+
+                if (viajesSaveErrors.length > 0) {
+                    toggleLoader(false);
+                    btnSave.disabled = false;
+                    btnSave.innerHTML = originalBtnText;
+                    alert(`No se pudieron guardar ${viajesSaveErrors.length} viaje(s). Intenta nuevamente.`);
+                    return;
+                }
+            } else {
+                // Legacy: guardar vía metadata
+                const allMetaKeys = [...ARRIVAL_FIELDS.map(f => f.key), ...DEPARTURE_FIELDS.map(f => f.key), ...ASSIGN_KEYS];
+                allMetaKeys.forEach(k => {
+                    const inp = document.getElementById(`input-meta-${k}`);
+                    if (inp) meta.push({ key: k, value: inp.value });
+                });
+            }
 
             // Agregar settings de privacidad
             const showEmail = document.getElementById('privacy-show-email').checked;
@@ -1921,8 +2731,7 @@
             meta.push({ key: 'privacy_show_phone', value: showPhone ? "1" : "0" });
             meta.push({ key: 'privacy_show_financiero', value: showFinanciero ? "1" : "0" });
 
-            // Agregar hotel name
-            meta.push({ key: 'hotel_name', value: document.getElementById('input-hotel-name-edit').value });
+
 
             const payload = {
                 status: document.getElementById('input-status').value,
@@ -1949,7 +2758,12 @@
                     body: JSON.stringify(payload)
                 });
                 if (!resp.ok) throw new Error("Error");
-                const updated = await resp.json();
+                await resp.json();
+
+                const refreshResp = await fetch(`${API_PROXY}?order_id=${currentOrderId}&_t=${Date.now()}`);
+                if (!refreshResp.ok) throw new Error("No se pudo refrescar la reserva actualizada");
+                const updated = await refreshResp.json();
+                injectLegacyMetaFromViajes(updated);
 
                 // Actualizar todos los arrays locales
                 const idxAll = allOrders.findIndex(o => o.id === currentOrderId);
@@ -1968,6 +2782,7 @@
                 updateStats();
             } catch (e) {
                 console.error(e);
+                alert(e.message || 'No se pudieron guardar los cambios');
             } finally {
                 toggleLoader(false);
                 btnSave.disabled = false;
@@ -1988,34 +2803,6 @@
             checkForChanges();
         }
 
-        function toggleArrivalEdit() {
-            editingSections.arrival = !editingSections.arrival;
-            const btn = document.getElementById('btn-edit-arrival');
-            btn.innerText = editingSections.arrival ? "Cancelar" : "Editar";
-            btn.classList.toggle('editing', editingSections.arrival);
-
-            const keys = ARRIVAL_FIELDS.map(f => f.key);
-            keys.forEach(k => {
-                document.getElementById(`display-meta-${k}`)?.classList.toggle('hidden', editingSections.arrival);
-                document.getElementById(`input-meta-${k}`)?.classList.toggle('hidden', !editingSections.arrival);
-            });
-            checkForChanges();
-        }
-
-        function toggleDepartureEdit() {
-            editingSections.departure = !editingSections.departure;
-            const btn = document.getElementById('btn-edit-departure');
-            btn.innerText = editingSections.departure ? "Cancelar" : "Editar";
-            btn.classList.toggle('editing', editingSections.departure);
-
-            const keys = DEPARTURE_FIELDS.map(f => f.key);
-            keys.forEach(k => {
-                document.getElementById(`display-meta-${k}`)?.classList.toggle('hidden', editingSections.departure);
-                document.getElementById(`input-meta-${k}`)?.classList.toggle('hidden', !editingSections.departure);
-            });
-            checkForChanges();
-        }
-
         function toggleStatusEditQuick() {
             document.getElementById('status-display-container').classList.add('hidden');
             document.getElementById('status-edit-container').classList.remove('hidden');
@@ -2027,20 +2814,40 @@
             PASSENGER_EDIT_KEYS.forEach(k => { if (document.getElementById(`input-${k}`)?.value.trim() !== originalValues[k]) changed = true; });
             if (document.getElementById('input-status').value !== originalValues.status) changed = true;
 
-            const allMetaKeys = [...ARRIVAL_FIELDS.map(f => f.key), ...DEPARTURE_FIELDS.map(f => f.key), ...ASSIGN_KEYS];
-            for (const k of allMetaKeys) {
-                const inp = document.getElementById(`input-meta-${k}`);
-                if (inp) {
-                    const original = originalValues[k] || "";
-                    let val = inp.value;
-                    if (val !== original && val !== normalizeForInput(original, 'date') && val !== normalizeForInput(original, 'time')) {
-                        changed = true;
-                        break;
+            // Check viaje fields (nuevo sistema)
+            if (currentOrderViajes.length > 0) {
+                for (const viaje of currentOrderViajes) {
+                    const prefix = `viaje_${viaje.id}`;
+                    const viajeFields = ['chofer', 'subchofer', 'nota_choferes', 'notas_internas', 'fecha', 'hora', 'vuelo', 'hotel'];
+                    for (const f of viajeFields) {
+                        const inp = document.getElementById(`input-${prefix}_${f}`);
+                        if (inp) {
+                            const original = originalValues[`${prefix}_${f}`] || '';
+                            let val = inp.value;
+                            if (val !== original && val !== normalizeForInput(original, f === 'fecha' ? 'date' : (f === 'hora' ? 'time' : 'text'))) {
+                                changed = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (changed) break;
+                }
+            } else {
+                // Legacy mode
+                const allMetaKeys = [...ARRIVAL_FIELDS.map(f => f.key), ...DEPARTURE_FIELDS.map(f => f.key), ...ASSIGN_KEYS];
+                for (const k of allMetaKeys) {
+                    const inp = document.getElementById(`input-meta-${k}`);
+                    if (inp) {
+                        const original = originalValues[k] || "";
+                        let val = inp.value;
+                        if (val !== original && val !== normalizeForInput(original, 'date') && val !== normalizeForInput(original, 'time')) {
+                            changed = true;
+                            break;
+                        }
                     }
                 }
             }
 
-            // Check Privacy Changes
             // Check Privacy Changes
             const showEmail = document.getElementById('privacy-show-email').checked;
             const showPhone = document.getElementById('privacy-show-phone').checked;
@@ -2050,8 +2857,8 @@
             if (showPhone !== originalValues.privacy_show_phone) changed = true;
             if (showFinanciero !== originalValues.privacy_show_financiero) changed = true;
 
-            // Check Hotel Name
-            if (document.getElementById('input-hotel-name-edit').value !== originalValues.hotel_name) changed = true;
+
+
 
             document.getElementById('btn-save').classList.toggle('hidden', !changed);
         }
@@ -2076,8 +2883,27 @@
                 container.innerHTML += `<div class="text-[10px] uppercase font-black text-gray-400 mb-4 border-b pb-2">Método: ${o.payment_method_title}</div>`;
             }
 
-            const subtotal = (o.line_items || []).reduce((acc, item) => acc + parseFloat(item.subtotal || 0), 0);
-            addRow("Subtotal Servicios", subtotal);
+            // Calcular subtotal deduplicando roundtrip departures (item_index >= 1000)
+            let subtotal = 0;
+            if (o.viajes && o.viajes.length > 0) {
+                const seen = new Set();
+                const lineItems = Array.isArray(o.line_items) ? o.line_items : [];
+                const findSubtotalByOriginalIndex = (origIdx) => {
+                    const byItemIndex = lineItems.find(li => Number(li?.item_index) === Number(origIdx));
+                    const lineItem = byItemIndex || lineItems[origIdx];
+                    return parseFloat((lineItem || {}).subtotal || 0);
+                };
+                o.viajes.forEach((v, i) => {
+                    const origIdx = v.item_index >= 1000 ? v.item_index - 1000 : v.item_index;
+                    if (!seen.has(origIdx)) {
+                        seen.add(origIdx);
+                        subtotal += findSubtotalByOriginalIndex(origIdx);
+                    }
+                });
+            } else {
+                subtotal = (o.line_items || []).reduce((acc, item) => acc + parseFloat(item.subtotal || 0), 0);
+            }
+            addRow("Subtotal Servicios", subtotal, true);
 
             if (o.fee_lines && o.fee_lines.length > 0) {
                 o.fee_lines.forEach(fee => addRow(fee.name || 'Cargo Adicional', fee.total));
@@ -2090,7 +2916,9 @@
             if (o.coupon_lines && o.coupon_lines.length > 0) {
                 o.coupon_lines.forEach(coupon => addRow(`Cupón: ${coupon.code}`, coupon.discount, false, false, true));
             }
-            addRow("Total Pagado", o.total, true);
+            addRow("Total Pagado", o.total);
+
+
         }
 
         function closeModal() { document.getElementById('order-modal').classList.add('hidden'); document.body.style.overflow = ''; }
@@ -2150,9 +2978,13 @@
             for (let m of order.meta_data) {
                 if (targets.includes(clean(m.key)) || (m.label && targets.includes(clean(m.label)))) return m.value;
             }
-            if (order.line_items?.[0]?.meta_data) {
-                for (let m of order.line_items[0].meta_data) {
-                    if (targets.includes(clean(m.key)) || (m.display_key && targets.includes(clean(m.display_key)))) return m.value;
+            if (order.line_items) {
+                for (const li of order.line_items) {
+                    if (li.meta_data) {
+                        for (let m of li.meta_data) {
+                            if (targets.includes(clean(m.key)) || (m.display_key && targets.includes(clean(m.display_key)))) return m.value;
+                        }
+                    }
                 }
             }
             return null;
@@ -2162,7 +2994,14 @@
             const clean = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
             const t = clean(k);
             let m = o.meta_data.find(x => clean(x.key) === t || clean(x.label || '') === t);
-            if (!m && o.line_items?.[0]) m = o.line_items[0].meta_data.find(x => clean(x.key) === t || clean(x.display_key || '') === t);
+            if (!m && o.line_items) {
+                for (const li of o.line_items) {
+                    if (li.meta_data) {
+                        m = li.meta_data.find(x => clean(x.key) === t || clean(x.display_key || '') === t);
+                        if (m) break;
+                    }
+                }
+            }
             return m ? m.value : null;
         }
 

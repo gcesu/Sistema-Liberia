@@ -11,6 +11,9 @@ require_once '../config/env.php';
 // Headers
 header('Content-Type: application/json');
 header('X-Content-Type-Options: nosniff');
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
 
 // Verificar autenticación
 if (!isset($_SESSION['user_id'])) {
@@ -237,6 +240,10 @@ if ($method === 'DELETE') {
             exit;
         }
 
+        // Eliminar viajes asociados primero
+        $stmt = $pdo->prepare("DELETE FROM viajes WHERE reserva_id = ?");
+        $stmt->execute([$id]);
+
         // Eliminar de la base de datos local
         $stmt = $pdo->prepare("DELETE FROM reservas WHERE id = ?");
         $stmt->execute([$id]);
@@ -261,20 +268,155 @@ if ($method === 'DELETE') {
 http_response_code(405);
 echo json_encode(['error' => 'Método no permitido']);
 
-// ═══════════════════════════════════════════════════
-// FUNCIONES AUXILIARES
-// ═══════════════════════════════════════════════════
-
 /**
  * Transforma una reserva de la BD al formato que espera el frontend
  * (compatible con el formato de WooCommerce)
+ * Ahora incluye viajes de la tabla separada
  */
 function transformarReservaParaFrontend($r)
 {
+    global $pdo;
+
+    // Obtener viajes de la tabla viajes
+    $viajes = [];
+    if ($pdo) {
+        $stmt = $pdo->prepare("SELECT * FROM viajes WHERE reserva_id = ? ORDER BY item_index ASC");
+        $stmt->execute([$r['id']]);
+        $viajes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // Extraer line_items originales del raw_data para obtener los subtotales
+    $originalLineItems = [];
+    if (!empty($r['raw_data'])) {
+        $rawOrder = json_decode($r['raw_data'], true);
+        if ($rawOrder && isset($rawOrder['line_items'])) {
+            $originalLineItems = $rawOrder['line_items'];
+        }
+    }
+
+    // Construir line_items basados en los viajes
+    $lineItems = [];
+    $metaData = [];
+
+    if (!empty($viajes)) {
+        foreach ($viajes as $idx => $viaje) {
+            // Buscar el subtotal del line_item original
+            $itemIndex = $viaje['item_index'];
+            $subtotal = '0.00';
+
+            // Para roundtrip departures, el item_index real es item_index - 1000
+            $originalItemIndex = $itemIndex >= 1000 ? $itemIndex - 1000 : $itemIndex;
+
+            $candidateIndexes = [$originalItemIndex];
+            if ($originalItemIndex > 0) {
+                $candidateIndexes[] = $originalItemIndex - 1;
+            }
+            $candidateIndexes[] = 0;
+            $candidateIndexes = array_values(array_unique($candidateIndexes));
+
+            foreach ($candidateIndexes as $candidateIdx) {
+                if (isset($originalLineItems[$candidateIdx])) {
+                    $subtotal = $originalLineItems[$candidateIdx]['subtotal'] ?? '0.00';
+                    break;
+                }
+            }
+
+            // Resolver destino robustamente:
+            // 1) viaje.destino (nuevo campo), 2) raw_data line_items.name, 3) viaje.hotel (legacy contaminado)
+            $productName = 'Transfer';
+            if (!empty($viaje['destino']) && strtolower(trim($viaje['destino'])) !== 'transfer') {
+                $productName = $viaje['destino'];
+            } else {
+                foreach ($candidateIndexes as $candidateIdx) {
+                    if (!isset($originalLineItems[$candidateIdx])) {
+                        continue;
+                    }
+                    $rawName = trim((string) ($originalLineItems[$candidateIdx]['name'] ?? ''));
+                    if ($rawName !== '' && strtolower($rawName) !== 'transfer') {
+                        $productName = $rawName;
+                        break;
+                    }
+                }
+            }
+
+            if ($productName === 'Transfer' && !empty($viaje['hotel']) && strtolower(trim($viaje['hotel'])) !== 'transfer') {
+                $productName = $viaje['hotel'];
+            }
+
+            $lineItems[] = [
+                'id' => $viaje['id'],
+                'name' => $productName,
+                'item_index' => (int) $originalItemIndex,
+                'quantity' => (int) ($viaje['pax'] ?? 1),
+                'subtotal' => $subtotal,
+                'meta_data' => buildViajeMetaData($viaje)
+            ];
+
+            // Guardar destino resuelto para que el frontend no dependa de datos legacy
+            $viajes[$idx]['destino_resuelto'] = $productName;
+
+            // Agregar metadata del viaje al array principal
+            $viajeMetaPrefix = "viaje_{$viaje['item_index']}_";
+            $metaData[] = ['key' => $viajeMetaPrefix . 'id', 'value' => $viaje['id']];
+            $metaData[] = ['key' => $viajeMetaPrefix . 'tipo', 'value' => $viaje['tipo']];
+            $metaData[] = ['key' => $viajeMetaPrefix . 'fecha', 'value' => $viaje['fecha']];
+            $metaData[] = ['key' => $viajeMetaPrefix . 'hora', 'value' => $viaje['hora']];
+            $metaData[] = ['key' => $viajeMetaPrefix . 'vuelo', 'value' => $viaje['vuelo']];
+            $metaData[] = ['key' => $viajeMetaPrefix . 'chofer', 'value' => $viaje['chofer']];
+            $metaData[] = ['key' => $viajeMetaPrefix . 'subchofer', 'value' => $viaje['subchofer']];
+            $metaData[] = ['key' => $viajeMetaPrefix . 'nota_choferes', 'value' => $viaje['nota_choferes']];
+            $metaData[] = ['key' => $viajeMetaPrefix . 'notas_internas', 'value' => $viaje['notas_internas']];
+            $metaData[] = ['key' => $viajeMetaPrefix . 'status', 'value' => $viaje['status']];
+            $metaData[] = ['key' => $viajeMetaPrefix . 'pax', 'value' => $viaje['pax']];
+            $metaData[] = ['key' => $viajeMetaPrefix . 'hotel', 'value' => $viaje['hotel']];
+        }
+    } else {
+        // Fallback para órdenes sin viajes en la nueva tabla (compatibilidad)
+        $lineItems[] = [
+            'name' => $r['hotel_nombre'] ?? 'Transfer',
+            'quantity' => (int) ($r['pasajeros'] ?? 1),
+            'subtotal' => $r['subtotal'] ?? '0.00',
+            'meta_data' => []
+        ];
+        // Usar buildMetaData legacy para órdenes antiguas
+        $metaData = buildMetaDataLegacy($r);
+    }
+
+    // Agregar metadata de privacidad
+    $metaData[] = ['key' => 'privacy_show_email', 'value' => (!empty($r['privacy_show_email']) && $r['privacy_show_email'] == '1') ? '1' : '0'];
+    $metaData[] = ['key' => 'privacy_show_phone', 'value' => (!empty($r['privacy_show_phone']) && $r['privacy_show_phone'] == '1') ? '1' : '0'];
+    $metaData[] = ['key' => 'privacy_show_financiero', 'value' => (isset($r['privacy_show_financiero']) && $r['privacy_show_financiero'] == '0') ? '0' : '1'];
+
+    if (!empty($r['hotel_manual'])) {
+        $metaData[] = ['key' => 'hotel_manual', 'value' => $r['hotel_manual']];
+    }
+
+    // Agregar array de viajes directamente para facilitar el procesamiento en el frontend
+    $viajesSimple = array_map(function ($v) {
+        return [
+            'id' => (int) $v['id'],
+            'item_index' => (int) $v['item_index'],
+            'tipo' => $v['tipo'],
+            'fecha' => $v['fecha'],
+            'hora' => $v['hora'],
+            'vuelo' => $v['vuelo'],
+            'chofer' => $v['chofer'],
+            'subchofer' => $v['subchofer'],
+            'nota_choferes' => $v['nota_choferes'],
+            'notas_internas' => $v['notas_internas'],
+            'status' => $v['status'],
+            'pax' => (int) ($v['pax'] ?? 1),
+            'hotel' => $v['hotel'],
+            'destino' => $v['destino_resuelto'] ?? ($v['destino'] ?? ''),
+            'precio_neto' => $v['precio_neto'] ?? ''
+        ];
+    }, $viajes);
+
     return [
         'id' => (int) $r['id'],
         'status' => $r['status'],
         'date_created' => $r['date_created'],
+        'customer_note' => $r['nota_cliente'] ?? '',
         'billing' => [
             'first_name' => explode(' ', $r['cliente_nombre'] ?? '')[0] ?? '',
             'last_name' => implode(' ', array_slice(explode(' ', $r['cliente_nombre'] ?? ''), 1)),
@@ -290,15 +432,9 @@ function transformarReservaParaFrontend($r)
             'city' => '',
             'country' => $r['cliente_pais'] ?? '',
         ],
-        'line_items' => [
-            [
-                'name' => $r['hotel_nombre'] ?? 'Transfer',
-                'quantity' => (int) ($r['pasajeros'] ?? 1),
-                'subtotal' => $r['subtotal'] ?? '0.00',
-                'meta_data' => []
-            ]
-        ],
-        'meta_data' => buildMetaData($r),
+        'line_items' => $lineItems,
+        'viajes' => $viajesSimple,
+        'meta_data' => $metaData,
         'payment_method_title' => $r['metodo_pago'] ?? '',
         'total' => $r['total'] ?? '0.00',
         'fee_lines' => $r['cargos_adicionales'] > 0 ? [['name' => 'Cargos', 'total' => $r['cargos_adicionales']]] : [],
@@ -308,9 +444,41 @@ function transformarReservaParaFrontend($r)
 }
 
 /**
- * Construye el array meta_data compatible con WooCommerce
+ * Construye metadata para un viaje individual
  */
-function buildMetaData($r)
+function buildViajeMetaData($viaje)
+{
+    $meta = [];
+
+    if ($viaje['tipo'] === 'llegada') {
+        if ($viaje['fecha'])
+            $meta[] = ['key' => '- Arrival Date', 'value' => $viaje['fecha']];
+        if ($viaje['hora'])
+            $meta[] = ['key' => '- Arrival Time', 'value' => $viaje['hora']];
+        if ($viaje['vuelo'])
+            $meta[] = ['key' => '- Arrival Flight Number', 'value' => $viaje['vuelo']];
+    } else {
+        if ($viaje['fecha'])
+            $meta[] = ['key' => '- Departure Date', 'value' => $viaje['fecha']];
+        if ($viaje['hora'])
+            $meta[] = ['key' => '- Pick-up Time at Hotel', 'value' => $viaje['hora']];
+        if ($viaje['vuelo'])
+            $meta[] = ['key' => '- Departure Flight Number', 'value' => $viaje['vuelo']];
+    }
+
+    if ($viaje['pax'])
+        $meta[] = ['key' => 'Passengers', 'value' => $viaje['pax']];
+
+    $tipoViaje = $viaje['tipo'] === 'llegada' ? 'One way to hotel' : 'One way to airport';
+    $meta[] = ['key' => '- Type of Trip', 'value' => $tipoViaje];
+
+    return $meta;
+}
+
+/**
+ * Construye el array meta_data compatible con WooCommerce (LEGACY - para órdenes antiguas)
+ */
+function buildMetaDataLegacy($r)
 {
     $meta = [];
 

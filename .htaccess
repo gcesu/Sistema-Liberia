@@ -9,4 +9,5 @@ RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^reservas$ index.html [L]
 RewriteRule ^viajes$ viajes.html [L]
 RewriteRule ^choferes$ choferes.html [L]
+RewriteRule ^contabilidad$ contabilidad.html [L]
 RewriteRule ^login$ login.html [L]

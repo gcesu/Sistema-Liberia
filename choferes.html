@@ -44,6 +44,7 @@
     </script>
 
     <script src="menu.js" defer></script>
+    <script src="phone-utils.js"></script>
 
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
@@ -110,6 +111,7 @@
 
         table {
             width: 100%;
+            min-width: 1400px;
             border-collapse: collapse;
         }
 
@@ -234,6 +236,14 @@
             font-weight: 800;
             color: var(--primary);
             font-size: var(--font-base);
+        }
+
+        .time-big {
+            font-weight: 900;
+            color: var(--primary);
+            font-size: 1.05rem;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
         }
 
         /* Modal */
@@ -369,6 +379,11 @@
             font-weight: 800;
             color: #002a3f;
             font-size: var(--font-base);
+            word-wrap: break-word;
+            word-break: break-word;
+            overflow-wrap: break-word;
+            white-space: pre-wrap;
+            max-width: 100%;
         }
 
         .modal-sidebar {
@@ -378,6 +393,28 @@
 
         .modal-main-content {
             background: white;
+        }
+
+        /* Desktop: sidebar fijo, solo contenido principal con scroll */
+        @media (min-width: 1024px) {
+            .modal-sidebar {
+                position: sticky;
+                top: 0;
+                max-height: calc(100vh - 140px);
+                overflow-y: auto;
+                align-self: stretch;
+            }
+
+            .modal-main-content {
+                flex: 1;
+                overflow-y: auto;
+                max-height: calc(100vh - 140px);
+                padding-bottom: 20px;
+            }
+
+            .column-scroll {
+                overflow: visible !important;
+            }
         }
 
         .sidebar-card {
@@ -642,6 +679,15 @@
                 min-width: 70px;
                 flex-shrink: 0;
             }
+
+            td.bold-label:before {
+                color: #002a3f;
+                font-weight: 900;
+            }
+
+            table {
+                min-width: 0;
+            }
         }
 
         /* Tablets en orientación vertical (iPad portrait) - misma vista que móviles */
@@ -706,6 +752,15 @@
                 margin-right: 10px;
                 min-width: 70px;
                 flex-shrink: 0;
+            }
+
+            td.bold-label:before {
+                color: #002a3f;
+                font-weight: 900;
+            }
+
+            table {
+                min-width: 0;
             }
 
             .filter-container {
@@ -775,6 +830,31 @@
                     class="text-sm font-normal text-gray-400">v1.2</span></h2>
         </div>
 
+        <!-- Header especial para vista de chofer -->
+        <div id="driver-header"
+            class="hidden mt-6 mb-6 p-6 bg-gradient-to-r from-[#002a3f] to-[#003d5c] rounded-xl shadow-lg">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <p class="text-white/60 text-xs uppercase tracking-widest font-bold mb-1">📅 Tu Cronograma</p>
+                    <h1 id="driver-schedule-title"
+                        class="text-2xl md:text-3xl font-black text-white uppercase tracking-wide"></h1>
+                </div>
+                <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                    <div class="flex flex-col">
+                        <label class="text-white/60 text-xs uppercase tracking-widest font-bold mb-1">Filtrar por
+                            Fecha</label>
+                        <input type="text" id="driver-date-filter"
+                            class="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 w-64"
+                            placeholder="Seleccionar fecha...">
+                    </div>
+                    <button onclick="clearDriverDateFilter()"
+                        class="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-bold uppercase tracking-wide transition-all mt-auto">
+                        Mostrar Todo
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <div class="filter-container shadow-sm">
             <div class="w-full md:w-64 input-group">
                 <label>Rango de Fechas</label>
@@ -783,7 +863,7 @@
 
             <div class="w-full md:w-48 input-group">
                 <label>Tipo de Viaje</label>
-                <select id="filter-type" class="custom-input">
+                <select id="filter-type" onchange="applyFilters()" class="custom-input">
                     <option value="all">Todos</option>
                     <option value="arrival">Solo Llegadas</option>
                     <option value="departure">Solo Salidas</option>
@@ -792,7 +872,7 @@
 
             <div class="w-full md:w-48 input-group">
                 <label>Chofer</label>
-                <select id="filter-driver" class="custom-input">
+                <select id="filter-driver" onchange="applyFilters()" class="custom-input">
                     <option value="all">Todos</option>
                     <option value="Pedro">Pedro</option>
                     <option value="Fermín">Fermín</option>
@@ -801,6 +881,20 @@
                     <option value="Chayo">Chayo</option>
                     <option value="Alex Fila">Alex Fila</option>
                     <option value="Alex Montero">Alex Montero</option>
+                    <option value="Daniel (Guardia)">Daniel (Guardia)</option>
+                    <option value="Gabriela">Gabriela</option>
+                    <option value="Tatiana (La Cruz)">Tatiana (La Cruz)</option>
+                    <option value="Roger">Roger</option>
+                    <option value="Jose (Pelón)">Jose (Pelón)</option>
+                    <option value="Esteban">Esteban</option>
+                    <option value="Marcos (primo Fermín)">Marcos (primo Fermín)</option>
+                    <option value="Jose (Cartagena)">Jose (Cartagena)</option>
+                    <option value="Rafa">Rafa</option>
+                    <option value="Kenneth (Belén)">Kenneth (Belén)</option>
+                    <option value="Martín (La Cruz)">Martín (La Cruz)</option>
+                    <option value="Julio">Julio</option>
+                    <option value="Don Manuel">Don Manuel</option>
+                    <option value="Rigoberto">Rigoberto</option>
                     <option value="no_asignado">No asignado</option>
                 </select>
             </div>
@@ -811,23 +905,26 @@
                     placeholder="Cliente, Hotel, ID...">
             </div>
 
-            <button onclick="applyFilters()" class="btn-action w-full md:w-auto mt-4 md:mt-0">Actualizar Vista</button>
-
             <div class="ml-auto flex flex-col items-end">
                 <span class="text-xs text-gray-400 font-bold uppercase">Total Viajes</span>
                 <span class="text-2xl font-black text-[#002a3f]" id="total-trips-count">0</span>
             </div>
         </div>
 
-        <div class="table-wrapper shadow-sm overflow-hidden">
+        <div class="table-wrapper shadow-sm overflow-x-auto">
             <table id="trips-table">
                 <thead>
                     <tr>
                         <th class="w-64 pl-6">Cliente</th>
-                        <th>Fecha / Hora</th>
+                        <th>Fecha</th>
+                        <th>Hora</th>
+                        <th>Pax</th>
+                        <th class="text-[#002a3f]">Origen</th>
+                        <th class="text-[#002a3f]">Destino</th>
                         <th>Hotel</th>
                         <th>Vuelo</th>
                         <th>Chofer</th>
+                        <th>Subchofer</th>
                         <th>Precio</th>
                         <th>Método</th>
                         <th>Notas</th>
@@ -876,27 +973,34 @@
                             </div>
 
                             <div class="space-y-6">
-                                <div class="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                <div class="p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
                                     <p class="meta-field-label">📧 Correo</p>
                                     <div id="trip-display-email" class="meta-field-value break-all"></div>
                                     <a id="trip-det-email-link" href="#" class="btn-email">Enviar Correo</a>
                                 </div>
 
-                                <div class="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                <div class="p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
                                     <p class="meta-field-label">📞 Teléfono</p>
                                     <div id="trip-display-phone" class="meta-field-value"></div>
                                     <a id="trip-det-whatsapp-link" href="#" target="_blank"
                                         class="btn-whatsapp">WhatsApp</a>
                                 </div>
 
-                                <div class="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                <div class="p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
                                     <p class="meta-field-label">🌍 País</p>
                                     <div id="trip-display-country" class="meta-field-value"></div>
                                 </div>
 
-                                <div class="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                <div class="p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
                                     <p class="meta-field-label">📍 Dirección</p>
                                     <div id="trip-display-address" class="meta-field-value text-sm"></div>
+                                </div>
+
+                                <div id="trip-customer-note-container"
+                                    class="p-3 bg-amber-50 rounded-lg border border-amber-200 shadow-sm hidden">
+                                    <p class="meta-field-label text-amber-600">📝 Nota del Cliente</p>
+                                    <div id="trip-display-customer-note"
+                                        class="meta-field-value text-sm text-amber-900 whitespace-pre-wrap"></div>
                                 </div>
                             </div>
                         </div>
@@ -1031,6 +1135,12 @@
             ).join(" ");
         }
 
+        function truncateText(text, maxLength = 75) {
+            if (!text) return '';
+            if (text.length <= maxLength) return text;
+            return text.substring(0, maxLength) + '...';
+        }
+
         window.refreshData = function () {
             allTrips = [];
             startBackgroundIndexing();
@@ -1045,7 +1155,21 @@
                 'Alban': 'Albán',
                 'Chayo': 'Chayo',
                 'AlexF': 'Alex Fila',
-                'AlexM': 'Alex Montero'
+                'AlexM': 'Alex Montero',
+                'DanielG': 'Daniel (Guardia)',
+                'Marcos': 'Marcos (primo Fermín)',
+                'JoseC': 'Jose (Cartagena)',
+                'Rafa': 'Rafa',
+                'Kenneth': 'Kenneth (Belén)',
+                'Martin': 'Martín (La Cruz)',
+                'Gabriela': 'Gabriela',
+                'Tatiana': 'Tatiana (La Cruz)',
+                'Roger': 'Roger',
+                'JoseP': 'Jose (Pelón)',
+                'Esteban': 'Esteban',
+                'Julio': 'Julio',
+                'Don Manuel': 'Don Manuel',
+                'Rigoberto': 'Rigoberto'
             };
             return driverMap[param] || param;
         }
@@ -1061,14 +1185,25 @@
                 const filterContainer = document.querySelector('.filter-container');
                 const title = document.querySelector('h2');
                 const main = document.querySelector('main');
+                const driverHeader = document.getElementById('driver-header');
 
                 if (navbar) navbar.style.display = 'none';
                 if (filterContainer) filterContainer.style.display = 'none';
-                if (title) title.style.display = 'none';
+                if (title) title.parentElement.style.display = 'none';
                 if (main) main.style.paddingTop = '20px';
 
                 // Convertir parámetro URL al nombre real del chofer
                 const realDriverName = mapUrlParamToDriverName(choferParam);
+
+                // Mostrar header del chofer con su nombre
+                if (driverHeader) {
+                    driverHeader.classList.remove('hidden');
+                    const displayName = realDriverName.replace(/\s*\(.*\)/, '');
+                    document.getElementById('driver-schedule-title').innerText = `CRONOGRAMA DE ${displayName.toUpperCase()}`;
+                }
+
+                // Inicializar date picker para chofer
+                initDriverDatePicker();
 
                 // Establecer el valor del filtro de chofer
                 const driverSelect = document.getElementById('filter-driver');
@@ -1089,6 +1224,43 @@
                 locale: "es",
                 onChange: () => applyFilters()
             });
+        }
+
+        let driverDatePicker = null;
+
+        function initDriverDatePicker() {
+            driverDatePicker = flatpickr("#driver-date-filter", {
+                mode: "single",
+                dateFormat: "d/M/Y",
+                locale: "es",
+                onChange: (selectedDates) => {
+                    if (selectedDates.length > 0) {
+                        // Establecer el mismo día como rango en el picker oculto
+                        const selectedDate = selectedDates[0];
+                        if (datePicker) {
+                            datePicker.setDate([selectedDate, selectedDate]);
+                        }
+                        applyFilters();
+                    }
+                }
+            });
+        }
+
+        function clearDriverDateFilter() {
+            // Limpiar filtro de fecha del chofer
+            if (driverDatePicker) {
+                driverDatePicker.clear();
+            }
+            // Establecer rango amplio (últimos 30 días hasta 30 días adelante)
+            const today = new Date();
+            const past = new Date(today);
+            past.setDate(past.getDate() - 30);
+            const future = new Date(today);
+            future.setDate(future.getDate() + 30);
+            if (datePicker) {
+                datePicker.setDate([past, future]);
+            }
+            applyFilters();
         }
 
         async function startBackgroundIndexing() {
@@ -1115,7 +1287,7 @@
                     if (Array.isArray(orders) && orders.length > 0) {
                         const newTrips = processBatch(orders);
                         allTrips = [...allTrips, ...newTrips];
-                        allTrips.sort((a, b) => a.raw_date - b.raw_date);
+                        sortTripsByClosestFirst(allTrips);
                         applyFilters();
 
                         const progress = Math.min(100, Math.round((page / totalPages) * 100));
@@ -1138,92 +1310,146 @@
             const batchTrips = [];
             orders.forEach(order => {
                 const clientName = `${order.billing.first_name} ${order.billing.last_name}`;
-                const hotel = order.line_items?.[0]?.name || "Hotel no especificado";
-                const pax = resolvePax(order);
                 const email = order.billing?.email || "";
                 const phone = order.billing?.phone || "";
 
-                const arrivalDateStr = findMetaValue(order, ["- Arrival Date"]);
-                if (arrivalDateStr) {
-                    const parsedDate = parseFlexibleDate(arrivalDateStr);
-                    if (parsedDate) {
-                        const rawTime = findMetaValue(order, ["- Arrival Time"]);
-                        const driver = findMetaValue(order, ["chofer_llegada"]) || "";
-                        const tripStatus = (findMetaValue(order, ["status_llegada"]) || "").trim();
-                        const isRoundTrip = !!findMetaValue(order, ["- Arrival Date"]) && !!findMetaValue(order, ["- Departure Date"]);
-                        const tripPrice = parseFloat(order.total || 0) / (isRoundTrip ? 2 : 1);
-                        const hotelManual = findMetaValue(order, ["hotel_manual"]) || '';
+                // Privacidad Financiera (Default: '1' = mostrar)
+                const showFinancieroMeta = findMetaValue(order, ["privacy_show_financiero"]);
+                const showFinanciero = showFinancieroMeta === null || showFinancieroMeta === '' || String(showFinancieroMeta) !== "0";
 
-                        // Privacidad Financiera (Default: '1' = mostrar)
-                        const showFinancieroMeta = findMetaValue(order, ["privacy_show_financiero"]);
-                        const showFinanciero = showFinancieroMeta === null || showFinancieroMeta === '' || String(showFinancieroMeta) !== "0";
+                // NUEVO: Usar array de viajes de la API si está disponible
+                if (order.viajes && order.viajes.length > 0) {
+                    order.viajes.forEach((viaje) => {
+                        const parsedDate = parseFlexibleDate(viaje.fecha);
+                        if (parsedDate) {
+                            const isArrival = viaje.tipo === "llegada";
+                            // Nombre del producto (destino) desde line_items, NO desde viaje.hotel
+                            const originalItemIndex = viaje.item_index >= 1000 ? viaje.item_index - 1000 : viaje.item_index;
+                            const destName = order.line_items?.[originalItemIndex]?.name || "Hotel no especificado";
 
-                        batchTrips.push({
-                            id: order.id,
-                            order_status: order.status,
-                            trip_status: tripStatus,
-                            client: clientName,
-                            type: 'arrival',
-                            dateStr: formatDateStandard(parsedDate),
-                            time: formatTime12H(rawTime),
-                            route: `Aeropuerto LIR ➝ ${hotel}`,
-                            flight: findMetaValue(order, ["- Arrival Flight Number"]) || '--',
-                            raw_date: parsedDate,
-                            driver: driver,
-                            driverNotes: findMetaValue(order, ["nota_choferes_llegada"]) || '',
-                            hotel,
-                            hotelManual,
-                            pax,
-                            email,
-                            phone,
-                            tripPrice,
-                            showFinanciero,
-                            paymentMethod: order.payment_method_title || '--',
-                            order
-                        });
+                            // Buscar el subtotal del line_item correspondiente
+                            let tripPrice = 0;
+                            if (order.line_items && order.line_items[originalItemIndex]) {
+                                tripPrice = parseFloat(order.line_items[originalItemIndex].subtotal || 0);
+                            }
+                            // Si es roundtrip, dividir el precio entre 2
+                            if (viaje.item_index >= 1000 || order.viajes.some(v => v.item_index === viaje.item_index + 1000)) {
+                                tripPrice = tripPrice / 2;
+                            }
+
+                            batchTrips.push({
+                                id: order.id,
+                                viaje_id: viaje.id,
+                                item_index: viaje.item_index,
+                                order_status: order.status,
+                                trip_status: viaje.status || "",
+                                client: clientName,
+                                type: isArrival ? 'arrival' : 'departure',
+                                dateStr: formatDateStandard(parsedDate),
+                                time: formatTime12H(viaje.hora),
+                                route: isArrival ? `Aeropuerto LIR ➝ ${destName}` : `${destName} ➝ Aeropuerto LIR`,
+                                flight: viaje.vuelo || '--',
+                                raw_date: parsedDate,
+                                driver: viaje.chofer || "",
+                                // NUEVO: Agregar campos para resolveAssignment
+                                chofer: viaje.chofer || "",
+                                subchofer: viaje.subchofer || "",
+                                nota_choferes: viaje.nota_choferes || "",
+                                notas_internas: viaje.notas_internas || "",
+                                driverNotes: viaje.nota_choferes || '',
+                                hotel: viaje.hotel || "",
+                                hotelManual: '',
+                                pax: viaje.pax || 1,
+                                email,
+                                phone,
+                                tripPrice,
+                                showFinanciero,
+                                paymentMethod: order.payment_method_title || '--',
+                                order
+                            });
+                        }
+                    });
+                } else {
+                    // FALLBACK: Extracción legacy para órdenes antiguas
+                    const hotel = order.line_items?.[0]?.name || "Hotel no especificado";
+                    const pax = resolvePax(order);
+                    const hotelManual = findMetaValue(order, ["hotel_manual"]) || '';
+
+                    const arrivalDateStr = findMetaValue(order, ["- Arrival Date"]);
+                    if (arrivalDateStr) {
+                        const parsedDate = parseFlexibleDate(arrivalDateStr);
+                        if (parsedDate) {
+                            const rawTime = findMetaValue(order, ["- Arrival Time"]);
+                            const driver = findMetaValue(order, ["chofer_llegada"]) || "";
+                            const tripStatus = (findMetaValue(order, ["status_llegada"]) || "").trim();
+                            const isRoundTrip = !!findMetaValue(order, ["- Arrival Date"]) && !!findMetaValue(order, ["- Departure Date"]);
+                            const tripPrice = parseFloat(order.total || 0) / (isRoundTrip ? 2 : 1);
+
+                            batchTrips.push({
+                                id: order.id,
+                                viaje_id: null,
+                                item_index: 0,
+                                order_status: order.status,
+                                trip_status: tripStatus,
+                                client: clientName,
+                                type: 'arrival',
+                                dateStr: formatDateStandard(parsedDate),
+                                time: formatTime12H(rawTime),
+                                route: `Aeropuerto LIR ➝ ${hotel}`,
+                                flight: findMetaValue(order, ["- Arrival Flight Number"]) || '--',
+                                raw_date: parsedDate,
+                                driver: driver,
+                                driverNotes: findMetaValue(order, ["nota_choferes_llegada"]) || '',
+                                hotel,
+                                hotelManual,
+                                pax,
+                                email,
+                                phone,
+                                tripPrice,
+                                showFinanciero,
+                                paymentMethod: order.payment_method_title || '--',
+                                order
+                            });
+                        }
                     }
-                }
 
-                const departureDateStr = findMetaValue(order, ["- Departure Date"]);
-                if (departureDateStr) {
-                    const parsedDate = parseFlexibleDate(departureDateStr);
-                    if (parsedDate) {
-                        const rawTime = findMetaValue(order, ["- Pick-up Time at Hotel"]);
-                        const driver = findMetaValue(order, ["chofer_salida"]) || "";
-                        const tripStatus = (findMetaValue(order, ["status_salida"]) || "").trim();
-                        const isRoundTrip = !!findMetaValue(order, ["- Arrival Date"]) && !!findMetaValue(order, ["- Departure Date"]);
-                        const tripPrice = parseFloat(order.total || 0) / (isRoundTrip ? 2 : 1);
-                        const hotelManual = findMetaValue(order, ["hotel_manual"]) || '';
+                    const departureDateStr = findMetaValue(order, ["- Departure Date"]);
+                    if (departureDateStr) {
+                        const parsedDate = parseFlexibleDate(departureDateStr);
+                        if (parsedDate) {
+                            const rawTime = findMetaValue(order, ["- Pick-up Time at Hotel"]);
+                            const driver = findMetaValue(order, ["chofer_salida"]) || "";
+                            const tripStatus = (findMetaValue(order, ["status_salida"]) || "").trim();
+                            const isRoundTrip = !!findMetaValue(order, ["- Arrival Date"]) && !!findMetaValue(order, ["- Departure Date"]);
+                            const tripPrice = parseFloat(order.total || 0) / (isRoundTrip ? 2 : 1);
 
-                        // Privacidad Financiera
-                        const showFinancieroMeta = findMetaValue(order, ["privacy_show_financiero"]);
-                        const showFinanciero = showFinancieroMeta === null || showFinancieroMeta === '' || String(showFinancieroMeta) !== "0";
-
-                        batchTrips.push({
-                            id: order.id,
-                            order_status: order.status,
-                            trip_status: tripStatus,
-                            client: clientName,
-                            type: 'departure',
-                            dateStr: formatDateStandard(parsedDate),
-                            time: formatTime12H(rawTime),
-                            route: `${hotel} ➝ Aeropuerto LIR`,
-                            flight: findMetaValue(order, ["- Departure Flight Number"]) || '--',
-                            raw_date: parsedDate,
-                            driver: driver,
-                            driverNotes: findMetaValue(order, ["nota_choferes_ida"]) || '',
-                            hotel,
-                            hotelManual,
-                            pax,
-                            email,
-                            phone,
-                            tripPrice,
-                            phone,
-                            tripPrice,
-                            showFinanciero,
-                            paymentMethod: order.payment_method_title || '--',
-                            order
-                        });
+                            batchTrips.push({
+                                id: order.id,
+                                viaje_id: null,
+                                item_index: 1,
+                                order_status: order.status,
+                                trip_status: tripStatus,
+                                client: clientName,
+                                type: 'departure',
+                                dateStr: formatDateStandard(parsedDate),
+                                time: formatTime12H(rawTime),
+                                route: `${hotel} ➝ Aeropuerto LIR`,
+                                flight: findMetaValue(order, ["- Departure Flight Number"]) || '--',
+                                raw_date: parsedDate,
+                                driver: driver,
+                                subchofer: findMetaValue(order, ["subchofer_salida"]) || '',
+                                driverNotes: findMetaValue(order, ["nota_choferes_ida"]) || '',
+                                hotel,
+                                hotelManual,
+                                pax,
+                                email,
+                                phone,
+                                tripPrice,
+                                showFinanciero,
+                                paymentMethod: order.payment_method_title || '--',
+                                order
+                            });
+                        }
                     }
                 }
             });
@@ -1248,14 +1474,14 @@
             const codriverKey = isArrival ? 'subchofer_llegada' : 'subchofer_salida';
             const driverNotesKey = isArrival ? 'nota_choferes_llegada' : 'nota_choferes_ida';
             const internalNotesKey = isArrival ? 'notas_internas_llegada' : 'notas_internas_salida';
-            const getVal = (k) => findMetaValue(order, [k]) || 'No asignado';
 
-            return {
-                driver: getVal(driverKey),
-                codriver: getVal(codriverKey),
-                driverNotes: findMetaValue(order, [driverNotesKey]) || 'Sin notas',
-                internalNotes: findMetaValue(order, [internalNotesKey]) || 'Sin notas'
-            };
+            // NUEVO: Usar datos del trip primero (de tabla viajes), fallback a metadata
+            const driver = trip.chofer || trip.driver || findMetaValue(order, [driverKey]) || 'No asignado';
+            const codriver = trip.subchofer || trip.codriver || findMetaValue(order, [codriverKey]) || 'No asignado';
+            const driverNotes = trip.nota_choferes || trip.driverNotes || findMetaValue(order, [driverNotesKey]) || 'Sin notas';
+            const internalNotes = trip.notas_internas || trip.internalNotes || findMetaValue(order, [internalNotesKey]) || 'Sin notas';
+
+            return { driver, codriver, driverNotes, internalNotes };
         }
 
         const COUNTRY_MAP = { 'AF': { name: 'Afganistán' }, 'AL': { name: 'Albania' }, 'DZ': { name: 'Argelia' }, 'AD': { name: 'Andorra' }, 'AO': { name: 'Angola' }, 'AG': { name: 'Antigua y Barbuda' }, 'AR': { name: 'Argentina' }, 'AM': { name: 'Armenia' }, 'AU': { name: 'Australia' }, 'AT': { name: 'Austria' }, 'AZ': { name: 'Azerbaiyán' }, 'BS': { name: 'Bahamas' }, 'BH': { name: 'Baréin' }, 'BD': { name: 'Bangladés' }, 'BB': { name: 'Barbados' }, 'BY': { name: 'Bielorrusia' }, 'BE': { name: 'Bélgica' }, 'BZ': { name: 'Belice' }, 'BJ': { name: 'Benín' }, 'BT': { name: 'Bután' }, 'BO': { name: 'Bolivia' }, 'BA': { name: 'Bosnia y Herzegovina' }, 'BW': { name: 'Botsuana' }, 'BR': { name: 'Brasil' }, 'BN': { name: 'Brunéi' }, 'BG': { name: 'Bulgaria' }, 'BF': { name: 'Burkina Faso' }, 'BI': { name: 'Burundi' }, 'KH': { name: 'Camboya' }, 'CM': { name: 'Camerún' }, 'CA': { name: 'Canadá' }, 'CV': { name: 'Cabo Verde' }, 'CF': { name: 'República Centroafricana' }, 'TD': { name: 'Chad' }, 'CL': { name: 'Chile' }, 'CN': { name: 'China' }, 'CO': { name: 'Colombia' }, 'KM': { name: 'Comoras' }, 'CG': { name: 'Congo' }, 'CD': { name: 'Congo, República Democrática del' }, 'CR': { name: 'Costa Rica' }, 'HR': { name: 'Croacia' }, 'CU': { name: 'Cuba' }, 'CY': { name: 'Chipre' }, 'CZ': { name: 'República Checa' }, 'DK': { name: 'Dinamarca' }, 'DJ': { name: 'Yibuti' }, 'DM': { name: 'Dominica' }, 'DO': { name: 'República Dominicana' }, 'EC': { name: 'Ecuador' }, 'EG': { name: 'Egipto' }, 'SV': { name: 'El Salvador' }, 'GQ': { name: 'Guinea Ecuatorial' }, 'ER': { name: 'Eritrea' }, 'EE': { name: 'Estonia' }, 'ET': { name: 'Etiopía' }, 'FJ': { name: 'Fiyi' }, 'FI': { name: 'Finlandia' }, 'FR': { name: 'Francia' }, 'GA': { name: 'Gabón' }, 'GM': { name: 'Gambia' }, 'GE': { name: 'Georgia' }, 'DE': { name: 'Alemania' }, 'GH': { name: 'Ghana' }, 'GR': { name: 'Grecia' }, 'GD': { name: 'Granada' }, 'GT': { name: 'Guatemala' }, 'GN': { name: 'Guinea' }, 'GW': { name: 'Guinea-Bisáu' }, 'GY': { name: 'Guyana' }, 'HT': { name: 'Haití' }, 'HN': { name: 'Honduras' }, 'HU': { name: 'Hungría' }, 'IS': { name: 'Islandia' }, 'IN': { name: 'India' }, 'ID': { name: 'Indonesia' }, 'IR': { name: 'Irán' }, 'IQ': { name: 'Irak' }, 'IE': { name: 'Irlanda' }, 'IL': { name: 'Israel' }, 'IT': { name: 'Italia' }, 'JM': { name: 'Jamaica' }, 'JP': { name: 'Japón' }, 'JO': { name: 'Jordania' }, 'KZ': { name: 'Kazajistán' }, 'KE': { name: 'Kenia' }, 'KI': { name: 'Kiribati' }, 'KW': { name: 'Kuwait' }, 'KG': { name: 'Kirguistán' }, 'LA': { name: 'Laos' }, 'LV': { name: 'Letonia' }, 'LB': { name: 'Líbano' }, 'LS': { name: 'Lesoto' }, 'LR': { name: 'Liberia' }, 'LY': { name: 'Libia' }, 'LI': { name: 'Liechtenstein' }, 'LT': { name: 'Lituania' }, 'LU': { name: 'Luxemburgo' }, 'MK': { name: 'Macedonia del Norte' }, 'MG': { name: 'Madagascar' }, 'MW': { name: 'Malaui' }, 'MY': { name: 'Malasia' }, 'MV': { name: 'Maldivas' }, 'ML': { name: 'Malí' }, 'MT': { name: 'Malta' }, 'MH': { name: 'Islas Marshall' }, 'MR': { name: 'Mauritania' }, 'MU': { name: 'Mauricio' }, 'MX': { name: 'México' }, 'FM': { name: 'Micronesia' }, 'MD': { name: 'Moldavia' }, 'MC': { name: 'Mónaco' }, 'MN': { name: 'Mongolia' }, 'ME': { name: 'Montenegro' }, 'MA': { name: 'Marruecos' }, 'MZ': { name: 'Mozambique' }, 'MM': { name: 'Myanmar' }, 'NA': { name: 'Namibia' }, 'NR': { name: 'Nauru' }, 'NP': { name: 'Nepal' }, 'NL': { name: 'Países Bajos' }, 'NZ': { name: 'Nueva Zelanda' }, 'NI': { name: 'Nicaragua' }, 'NE': { name: 'Níger' }, 'NG': { name: 'Nigeria' }, 'KP': { name: 'Corea del Norte' }, 'NO': { name: 'Noruega' }, 'OM': { name: 'Omán' }, 'PK': { name: 'Pakistán' }, 'PW': { name: 'Palaos' }, 'PA': { name: 'Panamá' }, 'PG': { name: 'Papúa Nueva Guinea' }, 'PY': { name: 'Paraguay' }, 'PE': { name: 'Perú' }, 'PH': { name: 'Filipinas' }, 'PL': { name: 'Polonia' }, 'PT': { name: 'Portugal' }, 'QA': { name: 'Catar' }, 'RO': { name: 'Rumania' }, 'RU': { name: 'Rusia' }, 'RW': { name: 'Ruanda' }, 'KN': { name: 'San Cristóbal y Nieves' }, 'LC': { name: 'Santa Lucía' }, 'VC': { name: 'San Vicente y las Granadinas' }, 'WS': { name: 'Samoa' }, 'SM': { name: 'San Marino' }, 'ST': { name: 'Santo Tomé y Príncipe' }, 'SA': { name: 'Arabia Saudita' }, 'SN': { name: 'Senegal' }, 'RS': { name: 'Serbia' }, 'SC': { name: 'Seychelles' }, 'SL': { name: 'Sierra Leona' }, 'SG': { name: 'Singapur' }, 'SK': { name: 'Eslovaquia' }, 'SI': { name: 'Eslovenia' }, 'SB': { name: 'Islas Salomón' }, 'SO': { name: 'Somalia' }, 'ZA': { name: 'Sudáfrica' }, 'KR': { name: 'Corea del Sur' }, 'ES': { name: 'España' }, 'LK': { name: 'Sri Lanka' }, 'SD': { name: 'Sudán' }, 'SR': { name: 'Surinam' }, 'SZ': { name: 'Esuatini' }, 'SE': { name: 'Suecia' }, 'CH': { name: 'Suiza' }, 'SY': { name: 'Siria' }, 'TW': { name: 'Taiwán' }, 'TJ': { name: 'Tayikistán' }, 'TZ': { name: 'Tanzania' }, 'TH': { name: 'Tailandia' }, 'TL': { name: 'Timor Oriental' }, 'TG': { name: 'Togo' }, 'TO': { name: 'Tonga' }, 'TT': { name: 'Trinidad y Tobago' }, 'TN': { name: 'Túnez' }, 'TR': { name: 'Turquía' }, 'TM': { name: 'Turkmenistán' }, 'TV': { name: 'Tuvalu' }, 'UG': { name: 'Uganda' }, 'UA': { name: 'Ucrania' }, 'AE': { name: 'Emiratos Árabes Unidos' }, 'GB': { name: 'Reino Unido' }, 'US': { name: 'Estados Unidos' }, 'UY': { name: 'Uruguay' }, 'UZ': { name: 'Uzbekistán' }, 'VU': { name: 'Vanuatu' }, 'VE': { name: 'Venezuela' }, 'VN': { name: 'Vietnam' }, 'YE': { name: 'Yemen' }, 'ZM': { name: 'Zambia' }, 'ZW': { name: 'Zimbabue' } };
@@ -1310,6 +1536,28 @@
             return `${hours}:${minutes} ${ampm}`;
         }
 
+        function time12ToMinutes(timeStr) {
+            if (!timeStr || timeStr === '--:--' || timeStr === '---') return 23 * 60 + 59;
+            const match = String(timeStr).trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+            if (!match) return 23 * 60 + 59;
+            let hours = parseInt(match[1], 10);
+            const minutes = parseInt(match[2], 10);
+            const ampm = match[3].toUpperCase();
+            if (ampm === 'PM' && hours !== 12) hours += 12;
+            if (ampm === 'AM' && hours === 12) hours = 0;
+            return (hours * 60) + minutes;
+        }
+
+        function tripDateTimeValue(trip) {
+            const base = new Date(trip.raw_date);
+            base.setHours(0, 0, 0, 0);
+            return base.getTime() + (time12ToMinutes(trip.time) * 60 * 1000);
+        }
+
+        function sortTripsByClosestFirst(trips) {
+            return trips.sort((a, b) => tripDateTimeValue(a) - tripDateTimeValue(b));
+        }
+
         function toggleIndexingUI(show) {
             const statusBar = document.getElementById('indexing-status');
             const apiBadge = document.getElementById('api-status-badge');
@@ -1361,11 +1609,9 @@
             const driverFilter = document.getElementById('filter-driver').value;
             const searchText = document.getElementById('search-text').value.toLowerCase();
 
-            // Filtro estricto: Solo mostrar viajes confirmados o contactados
-            const ALLOWED_STATUSES = ['confirmado', 'contactado_whatsapp', 'contactado_email'];
-            console.log('Aplicando filtros. Total antes:', allTrips.length);
-            let filtered = allTrips.filter(t => ALLOWED_STATUSES.includes(t.trip_status));
-            console.log('Total después de filtro estricto:', filtered.length);
+            // Filtro estricto: Solo mostrar viajes confirmados o contactados, y excluir reservas canceladas
+            const ALLOWED_STATUSES = ['confirmado', 'contactado_whatsapp', 'contactado_email', 'contactado_todos', 'contactado_ambos'];
+            let filtered = allTrips.filter(t => ALLOWED_STATUSES.includes(t.trip_status) && t.order_status !== 'cancelled');
 
             if (range.length === 2) {
                 const start = range[0]; start.setHours(0, 0, 0, 0);
@@ -1377,12 +1623,19 @@
                 if (driverFilter === 'no_asignado') {
                     filtered = filtered.filter(t => !t.driver || t.driver.trim() === '' || t.driver === 'No asignado');
                 } else {
-                    filtered = filtered.filter(t => t.driver && t.driver.trim() === driverFilter);
+                    // Buscar en chofer O subchofer
+                    filtered = filtered.filter(t =>
+                        (t.driver && t.driver.trim() === driverFilter) ||
+                        (t.subchofer && t.subchofer.trim() === driverFilter)
+                    );
                 }
             }
             if (searchText) {
                 filtered = filtered.filter(t => t.client.toLowerCase().includes(searchText) || t.route.toLowerCase().includes(searchText) || t.id.toString().includes(searchText));
             }
+
+            // Orden fijo: del viaje más cercano al más antiguo
+            sortTripsByClosestFirst(filtered);
             renderTrips(filtered);
         }
 
@@ -1405,19 +1658,23 @@
                                 <span class="font-bold text-[#002a3f] text-base">${capitalizeName(trip.client)}</span>
                             </div>
                         </td>
-                        <td data-label="Fecha / Hora">
+                        <td data-label="Fecha">
                             <div class="date-cell">
                                 <span class="date-day">${trip.dateStr}</span>
-                                <span class="text-xs font-bold text-gray-400 uppercase">${trip.time}</span>
                             </div>
                         </td>
-                        <td data-label="Hotel" class="font-semibold text-gray-600 text-sm">${trip.hotelManual || '--'}</td>
+                        <td data-label="Hora" class="time-big">${trip.time || '--:--'}</td>
+                        <td data-label="Pax" class="text-sm font-bold text-[#002a3f]">${trip.pax || 1}</td>
+                        <td data-label="Origen" class="bold-label font-extrabold text-[#002a3f]">${trip.route ? trip.route.split(' ➝ ')[0] : '--'}</td>
+                        <td data-label="Destino" class="bold-label font-extrabold text-[#002a3f]">${trip.route ? trip.route.split(' ➝ ')[1] || '--' : '--'}</td>
+                        <td data-label="Hotel" class="font-semibold text-gray-600 text-sm">${trip.hotel || '--'}</td>
                         <td data-label="Vuelo" class="text-sm text-gray-500 font-semibold">${(trip.flight || '').toUpperCase()}</td>
                         <td data-label="Chofer" class="text-sm font-semibold text-gray-700">${trip.driver && trip.driver.trim() !== '' ? trip.driver : 'No asignado'}</td>
+                        <td data-label="Subchofer" class="text-sm font-semibold text-gray-500">${trip.subchofer && trip.subchofer.trim() !== '' ? trip.subchofer : '--'}</td>
                         <td data-label="Precio" class="text-sm font-bold text-green-600">${trip.showFinanciero ? '$' + trip.tripPrice.toFixed(2) : '$ ***'}</td>
-                        <td data-label="Método" class="text-sm font-semibold text-gray-500">${trip.showFinanciero ? trip.paymentMethod : '***'}</td>
+                        <td data-label="Método" class="text-sm ${trip.showFinanciero && trip.paymentMethod && !trip.paymentMethod.toLowerCase().includes('cash') ? 'font-extrabold text-gray-800' : 'font-semibold text-gray-500'}">${trip.showFinanciero ? trip.paymentMethod : '***'}</td>
                         <td data-label="Notas" class="text-sm text-gray-600 font-semibold" title="${trip.driverNotes || ''}">
-                            ${trip.driverNotes || '--'}
+                            ${truncateText(trip.driverNotes) || '--'}
                         </td>
                         <td data-label="Acción" class="pr-6 text-right">
                             <button onclick="openTripDetail(${idx})" class="bg-[#002a3f] text-white px-4 py-2 rounded-lg font-bold uppercase text-xs hover:bg-[#ed4441] transition-all" title="Ver detalle">
@@ -1440,7 +1697,9 @@
                 'confirmado': 'Confirmado',
                 'cancelado': 'Cancelado',
                 'contactado_whatsapp': 'Contactado WhatsApp',
-                'contactado_email': 'Contactado Email'
+                'contactado_email': 'Contactado Email',
+                'contactado_todos': 'Contactado Todos',
+                'contactado_ambos': 'Contactado Ambos'
             };
             return map[s] || 'Sin estatus';
         }
@@ -1450,7 +1709,9 @@
                 'confirmado': 'completed',
                 'cancelado': 'cancelled',
                 'contactado_whatsapp': 'processing',
-                'contactado_email': 'on-hold'
+                'contactado_email': 'on-hold',
+                'contactado_todos': 'on-hold',
+                'contactado_ambos': 'processing'
             };
             return map[s] || 'pending';
         }
@@ -1463,8 +1724,8 @@
             const isArrival = trip.type === 'arrival';
             const hotel = trip.hotel || 'Hotel no especificado';
             const hotelManual = findMetaValue(order, ["hotel_manual"]) || "";
-            // Mantenemos el hotel (zona) original para el display principal
-            const displayHotelName = hotel;
+            const zoneName = order.line_items?.[0]?.name || 'Hotel no especificado';
+            const displayHotelName = hotel || hotelManual || zoneName;
 
             const originName = isArrival ? 'Aeropuerto LIR' : displayHotelName;
             const destName = isArrival ? displayHotelName : 'Aeropuerto LIR';
@@ -1486,6 +1747,17 @@
             document.getElementById('trip-display-name').innerText = fullName;
             document.getElementById('trip-display-country').innerText = country && COUNTRY_MAP[country] ? COUNTRY_MAP[country].name : (country || '---');
             document.getElementById('trip-display-address').innerText = addressOnlyLine1 || '---';
+
+            // Customer Note
+            const customerNote = order.customer_note || '';
+            const noteContainerEl = document.getElementById('trip-customer-note-container');
+            const noteDisplayEl = document.getElementById('trip-display-customer-note');
+            if (customerNote.trim()) {
+                noteDisplayEl.innerText = customerNote;
+                noteContainerEl.classList.remove('hidden');
+            } else {
+                noteContainerEl.classList.add('hidden');
+            }
 
             // Privacy Check
             const showEmail = String(findMetaValue(order, ["privacy_show_email"])) === "1";
@@ -1516,7 +1788,7 @@
                 phoneEl.innerHTML = phone ? `<a href="tel:${phone}" class="hover:text-accent">${phone}</a>` : '---';
                 phoneEl.classList.remove('text-gray-400', 'italic');
                 whatsappBtn.classList.remove('hidden');
-                whatsappBtn.href = `https://wa.me/${phone.replace(/\D/g, '')}`;
+                whatsappBtn.href = PhoneUtils.buildWhatsappUrl(phone, country);
             }
 
             // Ruta
@@ -1535,8 +1807,8 @@
 
             // Hotel Pill Logic
             const hotelPill = document.getElementById('trip-hotel-pill');
-            if (hotelManual) {
-                document.getElementById('trip-general-hotel-value').innerText = hotelManual;
+            if (trip.hotel && trip.hotel !== 'Hotel no especificado') {
+                document.getElementById('trip-general-hotel-value').innerText = trip.hotel;
                 hotelPill.classList.remove('hidden');
             } else {
                 hotelPill.classList.add('hidden');
@@ -1589,9 +1861,12 @@
             // Estatus del Viaje - removido del UI
 
             // Renderizar resumen financiero con privacidad
-            renderTripFinancialSummary(order, trip.showFinanciero);
+            renderTripFinancialSummary(order, trip);
 
             document.getElementById('trip-modal').classList.remove('hidden');
+            // Scroll modal content to top
+            document.querySelectorAll('#trip-modal-box .modal-main-content, #trip-modal-box .modal-sidebar').forEach(el => el.scrollTop = 0);
+            document.getElementById('trip-modal-box').scrollTop = 0;
         }
 
         function closeTripModal() {
@@ -1599,27 +1874,57 @@
             document.body.style.overflow = '';
         }
 
-        function renderTripFinancialSummary(order, showFinanciero = true) {
+        function renderTripFinancialSummary(order, trip = null) {
             const container = document.getElementById('trip-payment-breakdown');
             container.innerHTML = '';
 
-            if (!showFinanciero) {
+            // Privacidad: si showFinanciero es false, ocultar todo
+            if (trip && trip.showFinanciero === false) {
                 container.innerHTML = '<div class="text-sm text-gray-400 italic p-4 text-center">Información financiera oculta</div>';
                 return;
             }
 
-            // Detectar si es round-trip (tiene tanto llegada como salida)
-            const hasArrival = !!findMetaValue(order, ["- Arrival Date"]);
-            const hasDeparture = !!findMetaValue(order, ["- Departure Date"]);
-            const isRoundTrip = hasArrival && hasDeparture;
+            // Si tenemos información del viaje específico, buscar el line_item correspondiente
+            let tripSubtotal = null;
+            let isRoundTrip = false;
+            let tripLineItem = null;
+
+            if (trip && trip.item_index !== undefined && order.line_items) {
+                // Buscar el line_item que corresponde a este viaje
+                tripLineItem = order.line_items.find((li, idx) => {
+                    if (trip.viaje_id && li.id === trip.viaje_id) return true;
+                    if (trip.item_index < 1000 && idx === trip.item_index) return true;
+                    if (trip.item_index >= 1000 && idx === (trip.item_index - 1000)) return true;
+                    return false;
+                });
+
+                if (tripLineItem) {
+                    tripSubtotal = parseFloat(tripLineItem.subtotal || 0);
+                }
+
+                // Detectar si este viaje es parte de un roundtrip
+                if (trip.item_index >= 1000) {
+                    isRoundTrip = true;
+                } else if (order.viajes && order.viajes.length > 0) {
+                    isRoundTrip = order.viajes.some(v => v.item_index === trip.item_index + 1000);
+                }
+            } else {
+                // Fallback: detectar roundtrip por metadata legacy
+                const hasArrival = !!findMetaValue(order, ["- Arrival Date"]);
+                const hasDeparture = !!findMetaValue(order, ["- Departure Date"]);
+                isRoundTrip = hasArrival && hasDeparture;
+            }
+
             const divisor = isRoundTrip ? 2 : 1;
 
-            const addRow = (label, value, isBold = false, isAccent = false, isDiscount = false) => {
+            const addRow = (label, value, isBold = false, isAccent = false, isDiscount = false, skipDivisor = false) => {
                 let numVal = parseFloat(value);
                 if (value === undefined || value === null || value === "" || isNaN(numVal) || numVal === 0) return;
 
-                // Dividir por 2 si es round-trip
-                numVal = numVal / divisor;
+                // Dividir por 2 solo si es round-trip y no se omite el divisor
+                if (!skipDivisor) {
+                    numVal = numVal / divisor;
+                }
 
                 const formattedValue = isDiscount ? `-$${Math.abs(numVal).toFixed(2)}` : `$${numVal.toFixed(2)}`;
                 const colorClass = isDiscount ? 'text-green-600' : (isAccent ? 'text-red-500' : 'text-[#002a3f]');
@@ -1639,22 +1944,46 @@
                 container.innerHTML += `<div class="text-[10px] uppercase font-black text-gray-400 mb-4 border-b pb-2">Método: ${order.payment_method_title}</div>`;
             }
 
-            const subtotal = (order.line_items || []).reduce((acc, item) => acc + parseFloat(item.subtotal || 0), 0);
-            addRow("Subtotal Servicios", subtotal);
+            // Usar el subtotal del line_item específico si está disponible
+            if (tripSubtotal !== null) {
+                addRow("Subtotal Este Servicio", tripSubtotal, true);
+            } else {
+                const subtotal = (order.line_items || []).reduce((acc, item) => acc + parseFloat(item.subtotal || 0), 0);
+                addRow("Subtotal Servicios", subtotal, true);
+            }
+
+            // Proporcionar cargos adicionales e impuestos entre todos los viajes
+            const totalViajes = order.viajes?.length || order.line_items?.length || 1;
+            const proportion = 1 / totalViajes;
 
             if (order.fee_lines && order.fee_lines.length > 0) {
-                order.fee_lines.forEach(fee => addRow(fee.name || 'Cargo Adicional', fee.total));
+                order.fee_lines.forEach(fee => {
+                    const feeAmount = parseFloat(fee.total || 0) * proportion;
+                    addRow(fee.name || 'Cargo Adicional', feeAmount, false, false, false, true);
+                });
             }
 
             if (order.tax_lines && order.tax_lines.length > 0) {
-                order.tax_lines.forEach(tax => addRow(tax.label || 'Impuesto', tax.tax_total));
+                order.tax_lines.forEach(tax => {
+                    const taxAmount = parseFloat(tax.tax_total || 0) * proportion;
+                    addRow(tax.label || 'Impuesto', taxAmount, false, false, false, true);
+                });
             }
 
             if (order.coupon_lines && order.coupon_lines.length > 0) {
-                order.coupon_lines.forEach(coupon => addRow(`Cupón: ${coupon.code}`, coupon.discount, false, false, true));
+                order.coupon_lines.forEach(coupon => {
+                    const couponAmount = parseFloat(coupon.discount || 0) * proportion;
+                    addRow(`Cupón: ${coupon.code}`, couponAmount, false, false, true, true);
+                });
             }
 
-            addRow("Total Este Viaje", order.total, true);
+            // Total de este viaje
+            if (tripSubtotal !== null) {
+                const tripTotal = tripSubtotal / divisor;
+                addRow("Total Este Viaje", tripTotal * divisor);
+            } else {
+                addRow("Total Este Viaje", order.total);
+            }
         }
 
         function getRelativeTime(d) {

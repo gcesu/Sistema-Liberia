@@ -40,6 +40,7 @@
 
   <!-- CONEXIÓN AL MENÚ GLOBAL -->
   <script src="menu.js" defer></script>
+  <script src="phone-utils.js"></script>
 
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
@@ -195,6 +196,11 @@
       color: #991b1b;
     }
 
+    .status-refunded {
+      background: #ede9fe;
+      color: #5b21b6;
+    }
+
     /* Tipo de Viaje */
     .trip-badge {
       font-size: 10px;
@@ -285,15 +291,14 @@
     }
 
     .btn-section-edit {
-      background: transparent;
-      color: #94a3b8;
-      padding: 4px 8px;
-      border-radius: 4px;
+      font-size: 10px;
       font-weight: 800;
       text-transform: uppercase;
-      font-size: 11px;
-      letter-spacing: 0.5px;
-      border: 1px solid transparent;
+      padding: 4px 10px;
+      background: white;
+      border: 1px solid #cbd5e1;
+      color: #64748b;
+      border-radius: 4px;
       cursor: pointer;
       transition: all 0.2s;
     }
@@ -304,9 +309,9 @@
     }
 
     .btn-section-edit.editing {
-      background: #fee2e2;
-      color: #991b1b;
-      border-color: #fecaca;
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
     }
 
     .input-editable {
@@ -325,6 +330,54 @@
     .input-editable:focus {
       border-color: var(--accent);
       background-color: white;
+    }
+
+    /* Searchable Select Dropdown */
+    .searchable-select-wrapper {
+      position: relative;
+    }
+
+    .searchable-select-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      z-index: 999;
+      background: white;
+      border: 1px solid #cbd5e1;
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      max-height: 200px;
+      overflow-y: auto;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .searchable-select-option {
+      padding: 8px 12px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--primary);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .searchable-select-option:hover,
+    .searchable-select-option.active {
+      background: #eef4ff;
+      color: var(--accent);
+    }
+
+    .searchable-select-option.selected {
+      background: var(--accent);
+      color: white;
+    }
+
+    .searchable-select-empty {
+      padding: 10px 12px;
+      font-size: 13px;
+      color: #94a3b8;
+      text-align: center;
+      font-style: italic;
     }
 
     .btn-whatsapp {
@@ -403,6 +456,17 @@
       border-color: #fed7aa !important;
     }
 
+    #trip-input-precio-neto::-webkit-outer-spin-button,
+    #trip-input-precio-neto::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    #trip-input-precio-neto {
+      -moz-appearance: textfield;
+      appearance: textfield;
+    }
+
     .modal-overlay {
       position: fixed;
       inset: 0;
@@ -442,6 +506,7 @@
     #trip-modal-box {
       width: 100vw;
       height: 100vh;
+      max-height: 100vh;
       display: flex;
       flex-direction: column;
       background: white;
@@ -567,7 +632,7 @@
         top: 0;
         max-height: calc(100vh - 140px);
         overflow-y: auto;
-        align-self: flex-start;
+        align-self: stretch;
       }
 
       .modal-main-content {
@@ -1062,7 +1127,7 @@
 
       <div class="w-full md:w-48 input-group">
         <label>Tipo de Viaje</label>
-        <select id="filter-type" class="custom-input">
+        <select id="filter-type" onchange="applyFilters()" class="custom-input">
           <option value="all">Todos</option>
           <option value="arrival">Solo Llegadas</option>
           <option value="departure">Solo Salidas</option>
@@ -1075,9 +1140,6 @@
           placeholder="Cliente, Hotel, ID..." />
       </div>
 
-      <button onclick="applyFilters()" class="btn-action w-full md:w-auto mt-4 md:mt-0">
-        Filtrar
-      </button>
       <button onclick="resetFilters()" class="text-gray-400 text-xs font-bold uppercase hover:text-red-500 ml-4">
         Limpiar
       </button>
@@ -1159,7 +1221,7 @@
           </button>
         </div>
 
-        <div class="flex-1 overflow-y-auto column-scroll flex flex-col lg:flex-row">
+        <div class="flex-1 overflow-y-auto column-scroll flex flex-col lg:flex-row min-h-0">
           <!-- Columna Izquierda: Cliente (Sidebar) -->
           <div class="modal-sidebar w-full lg:w-[320px] lg:flex-shrink-0 border-r">
             <div class="p-6 md:p-8">
@@ -1182,7 +1244,7 @@
               </div>
 
               <div class="space-y-6">
-                <div class="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                <div class="p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
                   <p class="meta-field-label">📧 Correo</p>
                   <div id="trip-display-email" class="meta-field-value break-all"></div>
                   <input type="email" id="trip-input-email" oninput="tripHandleEmailInput()"
@@ -1195,7 +1257,7 @@
                   </div>
                 </div>
 
-                <div class="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                <div class="p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
                   <p class="meta-field-label">📞 Teléfono</p>
                   <div id="trip-display-phone" class="meta-field-value"></div>
                   <input type="text" id="trip-input-phone" oninput="tripCheckForChanges()" class="hidden input-editable"
@@ -1208,7 +1270,7 @@
                   </div>
                 </div>
 
-                <div class="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                <div class="p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
                   <p class="meta-field-label">🌍 País</p>
                   <div id="trip-display-country" class="meta-field-value"></div>
                   <select id="trip-input-country" onchange="tripCheckForChanges()" class="hidden input-editable">
@@ -1216,11 +1278,18 @@
                   </select>
                 </div>
 
-                <div class="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                <div class="p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
                   <p class="meta-field-label">📍 Dirección</p>
                   <div id="trip-display-address" class="meta-field-value text-sm"></div>
                   <textarea id="trip-input-address" oninput="tripCheckForChanges()" rows="2"
                     class="hidden input-editable resize-none" placeholder="Dirección completa"></textarea>
+                </div>
+
+                <div id="trip-customer-note-container"
+                  class="p-3 bg-amber-50 rounded-lg border border-amber-200 shadow-sm hidden">
+                  <p class="meta-field-label text-amber-600">📝 Nota del Cliente</p>
+                  <div id="trip-display-customer-note"
+                    class="meta-field-value text-sm text-amber-900 whitespace-pre-wrap"></div>
                 </div>
               </div>
             </div>
@@ -1257,10 +1326,7 @@
                 <span class="text-gray-500 text-sm uppercase font-bold">Pax:</span>
                 <span id="trip-general-pax-value" class="font-black text-[#002a3f] text-lg"></span>
               </div>
-              <div id="trip-hotel-pill" class="info-pill bg-white shadow-sm hidden">
-                <span class="text-gray-500 text-sm uppercase font-bold">Hotel:</span>
-                <span id="trip-general-hotel-value" class="font-black text-[#002a3f] uppercase text-lg"></span>
-              </div>
+
               <div class="info-pill bg-white shadow-sm">
                 <span class="text-gray-500 text-sm uppercase font-bold">Proximidad:</span>
                 <span id="trip-general-relative" class="font-black text-[#002a3f] uppercase text-lg"></span>
@@ -1317,8 +1383,13 @@
                     <div class="field-group-row">
                       <div>
                         <p class="meta-field-label">🚐 Chofer</p>
-                        <select id="trip-input-meta-chofer" onchange="tripCheckForChanges()"
-                          class="input-editable bg-white"></select>
+                        <div class="searchable-select-wrapper" id="chofer-search-wrapper">
+                          <input type="text" id="chofer-search-input" class="input-editable bg-white"
+                            placeholder="Buscar chofer..." autocomplete="off" />
+                          <div class="searchable-select-dropdown hidden" id="chofer-search-dropdown"></div>
+                        </div>
+                        <select id="trip-input-meta-chofer" style="display:none"
+                          onchange="tripCheckForChanges()"></select>
                         <div id="trip-display-meta-chofer" class="hidden meta-field-value"></div>
                       </div>
                       <div>
@@ -1330,18 +1401,34 @@
                     </div>
                     <div>
                       <p class="meta-field-label">📢 Nota Choferes</p>
-                      <textarea id="trip-input-meta-nota_choferes" oninput="tripCheckForChanges()" rows="2"
+                      <textarea id="trip-input-meta-nota_choferes"
+                        oninput="tripCheckForChanges(); autoResizeTextarea(this)" rows="2"
                         class="input-editable bg-white resize-none h-16"></textarea>
                       <div id="trip-display-meta-nota_choferes" class="hidden meta-field-value"></div>
                     </div>
                     <div>
                       <p class="meta-field-label">🔒 Notas Internas</p>
-                      <textarea id="trip-input-meta-notas_internas" oninput="tripCheckForChanges()" rows="2"
+                      <textarea id="trip-input-meta-notas_internas"
+                        oninput="tripCheckForChanges(); autoResizeTextarea(this)" rows="2"
                         class="input-editable bg-white resize-none h-16"></textarea>
                       <div id="trip-display-meta-notas_internas" class="hidden meta-field-value"></div>
                     </div>
                   </div>
                 </div>
+              </div>
+
+              <!-- Botones de mensaje -->
+              <div class="flex flex-wrap gap-2 mt-4 px-5 pb-5" id="trip-message-buttons">
+                <button onclick="sendTripEmail()"
+                  class="flex-1 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all shadow-sm flex items-center justify-center gap-1">Recordatorio
+                  Correo</button>
+                <button onclick="sendTripWhatsApp()"
+                  class="flex-1 px-3 py-2 bg-green-500 hover:bg-green-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all shadow-sm flex items-center justify-center gap-1">Recordatorio
+                  WhatsApp</button>
+                <button onclick="sendDriverContactWhatsApp()"
+                  class="flex-1 px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all shadow-sm flex items-center justify-center gap-1">📞
+                  Contacto
+                  Chofer</button>
               </div>
 
               <!-- Resumen Financiero del Viaje -->
@@ -1362,7 +1449,7 @@
         </div>
 
         <!-- Footer Modal -->
-        <div class="p-4 border-t bg-white flex justify-end gap-3 rounded-b-xl">
+        <div class="p-4 border-t bg-white flex justify-end gap-3 rounded-b-xl flex-shrink-0">
           <button onclick="tripSaveDetails()" id="trip-btn-save"
             class="hidden px-6 py-2 bg-green-600 text-white rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-green-700 transition-all shadow-md">
             Guardar Cambios
@@ -1379,6 +1466,7 @@
   <script>
     // API Proxy - Las credenciales están protegidas en el servidor
     const API_PROXY = "api/reservas.php";
+    const VIAJES_API = "api/viajes_api.php";
 
     // CALCULAR FECHA DE INICIO (7 meses atrás)
     const startDate = new Date();
@@ -1392,6 +1480,8 @@
       cancelado: "Cancelado",
       contactado_whatsapp: "Contactado Por WhatsApp",
       contactado_email: "Contactado Por Email",
+      contactado_todos: "Contactado Por Todos Los Medios",
+      contactado_ambos: "Contactado Ambos",
     };
 
     const TRIP_STATUS_ARRIVAL = TRIP_STATUS_OPTIONS;
@@ -1399,6 +1489,7 @@
 
     // Choferes se cargan desde la BD
     let CHOFERES = [];
+    let CHOFERES_PHONE = {}; // Mapa nombre -> telefono
 
     const COUNTRY_MAP = {
       AF: { name: "Afganistán" },
@@ -1601,6 +1692,9 @@
     let currentTripOrder = null;
     let currentTripIsArrival = false;
     let currentTripStatusKey = null;
+    let currentViajeId = null;      // ID del viaje en la tabla viajes
+    let currentItemIndex = null;    // item_index del viaje
+    let currentTrip = null;         // Objeto trip completo para mensajes
     let tripEditingSections = { passenger: false, logistics: false };
     let tripOriginalValues = {};
     let datePicker;
@@ -1644,10 +1738,132 @@
         if (response.ok) {
           const data = await response.json();
           CHOFERES = data.map(c => c.nombre);
+          data.forEach(c => { if (c.telefono) CHOFERES_PHONE[c.nombre] = c.telefono; });
         }
       } catch (err) {
         console.error('Error cargando choferes:', err);
       }
+    }
+
+    function initSearchableChofer(initialValue = '') {
+      const input = document.getElementById('chofer-search-input');
+      const dropdown = document.getElementById('chofer-search-dropdown');
+      const hiddenSelect = document.getElementById('trip-input-meta-chofer');
+      if (!input || !dropdown || !hiddenSelect) return;
+
+      // Populate hidden select (for backward compat with .value reads)
+      hiddenSelect.innerHTML = '<option value="">No asignado</option>';
+      CHOFERES.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = opt.textContent = c;
+        hiddenSelect.appendChild(opt);
+      });
+
+      // Set initial value
+      hiddenSelect.value = initialValue;
+      input.value = initialValue || '';
+
+      let activeIdx = -1;
+
+      function renderOptions(filter = '') {
+        const filterLower = filter.toLowerCase();
+        const noAssign = { value: '', label: 'No asignado' };
+        const allOptions = [noAssign, ...CHOFERES.map(c => ({ value: c, label: c }))];
+        const filtered = allOptions.filter(o => o.label.toLowerCase().includes(filterLower));
+
+        dropdown.innerHTML = '';
+        activeIdx = -1;
+
+        if (filtered.length === 0) {
+          dropdown.innerHTML = '<div class="searchable-select-empty">Sin resultados</div>';
+          return;
+        }
+
+        filtered.forEach((opt, idx) => {
+          const div = document.createElement('div');
+          div.className = 'searchable-select-option' + (opt.value === hiddenSelect.value ? ' selected' : '');
+          div.textContent = opt.label;
+          div.dataset.value = opt.value;
+          div.dataset.idx = idx;
+          div.addEventListener('mousedown', (e) => {
+            e.preventDefault(); // prevent blur
+            selectOption(opt.value, opt.label);
+          });
+          dropdown.appendChild(div);
+        });
+      }
+
+      function selectOption(value, label) {
+        hiddenSelect.value = value;
+        input.value = label === 'No asignado' ? '' : label;
+        dropdown.classList.add('hidden');
+        hiddenSelect.dispatchEvent(new Event('change'));
+      }
+
+      function showDropdown() {
+        renderOptions(input.value);
+        dropdown.classList.remove('hidden');
+      }
+
+      function hideDropdown() {
+        dropdown.classList.add('hidden');
+        activeIdx = -1;
+      }
+
+      input.addEventListener('focus', () => {
+        input.select();
+        showDropdown();
+      });
+
+      input.addEventListener('input', () => {
+        renderOptions(input.value);
+        dropdown.classList.remove('hidden');
+      });
+
+      input.addEventListener('blur', () => {
+        // Small delay to allow mousedown on option
+        setTimeout(() => {
+          hideDropdown();
+          // If the typed text doesn't match any option, revert to current value
+          const currentVal = hiddenSelect.value;
+          input.value = currentVal || '';
+        }, 150);
+      });
+
+      input.addEventListener('keydown', (e) => {
+        const items = dropdown.querySelectorAll('.searchable-select-option');
+        if (items.length === 0) return;
+
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          activeIdx = Math.min(activeIdx + 1, items.length - 1);
+          items.forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+          items[activeIdx]?.scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          activeIdx = Math.max(activeIdx - 1, 0);
+          items.forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+          items[activeIdx]?.scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          if (activeIdx >= 0 && items[activeIdx]) {
+            const val = items[activeIdx].dataset.value;
+            const lbl = items[activeIdx].textContent;
+            selectOption(val, lbl);
+            input.blur();
+          }
+        } else if (e.key === 'Escape') {
+          hideDropdown();
+          input.blur();
+        }
+      });
+
+      // Close on click outside
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('#chofer-search-wrapper')) {
+          hideDropdown();
+        }
+      });
     }
 
     function initCountryDropdownTrip() {
@@ -1670,10 +1886,7 @@
       datePicker = flatpickr("#date-range", {
         mode: "range",
         dateFormat: "d/M/Y",
-        defaultDate: [
-          new Date(),
-          new Date(new Date().setDate(new Date().getDate() + 30)),
-        ],
+        defaultDate: [new Date(), new Date()],
         locale: {
           firstDayOfWeek: 1,
           rangeSeparator: " a ",
@@ -1796,89 +2009,147 @@
 
     function processBatch(orders) {
       const batchTrips = [];
-      const ARRIVAL_KEYS = ["- Arrival Date"];
-      const ARRIVAL_TIME_KEYS = ["- Arrival Time", "Arrival Time"];
-      const ARRIVAL_FLIGHT_KEYS = [
-        "- Arrival Flight Number",
-        "Arrival Flight",
-      ];
-      const DEPARTURE_KEYS = ["- Departure Date"];
-      const DEPARTURE_TIME_KEYS = ["- Pick-up Time at Hotel", "Pick up Time"];
-      const DEPARTURE_FLIGHT_KEYS = [
-        "- Departure Flight Number",
-        "Departure Flight",
-      ];
 
       orders.forEach((order) => {
         const clientName =
           `${order.billing.first_name} ${order.billing.last_name}`.trim();
-        const hotel = order.line_items?.[0]?.name || "Hotel no especificado";
         const status = order.status;
-        const pax = resolvePax(order);
         const email = order.billing?.email || "";
         const phone = order.billing?.phone || "";
 
-        const arrivalDateStr = findMetaValue(order, ARRIVAL_KEYS);
-        if (arrivalDateStr) {
-          const parsedDate = parseFlexibleDate(arrivalDateStr);
-          if (parsedDate) {
-            const rawTime = findMetaValue(order, ARRIVAL_TIME_KEYS);
-            const normalizedTime = normalizeTime(rawTime);
-            const fullDate = new Date(parsedDate);
-            const [th, tm] =
-              normalizedTime !== "--:--" ? normalizedTime.split(":") : [0, 0];
-            fullDate.setHours(th, tm);
-            const tripStatus = findMetaValue(order, ["status_llegada"]) || "";
+        // NUEVO: Usar array de viajes de la API si está disponible
+        if (order.viajes && order.viajes.length > 0) {
+          order.viajes.forEach((viaje) => {
+            const parsedDate = parseFlexibleDate(viaje.fecha);
+            if (parsedDate) {
+              const normalizedTime = normalizeTime(viaje.hora);
+              const fullDate = new Date(parsedDate);
+              const [th, tm] =
+                normalizedTime !== "--:--" ? normalizedTime.split(":") : [0, 0];
+              fullDate.setHours(th, tm);
 
-            batchTrips.push({
-              id: order.id,
-              order_status: status,
-              trip_status: tripStatus,
-              client: clientName,
-              type: "arrival",
-              dateStr: formatDateStandard(parsedDate),
-              time: formatTime12H(rawTime),
-              route: `Aeropuerto LIR ➝ ${hotel}`,
-              flight: findMetaValue(order, ARRIVAL_FLIGHT_KEYS) || "--",
-              raw_date: fullDate,
-              hotel,
-              pax,
-              email,
-              phone,
-              order,
-            });
+              const isArrival = viaje.tipo === "llegada";
+              // Nombre del producto (destino) desde line_items, NO desde viaje.hotel
+              const itemIdx = viaje.item_index >= 1000 ? viaje.item_index - 1000 : viaje.item_index;
+              const destName = order.line_items?.[itemIdx]?.name || "Hotel no especificado";
+
+              batchTrips.push({
+                id: order.id,
+                viaje_id: viaje.id,
+                item_index: viaje.item_index,
+                order_status: status,
+                trip_status: viaje.status || "",
+                client: clientName,
+                type: isArrival ? "arrival" : "departure",
+                dateStr: formatDateStandard(parsedDate),
+                time: formatTime12H(viaje.hora),
+                route: isArrival
+                  ? `Aeropuerto LIR ➝ ${destName}`
+                  : `${destName} ➝ Aeropuerto LIR`,
+                flight: viaje.vuelo || "--",
+                raw_date: fullDate,
+                hotel: viaje.hotel || "",
+                destino: viaje.destino || "",
+                pax: viaje.pax || 1,
+                email,
+                phone,
+                order,
+                chofer: viaje.chofer || "",
+                subchofer: viaje.subchofer || "",
+                nota_choferes: viaje.nota_choferes || "",
+                notas_internas: viaje.notas_internas || "",
+                precio_neto: viaje.precio_neto || "",
+              });
+            }
+          });
+        } else {
+          // FALLBACK: Extracción legacy para órdenes antiguas sin viajes en BD
+          const hotel = order.line_items?.[0]?.name || "Hotel no especificado";
+          const pax = resolvePax(order);
+
+          const ARRIVAL_KEYS = ["- Arrival Date"];
+          const ARRIVAL_TIME_KEYS = ["- Arrival Time", "Arrival Time"];
+          const ARRIVAL_FLIGHT_KEYS = ["- Arrival Flight Number", "Arrival Flight"];
+          const DEPARTURE_KEYS = ["- Departure Date"];
+          const DEPARTURE_TIME_KEYS = ["- Pick-up Time at Hotel", "Pick up Time"];
+          const DEPARTURE_FLIGHT_KEYS = ["- Departure Flight Number", "Departure Flight"];
+
+          const arrivalDateStr = findMetaValue(order, ARRIVAL_KEYS);
+          if (arrivalDateStr) {
+            const parsedDate = parseFlexibleDate(arrivalDateStr);
+            if (parsedDate) {
+              const rawTime = findMetaValue(order, ARRIVAL_TIME_KEYS);
+              const normalizedTime = normalizeTime(rawTime);
+              const fullDate = new Date(parsedDate);
+              const [th, tm] =
+                normalizedTime !== "--:--" ? normalizedTime.split(":") : [0, 0];
+              fullDate.setHours(th, tm);
+              const tripStatus = findMetaValue(order, ["status_llegada"]) || "";
+
+              batchTrips.push({
+                id: order.id,
+                viaje_id: null,
+                item_index: 0,
+                order_status: status,
+                trip_status: tripStatus,
+                client: clientName,
+                type: "arrival",
+                dateStr: formatDateStandard(parsedDate),
+                time: formatTime12H(rawTime),
+                route: `Aeropuerto LIR ➝ ${hotel}`,
+                flight: findMetaValue(order, ARRIVAL_FLIGHT_KEYS) || "--",
+                raw_date: fullDate,
+                hotel,
+                pax,
+                email,
+                phone,
+                order,
+                chofer: findMetaValue(order, ["chofer_llegada"]) || "",
+                subchofer: findMetaValue(order, ["subchofer_llegada"]) || "",
+                nota_choferes: findMetaValue(order, ["nota_choferes_llegada"]) || "",
+                notas_internas: findMetaValue(order, ["notas_internas_llegada"]) || "",
+                precio_neto: "",
+              });
+            }
           }
-        }
 
-        const departureDateStr = findMetaValue(order, DEPARTURE_KEYS);
-        if (departureDateStr) {
-          const parsedDate = parseFlexibleDate(departureDateStr);
-          if (parsedDate) {
-            const rawTime = findMetaValue(order, DEPARTURE_TIME_KEYS);
-            const normalizedTime = normalizeTime(rawTime);
-            const fullDate = new Date(parsedDate);
-            const [th, tm] =
-              normalizedTime !== "--:--" ? normalizedTime.split(":") : [0, 0];
-            fullDate.setHours(th, tm);
-            const tripStatus = findMetaValue(order, ["status_salida"]) || "";
+          const departureDateStr = findMetaValue(order, DEPARTURE_KEYS);
+          if (departureDateStr) {
+            const parsedDate = parseFlexibleDate(departureDateStr);
+            if (parsedDate) {
+              const rawTime = findMetaValue(order, DEPARTURE_TIME_KEYS);
+              const normalizedTime = normalizeTime(rawTime);
+              const fullDate = new Date(parsedDate);
+              const [th, tm] =
+                normalizedTime !== "--:--" ? normalizedTime.split(":") : [0, 0];
+              fullDate.setHours(th, tm);
+              const tripStatus = findMetaValue(order, ["status_salida"]) || "";
 
-            batchTrips.push({
-              id: order.id,
-              order_status: status,
-              trip_status: tripStatus,
-              client: clientName,
-              type: "departure",
-              dateStr: formatDateStandard(parsedDate),
-              time: formatTime12H(rawTime),
-              route: `${hotel} ➝ Aeropuerto LIR`,
-              flight: findMetaValue(order, DEPARTURE_FLIGHT_KEYS) || "--",
-              raw_date: fullDate,
-              hotel,
-              pax,
-              email,
-              phone,
-              order,
-            });
+              batchTrips.push({
+                id: order.id,
+                viaje_id: null,
+                item_index: 1,
+                order_status: status,
+                trip_status: tripStatus,
+                client: clientName,
+                type: "departure",
+                dateStr: formatDateStandard(parsedDate),
+                time: formatTime12H(rawTime),
+                route: `${hotel} ➝ Aeropuerto LIR`,
+                flight: findMetaValue(order, DEPARTURE_FLIGHT_KEYS) || "--",
+                raw_date: fullDate,
+                hotel,
+                pax,
+                email,
+                phone,
+                order,
+                chofer: findMetaValue(order, ["chofer_salida"]) || "",
+                subchofer: findMetaValue(order, ["subchofer_salida"]) || "",
+                nota_choferes: findMetaValue(order, ["nota_choferes_ida"]) || "",
+                notas_internas: findMetaValue(order, ["notas_internas_salida"]) || "",
+                precio_neto: "",
+              });
+            }
           }
         }
       });
@@ -2009,6 +2280,218 @@
       if (hours === 0) hours = 12;
 
       return `${hours}:${minutes} ${ampm}`;
+    }
+
+    function getOrdinalSuffix(day) {
+      if (day > 3 && day < 21) return 'th';
+      switch (day % 10) {
+        case 1: return 'st';
+        case 2: return 'nd';
+        case 3: return 'rd';
+        default: return 'th';
+      }
+    }
+
+    function formatDateUSFull(d) {
+      if (!d) return '---';
+      let dateObj = d instanceof Date ? new Date(d) : new Date(d);
+      if (typeof d === 'string') {
+        const datePart = d.split('T')[0];
+        if (datePart.includes('-')) {
+          const parts = datePart.split('-');
+          if (parts.length === 3) {
+            dateObj = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+          }
+        }
+      }
+      if (isNaN(dateObj.getTime())) return String(d);
+      const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      const day = dateObj.getDate();
+      return `${months[dateObj.getMonth()]} ${day}${getOrdinalSuffix(day)}`;
+    }
+
+    function formatDateUSShort(d) {
+      if (!d) return '---';
+      let dateObj = d instanceof Date ? new Date(d) : new Date(d);
+      if (typeof d === 'string') {
+        const datePart = d.split('T')[0];
+        if (datePart.includes('-')) {
+          const parts = datePart.split('-');
+          if (parts.length === 3) {
+            dateObj = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+          }
+        }
+      }
+      if (isNaN(dateObj.getTime())) return String(d);
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const day = dateObj.getDate();
+      return `${months[dateObj.getMonth()]} ${day}${getOrdinalSuffix(day)}`;
+    }
+
+    function generateTripMessage(trip, order) {
+      const firstName = (order.billing?.first_name || '').trim();
+      const pax = trip.pax || 1;
+      const itemIdx = trip.item_index >= 1000 ? trip.item_index - 1000 : trip.item_index;
+      const hotel = trip.hotel || trip.destino || order.line_items?.[itemIdx]?.name || 'el hotel';
+      const vuelo = (trip.flight || '').toUpperCase();
+      const hora = trip.time || '';
+      const fecha = trip.dateStr || '';
+      const totalViajes = order.viajes?.length || order.line_items?.length || 1;
+
+      // Calcular el monto por viaje usando la misma lógica que el resumen financiero
+      let ratePerTrip = '$___';
+      if (order.total) {
+        let tripSubtotal = null;
+        if (trip.item_index !== undefined && order.line_items) {
+          const originalIdx = trip.item_index >= 1000 ? trip.item_index - 1000 : trip.item_index;
+          if (order.line_items[originalIdx]) {
+            tripSubtotal = parseFloat(order.line_items[originalIdx].subtotal || 0);
+          }
+        }
+
+        // Detectar roundtrip
+        let isRoundTrip = false;
+        if (trip.item_index >= 1000) {
+          isRoundTrip = true;
+        } else if (order.viajes && order.viajes.length > 0) {
+          isRoundTrip = order.viajes.some(v => v.item_index === trip.item_index + 1000);
+        }
+
+        const divisor = isRoundTrip ? 2 : 1;
+
+        if (tripSubtotal !== null) {
+          const amount = tripSubtotal / divisor;
+          ratePerTrip = `$${amount % 1 === 0 ? amount.toFixed(0) : amount.toFixed(2)}`;
+        } else {
+          // Fallback: usar subtotal de la orden entre total de viajes
+          const orderSubtotal = parseFloat(order.subtotal || order.total);
+          const amount = orderSubtotal / totalViajes;
+          ratePerTrip = `$${amount % 1 === 0 ? amount.toFixed(0) : amount.toFixed(2)}`;
+        }
+      }
+      const isArrival = trip.type === 'arrival';
+      const isCash = !order.payment_method_title || order.payment_method_title.toLowerCase().includes('cash');
+      const rateLine = isCash ? `\n\n\u2022The one-way rate is ${ratePerTrip} USD, payable to your driver in USD cash.` : '';
+
+      if (isArrival) {
+        return `Hi ${firstName}. This is M\u00f3nica, with Liberia Airport Shuttle (Costa Rica). We are all set to pick *${pax} people* up at Liberia Airport (LIR) tomorrow, *${fecha}*, on flight ${vuelo} (arriving at ${hora}), to be taken to *${hotel}*. _Please confirm that everything is still on._${rateLine}\n\n\u2022Your driver will be outside of customs area holding a sign with your name on it. If having trouble finding the driver, please contact us and head to the outside of the Bar Imperial/Britt caf\u00e9. You will see a set of tables and chairs in that outside part.\n\n\u2022For safety reasons, do not accept help from anyone other than a representative of Liberia Airport Shuttle.\n(There are people outside offering help to carry the luggage, but for YOUR SAFETY, I recommend you not to give your luggage to any of them as they do not work with our company).`;
+      } else {
+        const departureRate = isCash ? ` The rate is ${ratePerTrip} USD, payable to your driver in USD cash.` : '';
+        return `Hi ${firstName}. This is M\u00f3nica, with Liberia Airport Shuttle. I hope you're enjoying your time in Costa Rica! We are all set to pick *${pax} people* up at ${hotel} tomorrow, ${fecha}, at ${hora}.${departureRate}\n\nMay I have your room number, please? Your driver will need it at the entrance, but he will meet you at the lobby.`;
+      }
+    }
+
+    function generateTripEmailMessage(trip, order) {
+      const firstName = (order.billing?.first_name || '').trim();
+      const pax = trip.pax || 1;
+      const itemIdx = trip.item_index >= 1000 ? trip.item_index - 1000 : trip.item_index;
+      const hotel = trip.hotel || trip.destino || order.line_items?.[itemIdx]?.name || 'the hotel';
+      const vuelo = (trip.flight || '').toUpperCase();
+      const hora = trip.time || '';
+      const fecha = formatDateUSFull(trip.raw_date);
+      const fechaShort = formatDateUSShort(trip.raw_date);
+      const totalViajes = order.viajes?.length || order.line_items?.length || 1;
+      let ratePerTrip = '$___';
+
+      if (order.total) {
+        let tripSubtotal = null;
+        if (trip.item_index !== undefined && order.line_items) {
+          const originalIdx = trip.item_index >= 1000 ? trip.item_index - 1000 : trip.item_index;
+          if (order.line_items[originalIdx]) {
+            tripSubtotal = parseFloat(order.line_items[originalIdx].subtotal || 0);
+          }
+        }
+        let isRoundTrip = false;
+        if (trip.item_index >= 1000) {
+          isRoundTrip = true;
+        } else if (order.viajes && order.viajes.length > 0) {
+          isRoundTrip = order.viajes.some(v => v.item_index === trip.item_index + 1000);
+        }
+        const divisor = isRoundTrip ? 2 : 1;
+        if (tripSubtotal !== null) {
+          const amount = tripSubtotal / divisor;
+          ratePerTrip = `$${amount % 1 === 0 ? amount.toFixed(0) : amount.toFixed(2)}`;
+        } else {
+          const orderSubtotal = parseFloat(order.subtotal || order.total);
+          const amount = orderSubtotal / totalViajes;
+          ratePerTrip = `$${amount % 1 === 0 ? amount.toFixed(0) : amount.toFixed(2)}`;
+        }
+      }
+
+      const isArrival = trip.type === 'arrival';
+      const isCash = !order.payment_method_title || order.payment_method_title.toLowerCase().includes('cash');
+      const signature = `\n\nBest regards,\nM\u00f3nica B.\n\nwww.LiberiaAirportShuttle.com\nAirport Shuttles | Private Transfers | Tours\nPhone number: +506 8913-1480\nWhatsApp: +506 8913-1480\nTripadvisor reviews: https://www.tripadvisor.com/Attraction_Review-g309240-d16916659-Reviews-Liberia_Airport_Shuttle-Liberia_Province_of_Guanacaste.html`;
+
+      if (isArrival) {
+        const emailRateLine = isCash ? `\n\n*The one-way rate is ${ratePerTrip} USD, payable to your driver in USD cash.` : '';
+        return {
+          subject: `Your arrival tomorrow, ${fechaShort}`,
+          body: `Hi ${firstName},\n\nI hope this email finds you well. We are all set to pick ${pax} people up at Liberia Airport (LIR) tomorrow, ${fecha}, on flight ${vuelo} (arriving at ${hora}), to be taken to ${hotel}. Please confirm that everything is still on.${emailRateLine}\n\n*Your driver will be outside of customs area holding a sign with your name on it. If having trouble finding the driver, please contact us and head to the outside of the Bar Imperial/Britt caf\u00e9. You will see a set of tables and chairs in that outside part.\n\n*For safety reasons, do not accept help from anyone other than a representative of LiberiaAirportShuttle.com.\n(There are people outside offering help to carry the luggage, but for YOUR SAFETY, I recommend you not to give your luggage to any of them as they do not work with our company).${signature}`
+        };
+      } else {
+        const emailDepartureRate = isCash ? `\n\n- The rate is ${ratePerTrip} USD, payable to your driver in USD cash.` : '';
+        return {
+          subject: `Return to LIR Airport tomorrow, ${fechaShort}.`,
+          body: `Hi ${firstName} ,\n\nI hope you're enjoying your time in Costa Rica! We are all set to pick ${pax} people up at ${hotel} tomorrow, ${fecha}  at ${hora}.\n\nMay I have your room number (if applicable), please? Your driver will need it at the entrance, but he will meet you at the lobby/front desk area.${emailDepartureRate}${signature}`
+        };
+      }
+    }
+
+    function autoResizeTextarea(textarea) {
+      if (!textarea) return;
+      if (!textarea.dataset.baseHeight) {
+        textarea.dataset.baseHeight = String(textarea.offsetHeight || 64);
+      }
+      const baseHeight = parseFloat(textarea.dataset.baseHeight) || 64;
+      textarea.style.overflowY = 'hidden';
+      textarea.style.height = 'auto';
+      textarea.style.height = `${Math.max(textarea.scrollHeight, baseHeight)}px`;
+    }
+
+    function resizeTripNoteTextareas() {
+      const modal = document.getElementById("trip-modal");
+      if (!modal) return;
+      modal.querySelectorAll('textarea[id*="nota_choferes"], textarea[id*="notas_internas"]').forEach(autoResizeTextarea);
+    }
+
+    function sendTripEmail() {
+      if (!currentTrip || !currentTripOrder) return;
+      const email = (currentTrip.email || '').toLowerCase();
+      const { subject, body } = generateTripEmailMessage(currentTrip, currentTripOrder);
+      window.open(`mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+    }
+
+    function sendTripWhatsApp() {
+      if (!currentTrip || !currentTripOrder) return;
+      const msg = generateTripMessage(currentTrip, currentTripOrder);
+      const whatsappUrl = PhoneUtils.buildWhatsappUrl(
+        currentTrip.phone || '',
+        currentTripOrder.billing?.country || '',
+        msg
+      );
+      if (!whatsappUrl) return;
+      window.open(whatsappUrl, '_blank');
+    }
+
+    // Limpiar nombre de chofer (quitar paréntesis y contenido)
+    function cleanDriverName(name) {
+      if (!name) return '';
+      return name.replace(/\s*\(.*?\)\s*/g, '').trim();
+    }
+
+    function sendDriverContactWhatsApp() {
+      if (!currentTrip || !currentTripOrder) return;
+      const choferName = currentTrip.chofer || '';
+      if (!choferName) { alert('No hay chofer asignado a este viaje.'); return; }
+      const phone = CHOFERES_PHONE[choferName];
+      if (!phone) { alert(`No se encontró teléfono para el chofer "${choferName}".`); return; }
+      const cleanPhone = phone.replace(/[\s\-]/g, '');
+      const displayName = cleanDriverName(choferName);
+      const firstName = (currentTripOrder.billing?.first_name || '').trim();
+      const msg = `Hi ${firstName},\n\nThis is your driver's WhatsApp for tomorrow: wa.me/${cleanPhone}, or if you need to call him directly: ${phone}. His name is ${displayName}. Please use this number only in case of an emergency. See you tomorrow!\n\nBest regards,\nMónica B.`;
+      const whatsappUrl = PhoneUtils.buildWhatsappUrl(currentTrip.phone || '', currentTripOrder.billing?.country || '', msg);
+      if (!whatsappUrl) return;
+      window.open(whatsappUrl, '_blank');
     }
 
     function toggleIndexingUI(show) {
@@ -2156,13 +2639,17 @@
       currentTripOrder = order;
       currentTripIsArrival = isArrival;
       currentTripStatusKey = isArrival ? "status_llegada" : "status_salida";
+      currentViajeId = trip.viaje_id || null;
+      currentItemIndex = trip.item_index !== undefined ? trip.item_index : null;
+      currentTrip = trip;
       const hotel = trip.hotel || "Hotel no especificado";
       const originName = isArrival ? "Aeropuerto LIR" : hotel;
       const destName = isArrival ? hotel : "Aeropuerto LIR";
       const contactParts = [trip.email, trip.phone].filter(Boolean);
 
       const statusKeyViaje = isArrival ? "status_llegada" : "status_salida";
-      const statusViajeVal = findMetaValue(order, [statusKeyViaje]) || "";
+      // NUEVO: Usar trip_status primero (de tabla viajes), fallback a metadata
+      const statusViajeVal = trip.trip_status || findMetaValue(order, [statusKeyViaje]) || "";
       const statusReservaVal = trip.order_status;
 
       tripEditingSections = { passenger: false, logistics: false };
@@ -2198,6 +2685,7 @@
       };
       tripOriginalValues["status_reserva"] = statusReservaVal;
       tripOriginalValues["status_viaje"] = statusViajeVal;
+      tripOriginalValues["precio_neto"] = String(trip.precio_neto || '');
 
       // Privacy settings
       const privacyShowEmail = findMetaValue(order, ["privacy_show_email"]);
@@ -2225,9 +2713,20 @@
       document.getElementById("trip-display-address").innerText =
         addressOnlyLine1 || "---";
 
+      // Customer Note
+      const customerNote = order.customer_note || '';
+      const noteContainer = document.getElementById('trip-customer-note-container');
+      const noteDisplay = document.getElementById('trip-display-customer-note');
+      if (customerNote.trim()) {
+        noteDisplay.innerText = customerNote;
+        noteContainer.classList.remove('hidden');
+      } else {
+        noteContainer.classList.add('hidden');
+      }
+
       document.getElementById("trip-det-email-link").href = `mailto:${email}`;
       document.getElementById("trip-det-whatsapp-link").href =
-        `https://wa.me/${phone.replace(/\D/g, "")}`;
+        PhoneUtils.buildWhatsappUrl(phone, country);
 
       document.getElementById("trip-input-name").value = fullName;
       document.getElementById("trip-input-email").value = email;
@@ -2268,11 +2767,9 @@
         : "🛫";
       document.getElementById("trip-route-separator-emoji").innerText = "➡️";
 
-      // Hotel Name Logic
-      const zoneName = order.line_items?.[0]?.name || 'Hotel no especificado';
-      const hotelManual = findMetaValue(order, ["hotel_manual"]) || "";
-      // Mantenemos zoneName para origen/destino principal
-      const displayHotelName = zoneName;
+      // Hotel Name Logic - usar nombre del producto, NO trip.hotel
+      const itemIdx = trip.item_index >= 1000 ? trip.item_index - 1000 : trip.item_index;
+      const displayHotelName = order.line_items?.[itemIdx]?.name || order.line_items?.[0]?.name || 'Hotel no especificado';
 
       // Update Origin/Dest based on Trip Type
       if (trip.type === 'arrival') {
@@ -2297,14 +2794,7 @@
       document.getElementById("trip-general-pax-value").innerText = trip.pax || "1";
       document.getElementById("trip-general-relative").innerText = getRelativeTime(trip.raw_date);
 
-      // Hotel Pill Logic
-      const hotelPill = document.getElementById("trip-hotel-pill");
-      if (hotelManual) {
-        document.getElementById("trip-general-hotel-value").innerText = hotelManual;
-        hotelPill.classList.remove("hidden");
-      } else {
-        hotelPill.classList.add("hidden");
-      }
+
 
       // Tarjeta de logística
       document.getElementById("trip-card-title").innerText = isArrival
@@ -2342,11 +2832,40 @@
       logisticsContainer.innerHTML = "";
       const fechaLabel = isArrival ? "Fecha" : "Fecha de Recogida";
       const horaLabel = isArrival ? "Hora" : "Hora de Recogida";
+      const tripDateInputValue = trip.raw_date
+        ? `${trip.raw_date.getFullYear()}-${String(trip.raw_date.getMonth() + 1).padStart(2, "0")}-${String(trip.raw_date.getDate()).padStart(2, "0")}`
+        : "";
+      const normalizedTripTime = normalizeTime(trip.time || "");
+      const tripTimeInputValue = normalizedTripTime !== "--:--" ? normalizedTripTime : "";
+      const tripFlightInputValue = (trip.flight && trip.flight !== "--") ? trip.flight : "";
+      const tripHotelInputValue = trip.hotel || "";
+      tripOriginalValues["fecha"] = tripDateInputValue;
+      tripOriginalValues["hora"] = tripTimeInputValue;
+      tripOriginalValues["vuelo"] = tripFlightInputValue;
+      tripOriginalValues["hotel"] = tripHotelInputValue;
+
       logisticsContainer.innerHTML += `
-                <div><p class="meta-field-label">${fechaLabel}</p><p class="meta-field-value">${trip.dateStr}</p></div>
-                <div><p class="meta-field-label">${horaLabel}</p><p class="meta-field-value">${trip.time || "--:--"}</p></div>
-                <div><p class="meta-field-label">Vuelo</p><p class="meta-field-value">${(trip.flight || "--").toUpperCase()}</p></div>
+                <div>
+                  <p class="meta-field-label">${fechaLabel}</p>
+                  <p id="trip-display-fecha" class="meta-field-value">${trip.dateStr}</p>
+                  <input type="date" id="trip-input-fecha" oninput="tripCheckForChanges()" value="${tripDateInputValue}" class="hidden input-editable mt-1">
+                </div>
+                <div>
+                  <p class="meta-field-label">${horaLabel}</p>
+                  <p id="trip-display-hora" class="meta-field-value">${trip.time || "--:--"}</p>
+                  <input type="time" id="trip-input-hora" oninput="tripCheckForChanges()" value="${tripTimeInputValue}" class="hidden input-editable mt-1">
+                </div>
+                <div>
+                  <p class="meta-field-label">Vuelo</p>
+                  <p id="trip-display-vuelo" class="meta-field-value">${(trip.flight || "--").toUpperCase()}</p>
+                  <input type="text" id="trip-input-vuelo" oninput="tripCheckForChanges()" value="${tripFlightInputValue}" class="hidden input-editable mt-1 uppercase">
+                </div>
                 <div><p class="meta-field-label">Ruta</p><p class="meta-field-value">${trip.route}</p></div>
+                <div class="col-span-2">
+                  <p class="meta-field-label">Hotel</p>
+                  <p id="trip-display-hotel" class="meta-field-value">${tripHotelInputValue || '<span class="text-gray-300">Sin especificar</span>'}</p>
+                  <input type="text" id="trip-input-hotel" oninput="tripCheckForChanges()" value="${tripHotelInputValue}" class="hidden input-editable mt-1" placeholder="Nombre del hotel">
+                </div>
             `;
 
 
@@ -2364,26 +2883,19 @@
         ? "notas_internas_llegada"
         : "notas_internas_salida";
 
-      const driverVal = findMetaValue(order, [driverKey]) || "";
-      const codriverVal = findMetaValue(order, [codriverKey]) || "";
-      const notesVal = findMetaValue(order, [driverNotesKey]) || "";
-      const internalVal = findMetaValue(order, [internalNotesKey]) || "";
+      // NUEVO: Usar datos del trip primero (de tabla viajes), fallback a metadata
+      const driverVal = trip.chofer || trip.driver || findMetaValue(order, [driverKey]) || "";
+      const codriverVal = trip.subchofer || trip.codriver || findMetaValue(order, [codriverKey]) || "";
+      const notesVal = trip.nota_choferes || trip.driverNotes || findMetaValue(order, [driverNotesKey]) || "";
+      const internalVal = trip.notas_internas || trip.internalNotes || findMetaValue(order, [internalNotesKey]) || "";
 
       tripOriginalValues[driverKey] = driverVal;
       tripOriginalValues[codriverKey] = codriverVal;
       tripOriginalValues[driverNotesKey] = notesVal;
       tripOriginalValues[internalNotesKey] = internalVal;
 
-      // Inicializar select de choferes
-      const choferSelect = document.getElementById("trip-input-meta-chofer");
-      if (choferSelect) {
-        choferSelect.innerHTML = '<option value="">No asignado</option>';
-        CHOFERES.forEach((c) => {
-          const opt = document.createElement("option");
-          opt.value = opt.textContent = c;
-          choferSelect.appendChild(opt);
-        });
-      }
+      // Inicializar dropdown buscable de choferes
+      initSearchableChofer(driverVal);
 
       document.getElementById("trip-input-meta-chofer").value = driverVal;
       document.getElementById("trip-input-meta-subchofer").value =
@@ -2392,6 +2904,8 @@
         notesVal;
       document.getElementById("trip-input-meta-notas_internas").value =
         internalVal;
+      autoResizeTextarea(document.getElementById("trip-input-meta-nota_choferes"));
+      autoResizeTextarea(document.getElementById("trip-input-meta-notas_internas"));
 
       document.getElementById("trip-display-meta-chofer").innerText =
         assign.driver;
@@ -2414,8 +2928,11 @@
           .getElementById(k.replace("display", "input"))
           ?.classList.remove("hidden");
       });
-      // Ocultar el botón de editar logística ya que siempre están editables
-      document.getElementById("trip-btn-edit-logistics").classList.add("hidden");
+      // Mostrar botón para editar datos de viaje (fecha/hora/vuelo)
+      const btnEditLogistics = document.getElementById("trip-btn-edit-logistics");
+      btnEditLogistics.classList.remove("hidden");
+      btnEditLogistics.innerText = "Editar";
+      btnEditLogistics.classList.remove("editing");
 
       // Estatus del Viaje (Llegada/Salida)
       const tripStatusOptions = isArrival
@@ -2435,9 +2952,8 @@
 
 
 
-      const statusViajeValFinal =
-        findMetaValue(order, [statusKeyViaje]) || "";
-      statusViajeSelect.value = statusViajeValFinal;
+      // CORREGIDO: Usar statusViajeVal ya calculado (incluye trip.trip_status)
+      statusViajeSelect.value = statusViajeVal;
 
       // Mostrar el estatus del viaje
       tripStatusViajeUpdateDisplay();
@@ -2448,10 +2964,16 @@
         .getElementById("trip-status-viaje-edit")
         .classList.add("hidden");
 
-      // Renderizar resumen financiero
-      renderTripFinancialSummary(order);
+      // Renderizar resumen financiero (con el viaje actual para cálculo correcto)
+      renderTripFinancialSummary(order, trip);
 
       document.getElementById("trip-modal").classList.remove("hidden");
+      // Scroll modal content to top
+      document.querySelectorAll('#trip-modal-box .modal-main-content, #trip-modal-box .modal-sidebar').forEach(el => el.scrollTop = 0);
+      document.getElementById('trip-modal-box').scrollTop = 0;
+      requestAnimationFrame(() => {
+        resizeTripNoteTextareas();
+      });
     }
 
     function closeTripModal() {
@@ -2459,22 +2981,76 @@
       document.body.style.overflow = "";
     }
 
-    function renderTripFinancialSummary(order) {
+    function renderTripFinancialSummary(order, trip = null) {
       const container = document.getElementById('trip-payment-breakdown');
       container.innerHTML = '';
 
-      // Detectar si es round-trip (tiene tanto llegada como salida)
-      const hasArrival = !!findMetaValue(order, ["- Arrival Date"]);
-      const hasDeparture = !!findMetaValue(order, ["- Departure Date"]);
-      const isRoundTrip = hasArrival && hasDeparture;
+      // Si tenemos información del viaje específico, buscar el line_item correspondiente
+      let tripSubtotal = null;
+      let isRoundTrip = false;
+      let tripLineItem = null;
+
+      if (trip && trip.item_index !== undefined && order.line_items) {
+        // Buscar el line_item que corresponde a este viaje
+        const originalIdx = trip.item_index >= 1000 ? trip.item_index - 1000 : trip.item_index;
+
+        tripLineItem = order.line_items.find((li, idx) => {
+          // Primero intentar por viaje_id (comparación loose para evitar int vs string)
+          if (trip.viaje_id && li.id == trip.viaje_id) return true;
+          return false;
+        });
+
+        // Fallback: si no encontró por viaje_id, buscar por item_index original
+        if (!tripLineItem) {
+          // Buscar cualquier line_item que comparta el mismo item_index original
+          // En roundtrips, tanto llegada (idx 0) como salida (idx 1000) apuntan al mismo producto
+          if (order.viajes && order.viajes.length > 0) {
+            const viajeIdx = order.viajes.findIndex(v => v.id == trip.viaje_id || v.item_index === trip.item_index);
+            if (viajeIdx !== -1 && order.line_items[viajeIdx]) {
+              tripLineItem = order.line_items[viajeIdx];
+            }
+          }
+          // Último fallback: buscar por posición usando item_index original
+          if (!tripLineItem && order.line_items[originalIdx]) {
+            tripLineItem = order.line_items[originalIdx];
+          }
+        }
+
+        if (tripLineItem) {
+          tripSubtotal = parseFloat(tripLineItem.subtotal || 0);
+        }
+
+        // Si el subtotal es 0 pero el order.total no, calcular proporcionalmente
+        if ((tripSubtotal === null || tripSubtotal === 0) && parseFloat(order.total) > 0) {
+          const numViajes = order.viajes?.length || order.line_items?.length || 1;
+          tripSubtotal = parseFloat(order.total) / numViajes;
+        }
+
+        // Detectar si este viaje es parte de un roundtrip
+        // Un roundtrip tiene item_index >= 1000 para la salida (mismo line_item que la llegada)
+        if (trip.item_index >= 1000) {
+          isRoundTrip = true;
+        } else if (order.viajes && order.viajes.length > 0) {
+          // Verificar si hay otro viaje con item_index = trip.item_index + 1000 (la salida del roundtrip)
+          isRoundTrip = order.viajes.some(v => v.item_index === trip.item_index + 1000);
+        }
+      } else {
+        // Fallback: detectar roundtrip por metadata legacy
+        const hasArrival = !!findMetaValue(order, ["- Arrival Date"]);
+        const hasDeparture = !!findMetaValue(order, ["- Departure Date"]);
+        isRoundTrip = hasArrival && hasDeparture;
+      }
+
       const divisor = isRoundTrip ? 2 : 1;
 
-      const addRow = (label, value, isBold = false, isAccent = false, isDiscount = false) => {
+      const addRow = (label, value, isBold = false, isAccent = false, isDiscount = false, skipDivisor = false) => {
         let numVal = parseFloat(value);
         if (value === undefined || value === null || value === "" || isNaN(numVal) || numVal === 0) return;
 
-        // Dividir por 2 si es round-trip
-        numVal = numVal / divisor;
+        // Dividir por 2 solo si es round-trip y no se omite el divisor
+        if (!skipDivisor) {
+          numVal = numVal / divisor;
+        }
 
         const formattedValue = isDiscount ? `-$${Math.abs(numVal).toFixed(2)}` : `$${numVal.toFixed(2)}`;
         const colorClass = isDiscount ? 'text-green-600' : (isAccent ? 'text-red-500' : 'text-[#002a3f]');
@@ -2494,22 +3070,84 @@
         container.innerHTML += `<div class="text-[10px] uppercase font-black text-gray-400 mb-4 border-b pb-2">Método: ${order.payment_method_title}</div>`;
       }
 
-      const subtotal = (order.line_items || []).reduce((acc, item) => acc + parseFloat(item.subtotal || 0), 0);
-      addRow("Subtotal Servicios", subtotal);
+      // Si es roundtrip, mostrar el total original de la reserva completa primero
+      if (isRoundTrip) {
+        const originalTotal = parseFloat(order.total || 0);
+        container.innerHTML += `
+          <div class="flex justify-between items-center mb-3 pb-2 border-b border-dashed border-gray-200">
+            <span class="font-bold uppercase opacity-50 text-[10px] tracking-widest">Total Original (Reserva Completa)</span>
+            <span class="font-bold text-lg text-[#002a3f]">$${originalTotal.toFixed(2)}</span>
+          </div>`;
+      }
+
+      // Usar el subtotal del line_item específico si está disponible
+      if (tripSubtotal !== null) {
+        addRow("Subtotal Este Servicio", tripSubtotal, true);
+      } else {
+        const subtotal = (order.line_items || []).reduce((acc, item) => acc + parseFloat(item.subtotal || 0), 0);
+        addRow("Subtotal Servicios", subtotal, true);
+      }
+
+      // Proporcionar cargos adicionales e impuestos entre todos los viajes
+      const totalViajes = order.viajes?.length || order.line_items?.length || 1;
+      const proportion = 1 / totalViajes;
+      let feeSum = 0;
+      let taxSum = 0;
+      let couponSum = 0;
 
       if (order.fee_lines && order.fee_lines.length > 0) {
-        order.fee_lines.forEach(fee => addRow(fee.name || 'Cargo Adicional', fee.total));
+        order.fee_lines.forEach(fee => {
+          // Dividir el cargo total entre todos los viajes
+          const feeAmount = parseFloat(fee.total || 0) * proportion;
+          feeSum += feeAmount;
+          addRow(fee.name || 'Cargo Adicional', feeAmount, false, false, false, true); // true = no aplicar divisor
+        });
       }
 
       if (order.tax_lines && order.tax_lines.length > 0) {
-        order.tax_lines.forEach(tax => addRow(tax.label || 'Impuesto', tax.tax_total));
+        order.tax_lines.forEach(tax => {
+          const taxAmount = parseFloat(tax.tax_total || 0) * proportion;
+          taxSum += taxAmount;
+          addRow(tax.label || 'Impuesto', taxAmount, false, false, false, true);
+        });
       }
 
       if (order.coupon_lines && order.coupon_lines.length > 0) {
-        order.coupon_lines.forEach(coupon => addRow(`Cupón: ${coupon.code}`, coupon.discount, false, false, true));
+        order.coupon_lines.forEach(coupon => {
+          const couponAmount = parseFloat(coupon.discount || 0) * proportion;
+          couponSum += couponAmount;
+          addRow(`Cupón: ${coupon.code}`, couponAmount, false, false, true, true);
+        });
       }
 
-      addRow("Total Este Viaje", order.total, true);
+      // Total de este viaje
+      if (tripSubtotal !== null) {
+        const baseSubtotal = tripSubtotal / divisor;
+        const tripTotal = baseSubtotal + feeSum + taxSum - couponSum;
+
+
+
+        addRow("Total Este Viaje", tripTotal, false, false, false, true);
+      } else {
+        addRow("Total Este Viaje", order.total);
+      }
+
+      const precioNetoVal = trip.precio_neto || '';
+      container.innerHTML += `
+        <div class="flex justify-between items-center pt-3 border-t border-dashed border-gray-200 mt-2">
+          <span class="font-bold uppercase opacity-50 text-[10px] tracking-widest">PRECIO NETO</span>
+          <div class="flex items-center gap-1 w-36">
+            <span class="font-bold text-base text-[#002a3f]">$</span>
+            <input
+              type="number"
+              step="0.01"
+              id="trip-input-precio-neto"
+              value="${precioNetoVal ? String(precioNetoVal).replace(/"/g, '&quot;') : ''}"
+              oninput="tripCheckForChanges()"
+              class="input-editable bg-white w-full text-left font-bold"
+              placeholder="0.00">
+          </div>
+        </div>`;
     }
 
     function tripToggleStatusEditQuick() {
@@ -2563,6 +3201,10 @@
         colorClass = "bg-blue-500";
       } else if (statusVal === "contactado_email") {
         colorClass = "bg-yellow-500";
+      } else if (statusVal === "contactado_todos") {
+        colorClass = "bg-purple-500";
+      } else if (statusVal === "contactado_ambos") {
+        colorClass = "bg-teal-500";
       } else if (statusVal === "cancelado") {
         colorClass = "bg-red-500";
       }
@@ -2610,10 +3252,10 @@
         document.getElementById("trip-btn-edit-logistics").innerText =
           "Editar";
         [
-          "trip-display-meta-chofer",
-          "trip-display-meta-subchofer",
-          "trip-display-meta-nota_choferes",
-          "trip-display-meta-notas_internas",
+          "trip-display-fecha",
+          "trip-display-hora",
+          "trip-display-vuelo",
+          "trip-display-hotel",
         ].forEach((k) => {
           document.getElementById(k)?.classList.remove("hidden");
           document
@@ -2624,10 +3266,10 @@
         document.getElementById("trip-btn-edit-logistics").innerText =
           "Cancelar";
         [
-          "trip-display-meta-chofer",
-          "trip-display-meta-subchofer",
-          "trip-display-meta-nota_choferes",
-          "trip-display-meta-notas_internas",
+          "trip-display-fecha",
+          "trip-display-hora",
+          "trip-display-vuelo",
+          "trip-display-hotel",
         ].forEach((k) => {
           document.getElementById(k)?.classList.add("hidden");
           document
@@ -2677,6 +3319,27 @@
 
       // Verificar cambios en logística
       if (!hasChanges) {
+        const tripDateInput = document.getElementById("trip-input-fecha");
+        const tripTimeInput = document.getElementById("trip-input-hora");
+        const tripFlightInput = document.getElementById("trip-input-vuelo");
+        const tripHotelInput = document.getElementById("trip-input-hotel");
+
+        if (tripDateInput && tripDateInput.value !== (tripOriginalValues["fecha"] || "")) {
+          hasChanges = true;
+        }
+        if (tripTimeInput && tripTimeInput.value !== (tripOriginalValues["hora"] || "")) {
+          hasChanges = true;
+        }
+        if (tripFlightInput && tripFlightInput.value !== (tripOriginalValues["vuelo"] || "")) {
+          hasChanges = true;
+        }
+        if (tripHotelInput && tripHotelInput.value !== (tripOriginalValues["hotel"] || "")) {
+          hasChanges = true;
+        }
+
+      }
+
+      if (!hasChanges) {
         const driverKey = currentTripIsArrival
           ? "chofer_llegada"
           : "chofer_salida";
@@ -2722,6 +3385,14 @@
         }
       }
 
+      // Verificar cambios en precio neto
+      if (!hasChanges) {
+        const precioNetoInput = document.getElementById("trip-input-precio-neto");
+        if (precioNetoInput && precioNetoInput.value.trim() !== (tripOriginalValues["precio_neto"] || '')) {
+          hasChanges = true;
+        }
+      }
+
       document
         .getElementById("trip-btn-save")
         .classList.toggle(
@@ -2734,6 +3405,68 @@
 
     function tripHandleEmailInput() {
       tripCheckForChanges();
+    }
+
+    function normalizeTimeForCompare(value) {
+      if (!value) return "";
+      const normalized = normalizeTime(String(value));
+      if (!normalized || normalized === "--:--") return "";
+      return normalized.slice(0, 5);
+    }
+
+    function matchViajeByFingerprint(viajesList) {
+      if (!Array.isArray(viajesList) || viajesList.length === 0) return null;
+
+      const targetTipo = currentTripIsArrival ? 'llegada' : 'salida';
+      const targetFecha = (tripOriginalValues["fecha"] || "").toString();
+      const targetHora = normalizeTimeForCompare(tripOriginalValues["hora"] || "");
+      const targetVuelo = (tripOriginalValues["vuelo"] || "").toString().trim().toUpperCase();
+
+      const sameType = viajesList.filter(v => v.tipo === targetTipo);
+      if (sameType.length === 1 && sameType[0]?.id) return sameType[0].id;
+
+      const strictMatch = sameType.find(v => {
+        const vFecha = (v.fecha || "").toString();
+        const vHora = normalizeTimeForCompare(v.hora || "");
+        const vVuelo = (v.vuelo || "").toString().trim().toUpperCase();
+        return vFecha === targetFecha && vHora === targetHora && vVuelo === targetVuelo;
+      });
+
+      return strictMatch?.id || null;
+    }
+
+    async function resolveViajeIdForSave() {
+      if (currentViajeId) return currentViajeId;
+
+      if (currentTrip?.viaje_id) return currentTrip.viaje_id;
+
+      const viajes = currentTripOrder?.viajes || [];
+      if (currentItemIndex !== null && currentItemIndex !== undefined) {
+        const matchByIndex = viajes.find(v => String(v.item_index) === String(currentItemIndex));
+        if (matchByIndex?.id) return matchByIndex.id;
+      }
+
+      const matchLocalFingerprint = matchViajeByFingerprint(viajes);
+      if (matchLocalFingerprint) return matchLocalFingerprint;
+
+      try {
+        const resp = await fetch(`${VIAJES_API}?reserva_id=${currentTripOrder?.id || 0}`);
+        if (resp.ok) {
+          const viajesDb = await resp.json();
+          if (Array.isArray(viajesDb) && viajesDb.length > 0) {
+            if (currentItemIndex !== null && currentItemIndex !== undefined) {
+              const dbByIndex = viajesDb.find(v => String(v.item_index) === String(currentItemIndex));
+              if (dbByIndex?.id) return dbByIndex.id;
+            }
+
+            const dbByFingerprint = matchViajeByFingerprint(viajesDb);
+            if (dbByFingerprint) return dbByFingerprint;
+          }
+        }
+      } catch (_) {
+      }
+
+      return null;
     }
 
     async function tripSaveDetails() {
@@ -2756,9 +3489,24 @@
       ).value;
       const statusReservaVal =
         document.getElementById("trip-input-status").value;
+      const tripFechaVal = document.getElementById("trip-input-fecha")?.value || "";
+      const tripHoraVal = document.getElementById("trip-input-hora")?.value || "";
+      const tripVueloVal = document.getElementById("trip-input-vuelo")?.value?.trim() || "";
 
       const meta = [
         { key: currentTripStatusKey, value: statusViajeVal },
+        {
+          key: currentTripIsArrival ? "- Arrival Date" : "- Departure Date",
+          value: tripFechaVal,
+        },
+        {
+          key: currentTripIsArrival ? "- Arrival Time" : "- Pick-up Time at Hotel",
+          value: tripHoraVal,
+        },
+        {
+          key: currentTripIsArrival ? "- Arrival Flight Number" : "- Departure Flight Number",
+          value: tripVueloVal,
+        },
         {
           key: currentTripIsArrival ? "chofer_llegada" : "chofer_salida",
           value: document.getElementById("trip-input-meta-chofer").value,
@@ -2831,6 +3579,42 @@
       };
 
       try {
+        const resolvedViajeId = await resolveViajeIdForSave();
+
+        if (!resolvedViajeId) {
+          throw new Error("No se pudo identificar el viaje en la base local para guardar los cambios");
+        }
+
+        // NUEVO: Si hay viaje_id, actualizar primero la tabla viajes
+        currentViajeId = resolvedViajeId;
+        const tripHotelVal = document.getElementById("trip-input-hotel")?.value?.trim() || "";
+        const viajePayload = {
+          fecha: tripFechaVal,
+          hora: tripHoraVal,
+          vuelo: tripVueloVal,
+          hotel: tripHotelVal,
+          chofer: document.getElementById("trip-input-meta-chofer").value,
+          subchofer: document.getElementById("trip-input-meta-subchofer").value,
+          nota_choferes: document.getElementById("trip-input-meta-nota_choferes").value,
+          notas_internas: document.getElementById("trip-input-meta-notas_internas").value,
+          status: statusViajeVal,
+          precio_neto: document.getElementById("trip-input-precio-neto")?.value?.trim() || '',
+        };
+
+        const viajeResp = await fetch(
+          `${VIAJES_API}?viaje_id=${resolvedViajeId}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(viajePayload),
+          }
+        );
+        if (!viajeResp.ok) {
+          const errData = await viajeResp.json().catch(() => ({}));
+          throw new Error(errData.error || "Error guardando viaje");
+        }
+
+        // Actualizar reserva (datos del cliente, estatus de orden, privacy settings)
         const resp = await fetch(
           `${API_PROXY}?order_id=${currentTripOrder.id}`,
           {
@@ -2842,10 +3626,28 @@
         if (!resp.ok) throw new Error("Error guardando cambios");
         const updated = await resp.json();
 
+        // Valores guardados
+        const savedDriver = document.getElementById("trip-input-meta-chofer").value;
+        const savedCodriver = document.getElementById("trip-input-meta-subchofer").value;
+        const savedDriverNotes = document.getElementById("trip-input-meta-nota_choferes").value;
+        const savedInternalNotes = document.getElementById("trip-input-meta-notas_internas").value;
+        const savedFecha = document.getElementById("trip-input-fecha")?.value || "";
+        const savedHora = document.getElementById("trip-input-hora")?.value || "";
+        const savedVuelo = document.getElementById("trip-input-vuelo")?.value?.trim() || "";
+        const savedRawDate = parseFlexibleDate(savedFecha);
+        if (savedRawDate && savedHora) {
+          const [hours, mins] = savedHora.split(":");
+          savedRawDate.setHours(parseInt(hours || "0"), parseInt(mins || "0"));
+        }
+
         // Actualizar en allTrips
-        const allTripIndex = allTrips.findIndex(
-          (t) => t.id === currentTripId,
-        );
+        const allTripIndex = allTrips.findIndex((t) => {
+          if (currentViajeId && t.viaje_id) return t.viaje_id === currentViajeId;
+          if (currentItemIndex !== null && t.item_index !== undefined) {
+            return t.id === currentTripId && t.item_index === currentItemIndex;
+          }
+          return t.id === currentTripId && t.type === (currentTripIsArrival ? 'arrival' : 'departure');
+        });
         if (allTripIndex !== -1) {
           allTrips[allTripIndex].order = updated;
           allTrips[allTripIndex].client =
@@ -2854,11 +3656,33 @@
           allTrips[allTripIndex].phone = updated.billing.phone || "";
           allTrips[allTripIndex].order_status = updated.status;
           allTrips[allTripIndex].trip_status = statusViajeVal;
+          // NUEVO: Actualizar datos del viaje
+          allTrips[allTripIndex].chofer = savedDriver;
+          allTrips[allTripIndex].subchofer = savedCodriver;
+          allTrips[allTripIndex].nota_choferes = savedDriverNotes;
+          allTrips[allTripIndex].notas_internas = savedInternalNotes;
+          allTrips[allTripIndex].flight = savedVuelo || "--";
+          allTrips[allTripIndex].hotel = tripHotelVal;
+          allTrips[allTripIndex].precio_neto = document.getElementById("trip-input-precio-neto")?.value?.trim() || '';
+          allTrips[allTripIndex].time = savedHora ? formatTime12H(savedHora) : "--:--";
+          if (savedRawDate) {
+            allTrips[allTripIndex].raw_date = savedRawDate;
+            allTrips[allTripIndex].dateStr = formatDateStandard(savedRawDate);
+          }
         }
 
-        const tripIndex = currentFilteredTrips.findIndex(
-          (t) => t.id === currentTripId,
-        );
+        const tripIndex = currentFilteredTrips.findIndex((t) => {
+          // Para viajes nuevos, usar viaje_id
+          if (currentViajeId && t.viaje_id) {
+            return t.viaje_id === currentViajeId;
+          }
+          // Fallback: id + item_index o id + type
+          if (currentItemIndex !== null && t.item_index !== undefined) {
+            return t.id === currentTripId && t.item_index === currentItemIndex;
+          }
+          // Fallback final: id + tipo
+          return t.id === currentTripId && t.type === (currentTripIsArrival ? 'arrival' : 'departure');
+        });
         if (tripIndex !== -1) {
           // Actualizar el order y reconstruir los campos del trip desde el order actualizado
           currentFilteredTrips[tripIndex].order = updated;
@@ -2868,6 +3692,18 @@
           currentFilteredTrips[tripIndex].phone = updated.billing.phone || "";
           currentFilteredTrips[tripIndex].order_status = updated.status;
           currentFilteredTrips[tripIndex].trip_status = statusViajeVal;
+          // NUEVO: Actualizar datos del viaje
+          currentFilteredTrips[tripIndex].chofer = savedDriver;
+          currentFilteredTrips[tripIndex].subchofer = savedCodriver;
+          currentFilteredTrips[tripIndex].nota_choferes = savedDriverNotes;
+          currentFilteredTrips[tripIndex].notas_internas = savedInternalNotes;
+          currentFilteredTrips[tripIndex].flight = savedVuelo || "--";
+          currentFilteredTrips[tripIndex].precio_neto = document.getElementById("trip-input-precio-neto")?.value?.trim() || '';
+          currentFilteredTrips[tripIndex].time = savedHora ? formatTime12H(savedHora) : "--:--";
+          if (savedRawDate) {
+            currentFilteredTrips[tripIndex].raw_date = savedRawDate;
+            currentFilteredTrips[tripIndex].dateStr = formatDateStandard(savedRawDate);
+          }
 
           // Re-renderizar tabla
           renderTrips(currentFilteredTrips);
@@ -2886,7 +3722,7 @@
     }
 
     function resetFilters() {
-      datePicker.clear();
+      datePicker.setDate([new Date(), new Date()], true);
       document.getElementById("filter-type").value = "all";
       document.getElementById("search-text").value = "";
       applyFilters();
@@ -2924,6 +3760,8 @@
         cancelado: "Cancelado",
         contactado_whatsapp: "Contactado WhatsApp",
         contactado_email: "Contactado Email",
+        contactado_todos: "Contactado Todos Los Medios",
+        contactado_ambos: "Contactado Ambos",
       };
       return map[s] || "Sin estatus";
     }
@@ -2934,6 +3772,8 @@
         cancelado: "cancelled",
         contactado_whatsapp: "processing",
         contactado_email: "on-hold",
+        contactado_todos: "refunded",
+        contactado_ambos: "processing",
       };
       return map[s] || "pending";
     }
