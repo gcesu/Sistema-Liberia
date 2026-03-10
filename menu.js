@@ -137,6 +137,7 @@ class AdminNavbar extends HTMLElement {
             <a href="/reservas" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline">📅 Reservas</a>
             <a href="/viajes" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline">🚐 Viajes</a>
             <a href="/choferes" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline">👤 Choferes</a>
+            <a href="/contabilidad" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline">💰 Contabilidad</a>
             <a href="#" id="mobile-logout-btn" class="text-red-400 text-2xl font-bold border-b border-white/10 pb-4 no-underline">🚪 Cerrar Sesión</a>
         </nav>
       </div>
@@ -155,6 +156,7 @@ class AdminNavbar extends HTMLElement {
             <a href="/reservas" class="nav-item">Reservas</a>
             <a href="/viajes" class="nav-item">Viajes</a>
             <a href="/choferes" class="nav-item">Choferes</a>
+            <a href="/contabilidad" class="nav-item">Contabilidad</a>
         </nav>
 
         <div class="ml-auto flex items-center gap-2 md:gap-4">

@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contabilidad de Choferes - Admin Shuttle</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&family=Oswald:wght@400;700&display=swap"
+        rel="stylesheet">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- VERIFICACIÓN DE SESIÓN -->
+    <script>
+        (async function checkAuth() {
+            const token = sessionStorage.getItem('session_token');
+            if (!token) { window.location.href = '/login'; return; }
+            try {
+                const response = await fetch('api/check_session.php', { headers: { 'X-Session-Token': token } });
+                const data = await response.json();
+                if (!data.authenticated) { sessionStorage.removeItem('session_token'); window.location.href = '/login'; }
+            } catch (error) { console.error('Error verificando sesión:', error); window.location.href = '/login'; }
+        })();
+    </script>
+
+    <script src="menu.js" defer></script>
+
+    <style>
+        :root {
+            --primary: #002a3f;
+            --secondary: #ffffff;
+            --accent: #ed4441;
+            --bg-light: #f1f5f9;
+            --font-base: 15px;
+            --font-sm: 14px;
+            --font-xs: 12px;
+            --font-xxs: 11px;
+            --font-xxxs: 10px;
+            --font-lg: 16px;
+        }
+
+        body {
+            font-family: 'Lato', sans-serif;
+            background-color: var(--bg-light);
+            color: #333;
+            margin: 0;
+            -webkit-font-smoothing: antialiased;
+            font-size: var(--font-base);
+        }
+
+        h1,
+        h2,
+        h3,
+        .title-font {
+            font-family: 'Oswald', sans-serif;
+            text-transform: uppercase;
+        }
+
+        /* ═══ Layout principal ═══ */
+        .page-layout {
+            display: flex;
+            min-height: calc(100vh - 70px);
+        }
+
+        /* ═══ Sidebar ═══ */
+        .sidebar {
+            width: 280px;
+            background: white;
+            border-right: 1px solid #e2e8f0;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            transition: margin-left 0.3s ease, opacity 0.3s ease;
+            position: sticky;
+            top: 70px;
+            height: calc(100vh - 70px);
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 transparent;
+        }
+
+        .sidebar::-webkit-scrollbar { width: 6px; }
+        .sidebar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 6px; }
+        .sidebar::-webkit-scrollbar-track { background: transparent; }
+
+        .sidebar.collapsed {
+            margin-left: -280px;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 5;
+        }
+
+        .sidebar-title {
+            font-family: 'Oswald', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--primary);
+            letter-spacing: 1px;
+        }
+
+        .sidebar-toggle {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: #64748b;
+            transition: all 0.2s;
+        }
+
+        .sidebar-toggle:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .driver-list {
+            padding: 8px;
+            flex: 1;
+        }
+
+        .driver-item {
+            padding: 12px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 2px;
+            border: 1px solid transparent;
+        }
+
+        .driver-item:hover {
+            background: #f1f5f9;
+        }
+
+        .driver-item.active {
+            background: #eff6ff;
+            border-color: #bfdbfe;
+        }
+
+        .driver-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 13px;
+            flex-shrink: 0;
+        }
+
+        .driver-avatar.porcentaje {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .driver-avatar.neto {
+            background: #e0f2fe;
+            color: #0369a1;
+        }
+
+        .driver-name {
+            font-weight: 700;
+            color: #334155;
+            font-size: var(--font-sm);
+        }
+
+        .driver-type {
+            font-size: var(--font-xxxs);
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .driver-type.porcentaje {
+            color: #16a34a;
+        }
+
+        .driver-type.neto {
+            color: #0284c7;
+        }
+
+        /* ═══ Main content ═══ */
+        .main-content {
+            flex: 1;
+            padding: 24px;
+            overflow-x: auto;
+            min-width: 0;
+        }
+
+        .content-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .btn-open-sidebar {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            background: white;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: #64748b;
+            flex-shrink: 0;
+            transition: all 0.2s;
+        }
+
+        .btn-open-sidebar:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-open-sidebar.visible {
+            display: flex;
+        }
+
+        .month-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 6px;
+        }
+
+        .month-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            border: none;
+            background: #f1f5f9;
+            cursor: pointer;
+            font-size: 14px;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .month-btn:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .month-input {
+            border: none;
+            font-family: 'Oswald', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--primary);
+            text-align: center;
+            min-width: 160px;
+            background: transparent;
+            cursor: pointer;
+            letter-spacing: 1px;
+        }
+
+        .month-input:focus {
+            outline: none;
+        }
+
+        /* ═══ Mobile driver select ═══ */
+        .mobile-driver-select {
+            display: none;
+            width: 100%;
+            margin-bottom: 16px;
+        }
+
+        .mobile-driver-select select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: var(--font-sm);
+            font-weight: 700;
+            color: var(--primary);
+            background: white;
+            cursor: pointer;
+        }
+
+        /* ═══ Stats cards ═══ */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: var(--font-xxs);
+            font-weight: 800;
+            text-transform: uppercase;
+            color: #94a3b8;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-family: 'Oswald', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .stat-value.green {
+            color: #16a34a;
+        }
+
+        .stat-value.amber {
+            color: #d97706;
+        }
+
+        .stat-value.blue {
+            color: #0284c7;
+        }
+
+        /* ═══ Table ═══ */
+        .table-wrapper {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            min-width: 900px;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            background-color: #f8fafc;
+            padding: 14px 16px;
+            font-size: var(--font-xxs);
+            font-weight: 900;
+            text-transform: uppercase;
+            color: #64748b;
+            border-bottom: 2px solid #e2e8f0;
+            text-align: left;
+            letter-spacing: 1px;
+            white-space: nowrap;
+        }
+
+        thead th:first-child {
+            text-align: center;
+            width: 50px;
+        }
+
+        tbody tr {
+            background: white;
+            border-bottom: 1px solid #f1f5f9;
+            transition: all 0.2s ease;
+        }
+
+        tbody tr:hover {
+            background: #f8fafc;
+        }
+
+        tbody tr.paid {
+            opacity: 0.5;
+            background: #f8fafc;
+        }
+
+        tbody tr.paid td {
+            text-decoration: line-through;
+            color: #94a3b8;
+        }
+
+        tbody tr.paid td:first-child {
+            text-decoration: none;
+        }
+
+        td {
+            padding: 14px 16px;
+            font-size: var(--font-sm);
+            color: #334155;
+            vertical-align: middle;
+        }
+
+        td:first-child {
+            text-align: center;
+        }
+
+        .checkbox-paid {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #16a34a;
+        }
+
+        .type-badge {
+            font-size: var(--font-xxxs);
+            font-weight: 900;
+            padding: 3px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .type-llegada {
+            background: #f1f5f9;
+            color: #0f172a;
+            border: 1px solid #e2e8f0;
+        }
+
+        .type-salida {
+            background: #fff7ed;
+            color: #9a3412;
+            border: 1px solid #ffedd5;
+        }
+
+        .money {
+            font-weight: 800;
+            font-family: 'Oswald', sans-serif;
+            font-size: var(--font-base);
+        }
+
+        .money.green {
+            color: #16a34a;
+        }
+
+        .method-pill {
+            font-size: var(--font-xxxs);
+            font-weight: 800;
+            padding: 4px 10px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .method-cash {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .method-paypal {
+            background: #e0f2fe;
+            color: #0369a1;
+        }
+
+        .method-card {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .method-other {
+            background: #f1f5f9;
+            color: #475569;
+        }
+
+        /* ═══ Empty state ═══ */
+        .empty-state {
+            text-align: center;
+            padding: 80px 40px;
+            color: #94a3b8;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .empty-state-title {
+            font-family: 'Oswald', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .empty-state-text {
+            font-size: var(--font-sm);
+        }
+
+        /* ═══ Totals row ═══ */
+        tfoot td {
+            padding: 16px;
+            font-weight: 900;
+            background: #f8fafc;
+            border-top: 2px solid #e2e8f0;
+            font-size: var(--font-sm);
+            color: var(--primary);
+        }
+
+        /* ═══ Responsive ═══ */
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
+
+            .mobile-driver-select {
+                display: block;
+            }
+
+            .btn-open-sidebar {
+                display: none !important;
+            }
+
+            .main-content {
+                padding: 16px;
+            }
+
+            .content-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .month-selector {
+                justify-content: center;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+
+            .stat-card {
+                padding: 14px;
+            }
+
+            .stat-value {
+                font-size: 20px;
+            }
+
+            /* Mobile table cards */
+            .table-wrapper {
+                border: none;
+                background: transparent;
+                border-radius: 0;
+            }
+
+            table {
+                min-width: 0;
+            }
+
+            table,
+            thead,
+            tbody,
+            th,
+            td,
+            tr {
+                display: block;
+                width: 100%;
+            }
+
+            thead tr {
+                position: absolute;
+                top: -9999px;
+                left: -9999px;
+            }
+
+            tfoot {
+                display: block;
+            }
+
+            tfoot tr {
+                display: block;
+                border-radius: 8px;
+                margin-top: 16px;
+            }
+
+            tfoot td {
+                display: flex;
+                justify-content: space-between;
+                padding: 10px 16px !important;
+            }
+
+            tbody tr {
+                margin-bottom: 12px;
+                border: 1px solid #e2e8f0;
+                border-radius: 10px;
+                padding: 16px;
+                background: white;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            }
+
+            tbody tr.paid {
+                opacity: 0.45;
+            }
+
+            td {
+                border: none;
+                padding: 6px 0 !important;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 1px dashed #f1f5f9;
+            }
+
+            td:first-child {
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 10px !important;
+                margin-bottom: 6px;
+            }
+
+            td:last-child {
+                border-bottom: none;
+            }
+
+            td:before {
+                content: attr(data-label);
+                font-weight: 800;
+                text-transform: uppercase;
+                font-size: var(--font-xxxs);
+                color: #94a3b8;
+                min-width: 80px;
+                flex-shrink: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <admin-navbar></admin-navbar>
+
+    <div class="page-layout">
+        <!-- Sidebar: Lista de choferes -->
+        <aside id="driver-sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <span class="sidebar-title">Choferes</span>
+                <button class="sidebar-toggle" onclick="toggleSidebar()" title="Ocultar panel">«</button>
+            </div>
+            <div class="driver-list" id="driver-list">
+                <!-- Se llena dinámicamente -->
+            </div>
+        </aside>
+
+        <!-- Main content -->
+        <div class="main-content">
+            <!-- Mobile: dropdown de choferes -->
+            <div class="mobile-driver-select" id="mobile-driver-select">
+                <select id="mobile-chofer-select" onchange="selectDriverFromMobile()">
+                    <option value="">— Seleccionar chofer —</option>
+                </select>
+            </div>
+
+            <!-- Header: botón sidebar + selector mes -->
+            <div class="content-header">
+                <button class="btn-open-sidebar" id="btn-open-sidebar" onclick="toggleSidebar()"
+                    title="Mostrar panel">☰</button>
+
+                <h2 id="driver-title" class="title-font text-xl text-primary" style="color: var(--primary); margin: 0;">
+                    Seleccione un chofer
+                </h2>
+
+                <div class="month-selector" style="margin-left: auto;">
+                    <button class="month-btn" onclick="changeMonth(-1)">◀</button>
+                    <input type="month" id="month-input" class="month-input" onchange="loadData()">
+                    <button class="month-btn" onclick="changeMonth(1)">▶</button>
+                </div>
+            </div>
+
+            <!-- Stats cards -->
+            <div class="stats-grid" id="stats-grid" style="display: none;">
+                <div class="stat-card">
+                    <div class="stat-label">Viajes</div>
+                    <div class="stat-value" id="stat-viajes">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Subtotal</div>
+                    <div class="stat-value blue" id="stat-subtotal">$0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Comisión Total</div>
+                    <div class="stat-value green" id="stat-comision">$0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Pendiente</div>
+                    <div class="stat-value amber" id="stat-pendiente">$0</div>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div id="table-container">
+                <div class="empty-state" id="empty-state">
+                    <div class="empty-state-icon">📊</div>
+                    <div class="empty-state-title">Contabilidad de Choferes</div>
+                    <div class="empty-state-text">Seleccione un chofer del panel lateral para ver su contabilidad
+                        mensual</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allDrivers = [];
+        let currentDriver = null;
+        let currentViajes = [];
+        let currentChoferInfo = null;
+
+        // ═══ Inicialización ═══
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Mes actual por defecto
+            const now = new Date();
+            document.getElementById('month-input').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+            await loadDrivers();
+        });
+
+        // ═══ Cargar choferes ═══
+        async function loadDrivers() {
+            try {
+                const response = await fetch('api/choferes.php');
+                if (!response.ok) throw new Error('Error cargando choferes');
+                const data = await response.json();
+
+                // Solo choferes con comision_tipo asignado
+                allDrivers = data.filter(c => c.comision_tipo !== null && c.comision_tipo !== '');
+
+                renderDriverList();
+                renderMobileSelect();
+            } catch (err) {
+                console.error('Error cargando choferes:', err);
+            }
+        }
+
+        // ═══ Render sidebar ═══
+        function renderDriverList() {
+            const container = document.getElementById('driver-list');
+            container.innerHTML = allDrivers.map(d => {
+                const initials = d.nombre.replace(/\s*\(.*?\)\s*/g, '').trim().split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+                const tipo = d.comision_tipo;
+                const tipoLabel = tipo === 'porcentaje' ? `${parseFloat(d.comision_porcentaje)}%` : 'Neto';
+                const isActive = currentDriver === d.nombre ? 'active' : '';
+
+                return `
+                    <div class="driver-item ${isActive}" onclick="selectDriver('${d.nombre.replace(/'/g, "\\'")}')">
+                        <div class="driver-avatar ${tipo}">${initials}</div>
+                        <div>
+                            <div class="driver-name">${d.nombre}</div>
+                            <div class="driver-type ${tipo}">${tipoLabel}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ═══ Render mobile select ═══
+        function renderMobileSelect() {
+            const select = document.getElementById('mobile-chofer-select');
+            const options = allDrivers.map(d => {
+                const tipoLabel = d.comision_tipo === 'porcentaje' ? `${parseFloat(d.comision_porcentaje)}%` : 'Neto';
+                const selected = currentDriver === d.nombre ? 'selected' : '';
+                return `<option value="${d.nombre}" ${selected}>${d.nombre} (${tipoLabel})</option>`;
+            }).join('');
+            select.innerHTML = '<option value="">— Seleccionar chofer —</option>' + options;
+        }
+
+        function selectDriverFromMobile() {
+            const select = document.getElementById('mobile-chofer-select');
+            if (select.value) selectDriver(select.value);
+        }
+
+        // ═══ Seleccionar chofer ═══
+        function selectDriver(nombre) {
+            currentDriver = nombre;
+            renderDriverList();
+            renderMobileSelect();
+
+            const driver = allDrivers.find(d => d.nombre === nombre);
+            const cleanName = nombre.replace(/\s*\(.*?\)\s*/g, '').trim();
+            const tipoLabel = driver?.comision_tipo === 'porcentaje'
+                ? `Comisión ${parseFloat(driver.comision_porcentaje)}%`
+                : 'Precio Neto';
+
+            document.getElementById('driver-title').innerHTML = `
+                ${cleanName} <span style="font-size: 13px; color: #64748b; font-family: Lato; text-transform: none; letter-spacing: 0;">— ${tipoLabel}</span>
+            `;
+
+            loadData();
+        }
+
+        // ═══ Control de mes ═══
+        function changeMonth(delta) {
+            const input = document.getElementById('month-input');
+            const [year, month] = input.value.split('-').map(Number);
+            const d = new Date(year, month - 1 + delta, 1);
+            input.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            loadData();
+        }
+
+        // ═══ Cargar datos ═══
+        async function loadData() {
+            if (!currentDriver) return;
+
+            const mes = document.getElementById('month-input').value;
+            if (!mes) return;
+
+            try {
+                const response = await fetch(`api/contabilidad_api.php?chofer=${encodeURIComponent(currentDriver)}&mes=${mes}`);
+                if (!response.ok) throw new Error('Error cargando datos');
+                const data = await response.json();
+
+                currentChoferInfo = data.chofer;
+                currentViajes = data.viajes;
+
+                renderTable();
+                updateStats();
+
+                document.getElementById('stats-grid').style.display = 'grid';
+                document.getElementById('empty-state')?.remove();
+            } catch (err) {
+                console.error('Error cargando contabilidad:', err);
+            }
+        }
+
+        // ═══ Render table ═══
+        function renderTable() {
+            const container = document.getElementById('table-container');
+            const showNeto = currentChoferInfo?.comision_tipo === 'neto';
+
+            if (currentViajes.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📭</div>
+                        <div class="empty-state-title">Sin viajes</div>
+                        <div class="empty-state-text">No se encontraron viajes para este chofer en el mes seleccionado</div>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = `
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>✓</th>
+                                <th>#</th>
+                                <th>Cliente</th>
+                                <th>Fecha</th>
+                                <th>Recogida</th>
+                                <th>Destino</th>
+                                <th>Subtotal</th>
+                                <th>Método</th>
+                                ${showNeto ? '<th>Neto</th>' : ''}
+                                <th>Comisión</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            currentViajes.forEach(v => {
+                const paidClass = v.pagado ? 'paid' : '';
+                const checked = v.pagado ? 'checked' : '';
+                const tipo = v.tipo === 'llegada' ? 'llegada' : 'salida';
+                const tipoBadge = tipo === 'llegada'
+                    ? '<span class="type-badge type-llegada">Llegada</span>'
+                    : '<span class="type-badge type-salida">Salida</span>';
+
+                const fechaFormatted = formatDateShort(v.fecha);
+                // Recogida = origen, Destino = destino final
+                const recogida = v.tipo === 'llegada' ? 'Aeropuerto LIR' : v.destino;
+                const destino = v.tipo === 'llegada' ? v.destino : 'Aeropuerto LIR';
+                const methodClass = getMethodClass(v.metodo_pago);
+                const methodLabel = getMethodLabel(v.metodo_pago);
+
+                html += `
+                    <tr class="${paidClass}" id="row-${v.id}">
+                        <td data-label="Pagado">
+                            <input type="checkbox" class="checkbox-paid" ${checked}
+                                onchange="togglePagado(${v.id}, this.checked)">
+                        </td>
+                        <td data-label="Reserva">
+                            <span style="font-weight: 800; color: var(--primary);">${v.reserva_id}</span>
+                            ${tipoBadge}
+                        </td>
+                        <td data-label="Cliente"><span style="font-weight: 700;">${v.cliente_nombre}</span></td>
+                        <td data-label="Fecha"><span style="font-weight: 700;">${fechaFormatted}</span></td>
+                        <td data-label="Recogida">${recogida}</td>
+                        <td data-label="Destino">${destino}</td>
+                        <td data-label="Subtotal"><span class="money">$${v.subtotal.toFixed(2)}</span></td>
+                        <td data-label="Método"><span class="method-pill ${methodClass}">${methodLabel}</span></td>
+                        ${showNeto ? `<td data-label="Neto"><span class="money">${v.precio_neto > 0 ? '$' + v.precio_neto.toFixed(2) : '--'}</span></td>` : ''}
+                        <td data-label="Comisión"><span class="money green">${v.comision !== null ? '$' + v.comision.toFixed(2) : '--'}</span></td>
+                    </tr>
+                `;
+            });
+
+            // Totals row
+            const totals = calcTotals();
+            html += `
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td></td>
+                                <td colspan="5" style="font-weight: 900; text-transform: uppercase; letter-spacing: 1px;">Totales</td>
+                                <td data-label="Total Subtotal"><span class="money">$${totals.subtotal.toFixed(2)}</span></td>
+                                <td></td>
+                                ${showNeto ? `<td data-label="Total Neto"><span class="money">$${totals.neto.toFixed(2)}</span></td>` : ''}
+                                <td data-label="Total Comisión"><span class="money green">$${totals.comision.toFixed(2)}</span></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        // ═══ Stats ═══
+        function updateStats() {
+            const totals = calcTotals();
+            document.getElementById('stat-viajes').textContent = currentViajes.length;
+            document.getElementById('stat-subtotal').textContent = `$${totals.subtotal.toFixed(2)}`;
+            document.getElementById('stat-comision').textContent = `$${totals.comision.toFixed(2)}`;
+            document.getElementById('stat-pendiente').textContent = `$${totals.pendiente.toFixed(2)}`;
+        }
+
+        function calcTotals() {
+            let subtotal = 0, neto = 0, comision = 0, pendiente = 0, pagado = 0;
+            currentViajes.forEach(v => {
+                subtotal += v.subtotal;
+                neto += v.precio_neto;
+                if (v.comision !== null) {
+                    comision += v.comision;
+                    if (v.pagado) {
+                        pagado += v.comision;
+                    } else {
+                        pendiente += v.comision;
+                    }
+                }
+            });
+            return { subtotal, neto, comision, pendiente, pagado };
+        }
+
+        // ═══ Toggle pagado ═══
+        async function togglePagado(viajeId, pagado) {
+            try {
+                const response = await fetch(`api/contabilidad_api.php?viaje_id=${viajeId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pagado: pagado ? 1 : 0 })
+                });
+
+                if (!response.ok) throw new Error('Error actualizando');
+
+                // Actualizar datos locales
+                const viaje = currentViajes.find(v => v.id === viajeId);
+                if (viaje) viaje.pagado = pagado ? 1 : 0;
+
+                // Actualizar visual
+                const row = document.getElementById(`row-${viajeId}`);
+                if (row) {
+                    row.classList.toggle('paid', pagado);
+                }
+
+                updateStats();
+            } catch (err) {
+                console.error('Error actualizando pago:', err);
+                // Revertir checkbox
+                const cb = document.querySelector(`#row-${viajeId} .checkbox-paid`);
+                if (cb) cb.checked = !pagado;
+            }
+        }
+
+        // ═══ Sidebar toggle ═══
+        function toggleSidebar() {
+            const sidebar = document.getElementById('driver-sidebar');
+            const btn = document.getElementById('btn-open-sidebar');
+            sidebar.classList.toggle('collapsed');
+            btn.classList.toggle('visible', sidebar.classList.contains('collapsed'));
+        }
+
+        // ═══ Helpers ═══
+        function formatDateShort(dateStr) {
+            if (!dateStr) return '--';
+            const months = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
+            const parts = dateStr.split('-');
+            const day = parseInt(parts[2]);
+            const month = months[parseInt(parts[1]) - 1];
+            return `${day}/${month}/${parts[0]}`;
+        }
+
+        function formatTime12h(time) {
+            if (!time) return '';
+            const [h, m] = time.split(':');
+            const hour = parseInt(h);
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            const h12 = hour % 12 || 12;
+            return `${h12}:${m} ${ampm}`;
+        }
+
+        function getMethodClass(method) {
+            if (!method) return 'method-other';
+            const m = method.toLowerCase();
+            if (m.includes('cash') || m.includes('efectivo') || m.includes('upon')) return 'method-cash';
+            if (m.includes('paypal')) return 'method-paypal';
+            if (m.includes('card') || m.includes('tarjeta') || m.includes('stripe')) return 'method-card';
+            return 'method-other';
+        }
+
+        function getMethodLabel(method) {
+            if (!method) return 'N/A';
+            const m = method.toLowerCase();
+            if (m.includes('cash') || m.includes('efectivo') || m.includes('upon')) return 'Cash';
+            if (m.includes('paypal')) return 'PayPal';
+            if (m.includes('card') || m.includes('tarjeta') || m.includes('stripe')) return 'Tarjeta';
+            return method;
+        }
+    </script>
+</body>
+
+</html>

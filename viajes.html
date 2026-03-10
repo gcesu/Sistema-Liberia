@@ -1418,13 +1418,17 @@
               </div>
 
               <!-- Botones de mensaje -->
-              <div class="flex gap-2 mt-4 px-5 pb-5" id="trip-message-buttons">
+              <div class="flex flex-wrap gap-2 mt-4 px-5 pb-5" id="trip-message-buttons">
                 <button onclick="sendTripEmail()"
                   class="flex-1 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all shadow-sm flex items-center justify-center gap-1">Recordatorio
                   Correo</button>
                 <button onclick="sendTripWhatsApp()"
                   class="flex-1 px-3 py-2 bg-green-500 hover:bg-green-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all shadow-sm flex items-center justify-center gap-1">Recordatorio
                   WhatsApp</button>
+                <button onclick="sendDriverContactWhatsApp()"
+                  class="flex-1 px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all shadow-sm flex items-center justify-center gap-1">📞
+                  Contacto
+                  Chofer</button>
               </div>
 
               <!-- Resumen Financiero del Viaje -->
@@ -1485,6 +1489,7 @@
 
     // Choferes se cargan desde la BD
     let CHOFERES = [];
+    let CHOFERES_PHONE = {}; // Mapa nombre -> telefono
 
     const COUNTRY_MAP = {
       AF: { name: "Afganistán" },
@@ -1733,6 +1738,7 @@
         if (response.ok) {
           const data = await response.json();
           CHOFERES = data.map(c => c.nombre);
+          data.forEach(c => { if (c.telefono) CHOFERES_PHONE[c.nombre] = c.telefono; });
         }
       } catch (err) {
         console.error('Error cargando choferes:', err);
@@ -2043,6 +2049,7 @@
                 flight: viaje.vuelo || "--",
                 raw_date: fullDate,
                 hotel: viaje.hotel || "",
+                destino: viaje.destino || "",
                 pax: viaje.pax || 1,
                 email,
                 phone,
@@ -2324,7 +2331,8 @@
     function generateTripMessage(trip, order) {
       const firstName = (order.billing?.first_name || '').trim();
       const pax = trip.pax || 1;
-      const hotel = trip.hotel || 'el hotel';
+      const itemIdx = trip.item_index >= 1000 ? trip.item_index - 1000 : trip.item_index;
+      const hotel = trip.hotel || trip.destino || order.line_items?.[itemIdx]?.name || 'el hotel';
       const vuelo = (trip.flight || '').toUpperCase();
       const hora = trip.time || '';
       const fecha = trip.dateStr || '';
@@ -2376,7 +2384,8 @@
     function generateTripEmailMessage(trip, order) {
       const firstName = (order.billing?.first_name || '').trim();
       const pax = trip.pax || 1;
-      const hotel = trip.hotel || 'the hotel';
+      const itemIdx = trip.item_index >= 1000 ? trip.item_index - 1000 : trip.item_index;
+      const hotel = trip.hotel || trip.destino || order.line_items?.[itemIdx]?.name || 'the hotel';
       const vuelo = (trip.flight || '').toUpperCase();
       const hora = trip.time || '';
       const fecha = formatDateUSFull(trip.raw_date);
@@ -2460,6 +2469,27 @@
         currentTripOrder.billing?.country || '',
         msg
       );
+      if (!whatsappUrl) return;
+      window.open(whatsappUrl, '_blank');
+    }
+
+    // Limpiar nombre de chofer (quitar paréntesis y contenido)
+    function cleanDriverName(name) {
+      if (!name) return '';
+      return name.replace(/\s*\(.*?\)\s*/g, '').trim();
+    }
+
+    function sendDriverContactWhatsApp() {
+      if (!currentTrip || !currentTripOrder) return;
+      const choferName = currentTrip.chofer || '';
+      if (!choferName) { alert('No hay chofer asignado a este viaje.'); return; }
+      const phone = CHOFERES_PHONE[choferName];
+      if (!phone) { alert(`No se encontró teléfono para el chofer "${choferName}".`); return; }
+      const cleanPhone = phone.replace(/[\s\-]/g, '');
+      const displayName = cleanDriverName(choferName);
+      const firstName = (currentTripOrder.billing?.first_name || '').trim();
+      const msg = `Hi ${firstName},\n\nThis is your driver's WhatsApp for tomorrow: wa.me/${cleanPhone}, or if you need to call him directly: ${phone}. His name is ${displayName}. Please use this number only in case of an emergency. See you tomorrow!\n\nBest regards,\nMónica B.`;
+      const whatsappUrl = PhoneUtils.buildWhatsappUrl(currentTrip.phone || '', currentTripOrder.billing?.country || '', msg);
       if (!whatsappUrl) return;
       window.open(whatsappUrl, '_blank');
     }

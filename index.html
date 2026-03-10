@@ -1346,8 +1346,9 @@
         function generateViajeMessage(order, viaje) {
             const firstName = (order.billing?.first_name || '').trim();
             const pax = viaje.pax || 1;
-            // Para mensajes: preferir hotel manual, luego destino (producto WooCommerce)
-            const hotel = viaje.hotel || viaje.destino || 'el hotel';
+            // Para mensajes: preferir hotel manual, luego destino, luego line_items name
+            const itemIdx = viaje.item_index >= 1000 ? viaje.item_index - 1000 : viaje.item_index;
+            const hotel = viaje.hotel || viaje.destino || order.line_items?.[itemIdx]?.name || 'el hotel';
             const vuelo = (viaje.vuelo || '').toUpperCase();
             const hora = viaje.hora ? formatTime12h(viaje.hora) : '';
             const fecha = viaje.fecha ? formatDateShort(viaje.fecha) : '';
@@ -1400,7 +1401,8 @@
         function generateViajeEmailMessage(order, viaje) {
             const firstName = (order.billing?.first_name || '').trim();
             const pax = viaje.pax || 1;
-            const hotel = viaje.hotel || viaje.destino || 'the hotel';
+            const itemIdx = viaje.item_index >= 1000 ? viaje.item_index - 1000 : viaje.item_index;
+            const hotel = viaje.hotel || viaje.destino || order.line_items?.[itemIdx]?.name || 'the hotel';
             const vuelo = (viaje.vuelo || '').toUpperCase();
             const hora = viaje.hora ? formatTime12h(viaje.hora) : '';
             const fecha = viaje.fecha ? formatDateUSFull(viaje.fecha) : '';
@@ -1476,6 +1478,46 @@
             window.open(whatsappUrl, '_blank');
         }
 
+        // Limpiar nombre de chofer (quitar paréntesis y contenido)
+        function cleanDriverName(name) {
+            if (!name) return '';
+            return name.replace(/\s*\(.*?\)\s*/g, '').trim();
+        }
+
+        function sendDriverContactWhatsApp(orderId, viajeId) {
+            const order = allOrders.find(o => o.id === orderId);
+            if (!order) return;
+            const viaje = (order.viajes || []).find(v => v.id === viajeId);
+            if (!viaje) return;
+            const choferName = viaje.chofer || '';
+            if (!choferName) { alert('No hay chofer asignado a este viaje.'); return; }
+            const phone = CHOFERES_PHONE[choferName];
+            if (!phone) { alert(`No se encontró teléfono para el chofer "${choferName}".`); return; }
+            const cleanPhone = phone.replace(/[\s\-]/g, '');
+            const displayName = cleanDriverName(choferName);
+            const firstName = (order.billing?.first_name || '').trim();
+            const msg = `Hi ${firstName},\n\nThis is your driver's WhatsApp for tomorrow: wa.me/${cleanPhone}, or if you need to call him directly: ${phone}. His name is ${displayName}. Please use this number only in case of an emergency. See you tomorrow!\n\nBest regards,\nMónica B.`;
+            const whatsappUrl = PhoneUtils.buildWhatsappUrl(order.billing?.phone || '', order.billing?.country || '', msg);
+            if (!whatsappUrl) return;
+            window.open(whatsappUrl, '_blank');
+        }
+
+        function sendDriverContactLegacyWhatsApp(orderId, choferKey) {
+            const order = allOrders.find(o => o.id === orderId);
+            if (!order) return;
+            const choferName = deepScanMeta(order, choferKey) || '';
+            if (!choferName) { alert('No hay chofer asignado a este viaje.'); return; }
+            const phone = CHOFERES_PHONE[choferName];
+            if (!phone) { alert(`No se encontró teléfono para el chofer "${choferName}".`); return; }
+            const cleanPhone = phone.replace(/[\s\-]/g, '');
+            const displayName = cleanDriverName(choferName);
+            const firstName = (order.billing?.first_name || '').trim();
+            const msg = `Hi ${firstName},\n\nThis is your driver's WhatsApp for tomorrow: wa.me/${cleanPhone}, or if you need to call him directly: ${phone}. His name is ${displayName}. Please use this number only in case of an emergency. See you tomorrow!\n\nBest regards,\nMónica B.`;
+            const whatsappUrl = PhoneUtils.buildWhatsappUrl(order.billing?.phone || '', order.billing?.country || '', msg);
+            if (!whatsappUrl) return;
+            window.open(whatsappUrl, '_blank');
+        }
+
         function generateLegacyViajeObj(order, type) {
             const isArrival = type === 'arrival';
             return {
@@ -1546,6 +1588,7 @@
 
         // Choferes se cargan desde la BD
         let CHOFERES = [];
+        let CHOFERES_PHONE = {}; // Mapa nombre -> telefono
 
         const ARRIVAL_FIELDS = [
             { label: "Fecha", key: "- Arrival Date", emoji: "📅", type: "date" },
@@ -1633,6 +1676,7 @@
                 if (response.ok) {
                     const data = await response.json();
                     CHOFERES = data.map(c => c.nombre);
+                    data.forEach(c => { if (c.telefono) CHOFERES_PHONE[c.nombre] = c.telefono; });
                 }
             } catch (err) {
                 console.error('Error cargando choferes:', err);
@@ -2256,9 +2300,10 @@
                                     <p class="meta-field-label">🔒 Notas Internas</p>
                                     <textarea id="input-${prefix}_notas_internas" oninput="checkForChanges(); autoResizeTextarea(this)" rows="2" class="input-editable bg-white resize-none h-16">${viaje.notas_internas || ''}</textarea>
                                 </div>
-                                <div class="flex gap-2 mt-3 pt-3 border-t border-dashed ${borderClass}">
+                                <div class="flex flex-wrap gap-2 mt-3 pt-3 border-t border-dashed ${borderClass}">
                                     <button onclick="sendViajeEmail(${o.id}, ${viajeId})" class="flex-1 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all shadow-sm flex items-center justify-center gap-1">Recordatorio Correo</button>
                                     <button onclick="sendViajeWhatsApp(${o.id}, ${viajeId})" class="flex-1 px-3 py-2 bg-green-500 hover:bg-green-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all shadow-sm flex items-center justify-center gap-1">Recordatorio WhatsApp</button>
+                                    <button onclick="sendDriverContactWhatsApp(${o.id}, ${viajeId})" class="flex-1 px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all shadow-sm flex items-center justify-center gap-1">📞 Contacto Chofer</button>
                                 </div>
                             </div>
                         </div>
@@ -2375,9 +2420,10 @@
                                 <p class="meta-field-label">🔒 Notas Internas</p>
                                 <textarea id="input-meta-${internasKey}" oninput="checkForChanges(); autoResizeTextarea(this)" rows="2" class="input-editable bg-white resize-none h-16">${deepScanMeta(o, internasKey) || ''}</textarea>
                             </div>
-                            <div class="flex gap-2 mt-3 pt-3 border-t border-dashed ${borderClass}">
+                            <div class="flex flex-wrap gap-2 mt-3 pt-3 border-t border-dashed ${borderClass}">
                                 <button onclick="sendLegacyEmail(${o.id}, '${type}')" class="flex-1 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all shadow-sm flex items-center justify-center gap-1">Recordatorio Correo</button>
                                 <button onclick="sendLegacyWhatsApp(${o.id}, '${type}')" class="flex-1 px-3 py-2 bg-green-500 hover:bg-green-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all shadow-sm flex items-center justify-center gap-1">Recordatorio WhatsApp</button>
+                                <button onclick="sendDriverContactLegacyWhatsApp(${o.id}, '${choferKey}')" class="flex-1 px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all shadow-sm flex items-center justify-center gap-1">📞 Contacto Chofer</button>
                             </div>
                         </div>
                     </div>
