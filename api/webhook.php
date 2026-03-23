@@ -81,17 +81,15 @@ if ($webhookSecret && !empty($payload)) {
     $signature = $headersLower['x-wc-webhook-signature'] ?? '';
     $expectedSignature = base64_encode(hash_hmac('sha256', $payload, $webhookSecret, true));
 
-    // Solo verificar si hay una firma presente
     if (!empty($signature) && !hash_equals($expectedSignature, $signature)) {
         logWebhook("ADVERTENCIA: Firma no coincide pero continuando...");
-        // No rechazar, solo loguear
     }
 }
 
 // Decodificar payload
 $order = json_decode($payload, true);
 
-// Si no hay orden válida, responder OK sin procesar (para pings y pruebas)
+// Si no hay orden válida, responder OK sin procesar
 if (!$order || !isset($order['id'])) {
     logWebhook("Payload sin orden válida - respondiendo OK (posible ping o prueba)");
     logWebhook("Contenido recibido: " . substr($payload, 0, 500));
@@ -102,12 +100,10 @@ if (!$order || !isset($order['id'])) {
 
 // Detectar si es una eliminación
 $isDeleted = strpos($wcTopic, 'deleted') !== false || strpos($wcTopic, 'trashed') !== false;
-$isRestored = strpos($wcTopic, 'restored') !== false;
 
 logWebhook("Procesando orden #{$order['id']} - Status: {$order['status']} - Topic: $wcTopic");
 
 try {
-    // Manejar eliminación de orden
     if ($isDeleted) {
         deleteOrderFromDB($pdo, $order['id']);
         logWebhook("Orden #{$order['id']} eliminada de la BD local");
@@ -116,12 +112,8 @@ try {
         exit;
     }
 
-    // Guardar/actualizar la orden en la BD
     saveOrderToDB($pdo, $order);
-
-    // Actualizar timestamp de última sincronización
     updateLastSync($pdo);
-
     logWebhook("Orden #{$order['id']} guardada exitosamente");
 
     http_response_code(200);
@@ -138,7 +130,6 @@ try {
  */
 function updateLastSync($pdo)
 {
-    // Crear tabla de configuración si no existe
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS config (
             clave VARCHAR(50) PRIMARY KEY,
@@ -159,15 +150,12 @@ function updateLastSync($pdo)
  */
 function deleteOrderFromDB($pdo, $orderId)
 {
-    // Eliminar viajes asociados
     $stmt = $pdo->prepare("DELETE FROM viajes WHERE reserva_id = ?");
     $stmt->execute([$orderId]);
 
-    // Eliminar de reservas
     $stmt = $pdo->prepare("DELETE FROM reservas WHERE id = ?");
     $stmt->execute([$orderId]);
 
-    // Eliminar de cotizaciones (si existía ahí)
     $stmt = $pdo->prepare("DELETE FROM cotizaciones WHERE id = ?");
     $stmt->execute([$orderId]);
 
@@ -175,11 +163,36 @@ function deleteOrderFromDB($pdo, $orderId)
 }
 
 /**
+ * Detecta si un line_item es un viaje interno (One Way Shuttle / Hotel-Hotel)
+ * Usa la meta key específica del plugin Y el nombre del producto como fallback
+ */
+function esLineItemInterno($item)
+{
+    // Detección por meta key del plugin (método primario)
+    foreach (($item['meta_data'] ?? []) as $m) {
+        if (($m['key'] ?? '') === 'wccpf_uqmQV1WN1jeT') {
+            return true;
+        }
+    }
+
+    // Detección por nombre del producto (fallback)
+    $nombre = strtolower(trim($item['name'] ?? ''));
+    $nombresInternos = ['one way shuttle', 'hotel-hotel', 'hotel to hotel', 'hotel – hotel', 'hotel - hotel'];
+    foreach ($nombresInternos as $n) {
+        if (strpos($nombre, $n) !== false) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
  * Guarda una orden en la BD (soporta múltiples viajes por orden)
  */
 function saveOrderToDB($pdo, $order)
 {
-    // Función para buscar metadatos en array
+    // Helper para buscar meta en array
     $findMeta = function ($metaArray, $key) {
         $clean = strtolower(preg_replace('/[^a-z0-9]/i', '', $key));
         foreach ($metaArray as $m) {
@@ -192,37 +205,27 @@ function saveOrderToDB($pdo, $order)
         return null;
     };
 
-    // Función para buscar en meta_data de la orden
-    $orderMeta = function ($key) use ($order, $findMeta) {
-        return $findMeta($order['meta_data'] ?? [], $key);
-    };
-
-    // Función para parsear fecha
+    // Parser de fechas
     $parseDate = function ($dateStr) {
         if (!$dateStr)
             return null;
-        // MM/DD/YYYY
         if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', $dateStr, $matches)) {
             return $matches[3] . '-' . str_pad($matches[1], 2, '0', STR_PAD_LEFT) . '-' . str_pad($matches[2], 2, '0', STR_PAD_LEFT);
         }
-        // MM-DD-YYYY (usado por Hotel-Hotel)
         if (preg_match('/^(\d{1,2})-(\d{1,2})-(\d{4})$/', $dateStr, $matches)) {
             return $matches[3] . '-' . str_pad($matches[1], 2, '0', STR_PAD_LEFT) . '-' . str_pad($matches[2], 2, '0', STR_PAD_LEFT);
         }
-        // YYYY-MM-DD
         if (preg_match('/^\d{4}-\d{2}-\d{2}/', $dateStr)) {
             return substr($dateStr, 0, 10);
         }
         return null;
     };
 
-    // Función para parsear hora
+    // Parser de hora
     $parseTime = function ($timeStr) {
         if (!$timeStr)
             return null;
-        // Limpiar y normalizar
         $timeStr = trim($timeStr);
-        // Si ya está en formato HH:MM
         if (preg_match('/^(\d{1,2}):(\d{2})/', $timeStr, $matches)) {
             return str_pad($matches[1], 2, '0', STR_PAD_LEFT) . ':' . $matches[2] . ':00';
         }
@@ -231,43 +234,53 @@ function saveOrderToDB($pdo, $order)
 
     $billing = $order['billing'] ?? [];
     $shipping = $order['shipping'] ?? [];
+    $lineItems = $order['line_items'] ?? [];
 
-    // Buscar dirección en múltiples lugares
     $direccion = $billing['address_1'] ?? '';
     if (empty($direccion))
         $direccion = $shipping['address_1'] ?? '';
 
-    // =========================================================================
-    // DETECCIÓN DE COTIZACIÓN: ¿Tiene algún line_item Hotel-Hotel?
-    // =========================================================================
-    $esCotizacion = false;
-    $lineItems = $order['line_items'] ?? [];
-    foreach ($lineItems as $item) {
-        $itemMeta = $item['meta_data'] ?? [];
-        foreach ($itemMeta as $m) {
-            if (($m['key'] ?? '') === 'wccpf_uqmQV1WN1jeT') {
-                $esCotizacion = true;
-                break 2;
-            }
-        }
-    }
-
-    // 1. Guardar/actualizar la reserva (con flag es_cotizacion)
     $clienteNombre = trim(($billing['first_name'] ?? '') . ' ' . ($billing['last_name'] ?? ''));
     $subtotal = floatval(array_sum(array_column($lineItems, 'subtotal')));
 
+    // =========================================================================
+    // DETECCIÓN: ¿Tiene algún line_item de viaje interno (One Way Shuttle)?
+    // Si tiene AL MENOS UNO → toda la orden es cotización
+    // =========================================================================
+    $esCotizacion = false;
+    foreach ($lineItems as $item) {
+        if (esLineItemInterno($item)) {
+            $esCotizacion = true;
+            break;
+        }
+    }
+
+    logWebhook("Orden #{$order['id']} - esCotizacion: " . ($esCotizacion ? 'SI' : 'NO'));
+
+    // =========================================================================
+    // 1. Guardar en tabla reservas (SIEMPRE, con flag es_cotizacion correcto)
+    // =========================================================================
     $sqlReserva = "
-        INSERT INTO reservas (id, status, date_created, cliente_nombre, cliente_email, cliente_telefono, 
-            cliente_pais, cliente_direccion, metodo_pago, subtotal, cargos_adicionales, impuestos, 
+        INSERT INTO reservas (id, status, date_created, cliente_nombre, cliente_email, cliente_telefono,
+            cliente_pais, cliente_direccion, metodo_pago, subtotal, cargos_adicionales, impuestos,
             descuentos, total, raw_data, nota_cliente, privacy_show_email, privacy_show_phone, es_cotizacion)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
-            status = VALUES(status), cliente_nombre = VALUES(cliente_nombre), cliente_email = VALUES(cliente_email),
-            cliente_telefono = VALUES(cliente_telefono), cliente_pais = VALUES(cliente_pais), 
-            cliente_direccion = VALUES(cliente_direccion), metodo_pago = VALUES(metodo_pago), 
-            subtotal = VALUES(subtotal), cargos_adicionales = VALUES(cargos_adicionales),
-            impuestos = VALUES(impuestos), descuentos = VALUES(descuentos), total = VALUES(total), 
-            raw_data = VALUES(raw_data), nota_cliente = VALUES(nota_cliente), es_cotizacion = VALUES(es_cotizacion)
+            status = VALUES(status),
+            cliente_nombre = VALUES(cliente_nombre),
+            cliente_email = VALUES(cliente_email),
+            cliente_telefono = VALUES(cliente_telefono),
+            cliente_pais = VALUES(cliente_pais),
+            cliente_direccion = VALUES(cliente_direccion),
+            metodo_pago = VALUES(metodo_pago),
+            subtotal = VALUES(subtotal),
+            cargos_adicionales = VALUES(cargos_adicionales),
+            impuestos = VALUES(impuestos),
+            descuentos = VALUES(descuentos),
+            total = VALUES(total),
+            raw_data = VALUES(raw_data),
+            nota_cliente = VALUES(nota_cliente),
+            es_cotizacion = VALUES(es_cotizacion)
     ";
 
     $stmt = $pdo->prepare($sqlReserva);
@@ -279,7 +292,7 @@ function saveOrderToDB($pdo, $order)
         $billing['email'] ?? '',
         $billing['phone'] ?? '',
         $billing['country'] ?? '',
-        $direccion ?? '',
+        $direccion,
         $order['payment_method_title'] ?? '',
         $subtotal,
         floatval(array_sum(array_column($order['fee_lines'] ?? [], 'total'))),
@@ -294,10 +307,10 @@ function saveOrderToDB($pdo, $order)
     ]);
 
     // =========================================================================
-    // Si es cotización, también guardar en tabla cotizaciones
+    // 2. Si es cotización, también guardar en tabla cotizaciones
     // =========================================================================
     if ($esCotizacion) {
-        // Buscar datos del primer line_item Hotel-Hotel
+        // Buscar datos del primer line_item interno para el resumen
         $origen = '';
         $hotelNombre = '';
         $fechaViaje = null;
@@ -305,36 +318,49 @@ function saveOrderToDB($pdo, $order)
         $pasajeros = 1;
 
         foreach ($lineItems as $item) {
+            if (!esLineItemInterno($item))
+                continue;
             $itemMeta = $item['meta_data'] ?? [];
-            $pickupLoc = null;
             foreach ($itemMeta as $m) {
-                if (($m['key'] ?? '') === 'wccpf_uqmQV1WN1jeT') $pickupLoc = $m['value'] ?? '';
+                $key = $m['key'] ?? '';
+                if ($key === 'wccpf_uqmQV1WN1jeT')
+                    $origen = $m['value'] ?? '';
+                if ($key === 'wccpf_1leEY9NyPBq8')
+                    $hotelNombre = $m['value'] ?? '';
+                if ($key === 'wccpf_GKaNQcnBtnRd')
+                    $fechaViaje = $m['value'] ?? null;
+                if ($key === 'wccpf_rltyePZt3ZCD')
+                    $horaViaje = $m['value'] ?? null;
+                if ($key === 'wccpf_MikTE0O9596X')
+                    $pasajeros = intval($m['value'] ?? 1);
             }
-            if ($pickupLoc !== null) {
-                $origen = $pickupLoc;
-                foreach ($itemMeta as $m) {
-                    $key = $m['key'] ?? '';
-                    if ($key === 'wccpf_1leEY9NyPBq8') $hotelNombre = $m['value'] ?? '';
-                    if ($key === 'wccpf_GKaNQcnBtnRd') $fechaViaje = $m['value'] ?? null;
-                    if ($key === 'wccpf_rltyePZt3ZCD') $horaViaje = $m['value'] ?? null;
-                    if ($key === 'wccpf_MikTE0O9596X') $pasajeros = intval($m['value'] ?? 1);
+            if ($origen !== '')
+                break; // usar el primer viaje interno encontrado
+        }
+
+        // Si no encontramos por meta keys, usar nombre del producto como destino
+        if (empty($hotelNombre)) {
+            foreach ($lineItems as $item) {
+                if (esLineItemInterno($item)) {
+                    $hotelNombre = $item['name'] ?? 'No especificado';
+                    break;
                 }
-                break;
             }
         }
 
         $sqlCotizacion = "
             INSERT INTO cotizaciones (
-                id, status, date_created, cliente_nombre, cliente_email, cliente_telefono, 
-                cliente_pais, cliente_direccion, pasajeros, origen, hotel_nombre, 
-                fecha_viaje, hora_viaje,
-                metodo_pago, subtotal, cargos_adicionales, impuestos, descuentos, total, 
-                raw_data, privacy_show_email, privacy_show_phone, privacy_show_financiero, status_viaje
+                id, status, date_created, cliente_nombre, cliente_email, cliente_telefono,
+                cliente_pais, cliente_direccion, pasajeros, origen, hotel_nombre,
+                fecha_viaje, hora_viaje, metodo_pago, subtotal, cargos_adicionales,
+                impuestos, descuentos, total, raw_data,
+                privacy_show_email, privacy_show_phone, privacy_show_financiero, status_viaje
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE 
-                status = VALUES(status), 
-                total = VALUES(total),
-                raw_data = VALUES(raw_data)
+            ON DUPLICATE KEY UPDATE
+                status       = VALUES(status),
+                total        = VALUES(total),
+                raw_data     = VALUES(raw_data),
+                status_viaje = VALUES(status_viaje)
         ";
 
         $stmtCot = $pdo->prepare($sqlCotizacion);
@@ -346,7 +372,7 @@ function saveOrderToDB($pdo, $order)
             $billing['email'] ?? '',
             $billing['phone'] ?? '',
             $billing['country'] ?? '',
-            $direccion ?? '',
+            $direccion,
             $pasajeros,
             $origen,
             $hotelNombre ?: 'No especificado',
@@ -359,31 +385,27 @@ function saveOrderToDB($pdo, $order)
             floatval(array_sum(array_column($order['coupon_lines'] ?? [], 'discount'))),
             floatval($order['total']),
             json_encode($order),
-            '0', '0', '1',
+            '0',
+            '0',
+            '1',
             $order['status']
         ]);
 
-        logWebhook("Orden #{$order['id']} detectada como COTIZACIÓN - guardada en ambas tablas");
+        logWebhook("Orden #{$order['id']} guardada en tabla cotizaciones (origen: '$origen', destino: '$hotelNombre')");
     }
 
-    // 2. Procesar cada line_item y crear viajes
-    $savedTrips = []; // Rastrear (item_index, tipo) guardados para limpiar huérfanos
+    // =========================================================================
+    // 3. Crear / actualizar viajes para TODOS los line_items
+    //    (llegada, salida E internos — sin importar si es cotización o no)
+    // =========================================================================
+    $savedTrips = [];
 
     foreach ($lineItems as $itemIndex => $item) {
         $itemMeta = $item['meta_data'] ?? [];
         $destinoName = $item['name'] ?? 'Transfer';
 
-        // Detectar si es un line_item Hotel-Hotel (viaje interno)
-        $isInterno = false;
-        foreach ($itemMeta as $m) {
-            if (($m['key'] ?? '') === 'wccpf_uqmQV1WN1jeT') {
-                $isInterno = true;
-                break;
-            }
-        }
-
-        if ($isInterno) {
-            // Viaje interno: usar los campos del formulario Hotel-Hotel
+        if (esLineItemInterno($item)) {
+            // ── VIAJE INTERNO ─────────────────────────────────────────────
             $pickupLocation = $findMeta($itemMeta, 'wccpf_uqmQV1WN1jeT') ?? '';
             $dropoffLocation = $findMeta($itemMeta, 'wccpf_1leEY9NyPBq8') ?? '';
             $pickupDate = $parseDate($findMeta($itemMeta, 'wccpf_GKaNQcnBtnRd'));
@@ -391,30 +413,40 @@ function saveOrderToDB($pdo, $order)
             $paxStr = $findMeta($itemMeta, 'wccpf_MikTE0O9596X') ?? '1';
             $pax = intval(preg_replace('/[^0-9]/', '', $paxStr)) ?: 1;
 
-            if ($pickupDate) {
-                saveTrip($pdo, [
-                    'reserva_id' => $order['id'],
-                    'item_index' => $itemIndex,
-                    'tipo' => 'interno',
-                    'fecha' => $pickupDate,
-                    'hora' => $pickupTime,
-                    'vuelo' => null,
-                    'pax' => $pax,
-                    'hotel' => $pickupLocation . ' → ' . $dropoffLocation,
-                    'destino' => $pickupLocation . ' → ' . $dropoffLocation
-                ]);
-                $savedTrips[] = ['item_index' => $itemIndex, 'tipo' => 'interno'];
-            }
+            // Si no hay fecha, igual guardamos el viaje con fecha NULL para no perder el registro
+            $rutaCompleta = trim($pickupLocation) !== '' || trim($dropoffLocation) !== ''
+                ? $pickupLocation . ' → ' . $dropoffLocation
+                : $destinoName;
+
+            saveTrip($pdo, [
+                'reserva_id' => $order['id'],
+                'item_index' => $itemIndex,
+                'tipo' => 'interno',
+                'fecha' => $pickupDate,
+                'hora' => $pickupTime,
+                'vuelo' => null,
+                'pax' => $pax,
+                'hotel' => '',
+                'destino' => $rutaCompleta,
+            ]);
+            $savedTrips[] = ['item_index' => $itemIndex, 'tipo' => 'interno'];
+
+            logWebhook("Viaje interno guardado: idx=$itemIndex, fecha=$pickupDate, ruta=$rutaCompleta");
+
         } else {
-            // Viaje normal: llegada/salida
+            // ── VIAJE NORMAL (llegada / salida) ───────────────────────────
             $tripType = $findMeta($itemMeta, '- Type of Trip') ?? $findMeta($itemMeta, 'Type of Trip') ?? '';
             $tripTypeLower = strtolower($tripType);
 
             $paxStr = $findMeta($itemMeta, 'Passengers') ?? '1';
             $pax = intval(preg_replace('/[^0-9]/', '', $paxStr)) ?: 1;
 
-            $hasArrival = strpos($tripTypeLower, 'hotel') !== false || strpos($tripTypeLower, 'roundtrip') !== false || strpos($tripTypeLower, 'round trip') !== false;
-            $hasDeparture = strpos($tripTypeLower, 'airport') !== false || strpos($tripTypeLower, 'roundtrip') !== false || strpos($tripTypeLower, 'round trip') !== false;
+            $hasArrival = strpos($tripTypeLower, 'hotel') !== false
+                || strpos($tripTypeLower, 'roundtrip') !== false
+                || strpos($tripTypeLower, 'round trip') !== false;
+            $hasDeparture = strpos($tripTypeLower, 'airport') !== false
+                || strpos($tripTypeLower, 'roundtrip') !== false
+                || strpos($tripTypeLower, 'round trip') !== false;
 
             $arrivalDate = $parseDate($findMeta($itemMeta, '- Arrival Date'));
             $departureDate = $parseDate($findMeta($itemMeta, '- Departure Date'));
@@ -436,8 +468,8 @@ function saveOrderToDB($pdo, $order)
                     'hora' => $arrivalTime,
                     'vuelo' => $arrivalFlight,
                     'pax' => $pax,
-                    'hotel' => $destinoName,
-                    'destino' => $destinoName
+                    'hotel' => '',
+                    'destino' => $destinoName,
                 ]);
                 $savedTrips[] = ['item_index' => $itemIndex, 'tipo' => 'llegada'];
             }
@@ -446,6 +478,7 @@ function saveOrderToDB($pdo, $order)
                 $departureTime = $parseTime($findMeta($itemMeta, '- Pick-up Time at Hotel') ?? $findMeta($itemMeta, 'Pick up Time'));
                 $departureFlight = $findMeta($itemMeta, '- Departure Flight Number') ?? $findMeta($itemMeta, 'Departure Flight');
 
+                // Salidas en roundtrip usan item_index + 1000 para diferenciarlas
                 $tripItemIndex = ($hasArrival && $arrivalDate) ? $itemIndex + 1000 : $itemIndex;
 
                 saveTrip($pdo, [
@@ -456,28 +489,30 @@ function saveOrderToDB($pdo, $order)
                     'hora' => $departureTime,
                     'vuelo' => $departureFlight,
                     'pax' => $pax,
-                    'hotel' => $destinoName,
-                    'destino' => $destinoName
+                    'hotel' => '',
+                    'destino' => $destinoName,
                 ]);
-            $savedTrips[] = ['item_index' => $tripItemIndex, 'tipo' => 'salida'];
+                $savedTrips[] = ['item_index' => $tripItemIndex, 'tipo' => 'salida'];
             }
         }
     }
 
-    // 3. Limpiar viajes huérfanos (índices antiguos de migración u otros webhooks)
+    // =========================================================================
+    // 4. Limpiar viajes huérfanos (índices que ya no existen en la orden)
+    // =========================================================================
     if (!empty($savedTrips)) {
         $conditions = [];
-        $params = [$order['id']];
+        $cleanParams = [$order['id']];
         foreach ($savedTrips as $trip) {
             $conditions[] = "(item_index = ? AND tipo = ?)";
-            $params[] = $trip['item_index'];
-            $params[] = $trip['tipo'];
+            $cleanParams[] = $trip['item_index'];
+            $cleanParams[] = $trip['tipo'];
         }
         $keepCondition = implode(' OR ', $conditions);
         $deleteStmt = $pdo->prepare(
             "DELETE FROM viajes WHERE reserva_id = ? AND NOT ($keepCondition)"
         );
-        $deleteStmt->execute($params);
+        $deleteStmt->execute($cleanParams);
 
         $deletedCount = $deleteStmt->rowCount();
         if ($deletedCount > 0) {
@@ -491,15 +526,12 @@ function saveOrderToDB($pdo, $order)
  */
 function saveTrip($pdo, $data)
 {
-    // Verificar si ya existe el viaje (no hay UNIQUE constraint en (reserva_id, item_index))
     $checkStmt = $pdo->prepare("SELECT id FROM viajes WHERE reserva_id = ? AND item_index = ? LIMIT 1");
     $checkStmt->execute([$data['reserva_id'], $data['item_index']]);
     $existing = $checkStmt->fetch(PDO::FETCH_ASSOC);
 
     if ($existing) {
-        // UPDATE: actualizar solo campos de sync básicos
-        // NO sobrescribir fecha/hora/vuelo/chofer/notas/status (editables manualmente)
-        // Solo actualizar tipo, pax y destino (nombre del producto)
+        // UPDATE: preservar chofer/notas/status editados manualmente, actualizar datos de viaje
         $updateSql = "
             UPDATE viajes SET
                 tipo = ?, pax = ?, destino = ?
@@ -512,7 +544,7 @@ function saveTrip($pdo, $data)
             $existing['id']
         ]);
     } else {
-        // INSERT: nuevo viaje - destino = nombre producto WooCommerce, hotel = vacío (se edita manualmente)
+        // INSERT: nuevo viaje
         $insertSql = "
             INSERT INTO viajes (reserva_id, item_index, tipo, fecha, hora, vuelo, pax, hotel, destino)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -525,9 +557,8 @@ function saveTrip($pdo, $data)
             $data['hora'],
             $data['vuelo'],
             $data['pax'],
-            '',
-            $data['destino'] ?? $data['hotel']
+            $data['hotel'] ?? '',
+            $data['destino'] ?? $data['hotel'] ?? '',
         ]);
     }
 }
-?>
