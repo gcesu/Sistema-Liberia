@@ -32,7 +32,7 @@ if ($method === 'GET') {
     // Si se pide una reserva específica
     if (isset($_GET['order_id']) && $_GET['order_id'] !== '') {
         $id = intval($_GET['order_id']);
-        $stmt = $pdo->prepare("SELECT * FROM reservas WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT * FROM reservas WHERE id = ? AND es_cotizacion = 0");
         $stmt->execute([$id]);
         $reserva = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -51,7 +51,7 @@ if ($method === 'GET') {
     $offset = ($page - 1) * $per_page;
 
     // Filtro por fecha (after)
-    $whereClause = "1=1 AND status != 'trash'";
+    $whereClause = "1=1 AND status != 'trash' AND es_cotizacion = 0";
     $params = [];
 
     if (isset($_GET['after']) && $_GET['after'] !== '') {

@@ -46,7 +46,12 @@ if ($method === 'GET') {
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if ($row) {
-                echo json_encode(transformarCotizacionParaFrontend($row));
+                $result = transformarCotizacionParaFrontend($row);
+                // Agregar viajes
+                $vStmt = $pdo->prepare("SELECT * FROM viajes WHERE reserva_id = ? ORDER BY item_index ASC");
+                $vStmt->execute([$row['id']]);
+                $result['viajes'] = $vStmt->fetchAll(PDO::FETCH_ASSOC);
+                echo json_encode($result);
             } else {
                 http_response_code(404);
                 echo json_encode(['error' => 'Cotización no encontrada']);
@@ -56,13 +61,11 @@ if ($method === 'GET') {
             $sql = "SELECT * FROM cotizaciones WHERE 1=1";
             $params = [];
 
-            // Filtro por Status
             if ($status && $status !== 'all') {
                 $sql .= " AND status = ?";
                 $params[] = $status;
             }
 
-            // Búsqueda (ID, Cliente)
             if ($search) {
                 $sql .= " AND (id LIKE ? OR cliente_nombre LIKE ? OR cliente_email LIKE ?)";
                 $wildcard = "%$search%";
@@ -77,8 +80,15 @@ if ($method === 'GET') {
             $stmt->execute($params);
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            // Transformar datos
-            $output = array_map('transformarCotizacionParaFrontend', $rows);
+            // Transformar datos e incluir viajes
+            $output = [];
+            foreach ($rows as $row) {
+                $item = transformarCotizacionParaFrontend($row);
+                $vStmt = $pdo->prepare("SELECT * FROM viajes WHERE reserva_id = ? ORDER BY item_index ASC");
+                $vStmt->execute([$row['id']]);
+                $item['viajes'] = $vStmt->fetchAll(PDO::FETCH_ASSOC);
+                $output[] = $item;
+            }
             echo json_encode($output);
         }
     } catch (PDOException $e) {
@@ -112,19 +122,19 @@ elseif ($method === 'PUT') {
         if (isset($input['status'])) {
             $fieldsToUpdate[] = "status = ?";
             $params[] = $input['status'];
-
-            // También actualizamos status_viaje si deseas mantenerlos sincronizados
-            // $fieldsToUpdate[] = "status_viaje = ?";
-            // $params[] = $input['status'];
         }
 
-        // 2. Datos Financieros (Editables Manualmente)
+        // 2. Status de viaje (control de visibilidad en Viajes)
+        if (isset($input['status_viaje'])) {
+            $fieldsToUpdate[] = "status_viaje = ?";
+            $params[] = $input['status_viaje'];
+        }
+
+        // 3. Datos Financieros (Editables Manualmente)
         if (isset($input['subtotal'])) {
             $fieldsToUpdate[] = "subtotal = ?";
             $params[] = $input['subtotal'];
         }
-        // Nota: Cargos y Total se actualizarían aquí si el frontend los manda, 
-        // o podrías recalcularlos en el backend para mayor seguridad.
         if (isset($input['total'])) {
             $fieldsToUpdate[] = "total = ?";
             $params[] = $input['total'];

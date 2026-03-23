@@ -4,19 +4,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cotizaciones Especiales - Sistema Liberia</title>
+    <title>Cotizaciones - Sistema Liberia</title>
 
-    <!-- Fonts: Lato & Oswald -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
         href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&family=Oswald:wght@400;700&display=swap"
         rel="stylesheet">
 
-    <!-- Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css">
+
+    <!-- VERIFICACIÓN DE SESIÓN -->
+    <script>
+        (async function checkAuth() {
+            const token = sessionStorage.getItem('session_token');
+            if (!token) { window.location.href = '/login'; return; }
+            try {
+                const response = await fetch('api/check_session.php', {
+                    headers: { 'X-Session-Token': token }
+                });
+                const data = await response.json();
+                if (!data.authenticated) {
+                    sessionStorage.removeItem('session_token');
+                    window.location.href = '/login';
+                }
+            } catch (error) {
+                console.error('Error verificando sesión:', error);
+                window.location.href = '/login';
+            }
+        })();
+    </script>
+
+    <script src="menu.js" defer></script>
 
     <style>
         :root {
@@ -24,8 +43,6 @@
             --secondary: #ffffff;
             --accent: #ed4441;
             --bg-light: #f1f5f9;
-            --whatsapp: #25d366;
-            --email-btn: #3b82f6;
         }
 
         body {
@@ -37,10 +54,7 @@
             font-size: 15px;
         }
 
-        h1,
-        h2,
-        h3,
-        .title-font {
+        h1, h2, h3, .title-font {
             font-family: 'Oswald', sans-serif;
             text-transform: uppercase;
         }
@@ -52,7 +66,6 @@
             border: 1px solid #e2e8f0;
         }
 
-        /* --- ESTILO DE TABLA LINEAL --- */
         .main-container {
             width: 100%;
             padding: 18px 18px 32px;
@@ -61,29 +74,14 @@
         }
 
         @media (max-width: 768px) {
-            .main-container {
-                padding: 12px;
-            }
+            .main-container { padding: 12px; }
         }
 
         @media (min-width: 768px) {
-            .main-container {
-                padding: 30px;
-            }
+            .main-container { padding: 30px; }
         }
 
-        .table-wrapper {
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 0;
-            width: 100%;
-            overflow: hidden;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
+        table { width: 100%; border-collapse: collapse; }
 
         thead th {
             background-color: #f8fafc;
@@ -101,11 +99,10 @@
             background: white;
             border-bottom: 1px solid #e2e8f0;
             transition: all 0.2s ease;
+            cursor: pointer;
         }
 
-        tbody tr:hover {
-            background: #f8fafc;
-        }
+        tbody tr:hover { background: #f8fafc; }
 
         td {
             padding: 16px 20px;
@@ -114,7 +111,6 @@
             vertical-align: middle;
         }
 
-        /* Status Pills */
         .status-pill {
             padding: 6px 12px;
             border-radius: 20px;
@@ -127,31 +123,11 @@
             letter-spacing: 0.5px;
         }
 
-        .status-completed {
-            background: #dcfce7;
-            color: #166534;
-        }
-
-        .status-processing {
-            background: #fef9c3;
-            color: #854d0e;
-        }
-
-        .status-on-hold {
-            background: #ffedd5;
-            color: #9a3412;
-        }
-
-        .status-pending {
-            background: #fef3c7;
-            color: #92400e;
-        }
-
-        .status-cancelled,
-        .status-failed {
-            background: #fee2e2;
-            color: #991b1b;
-        }
+        .status-completed { background: #dcfce7; color: #166534; }
+        .status-processing { background: #fef9c3; color: #854d0e; }
+        .status-on-hold { background: #ffedd5; color: #9a3412; }
+        .status-pending { background: #fef3c7; color: #92400e; }
+        .status-cancelled, .status-failed { background: #fee2e2; color: #991b1b; }
 
         /* Modal */
         #modal-overlay {
@@ -169,18 +145,90 @@
             background: white;
             width: 95vw;
             height: 90vh;
-            max-width: 1400px;
+            max-width: 1100px;
             border-radius: 16px;
             display: flex;
             flex-direction: column;
             overflow: hidden;
+        }
+
+        /* Trip table in modal */
+        .trip-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .trip-table th {
+            background: #f1f5f9;
+            padding: 10px 14px;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: #64748b;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .trip-table td {
+            padding: 12px 14px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 14px;
+        }
+
+        .trip-table tr:last-child td { border-bottom: none; }
+
+        .trip-type-pill {
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .trip-type-llegada { background: #dbeafe; color: #1e40af; }
+        .trip-type-salida { background: #fce7f3; color: #9d174d; }
+        .trip-type-interno { background: #fef3c7; color: #92400e; }
+
+        .meta-field-label {
+            display: block;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: #94a3b8;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+        }
+
+        .meta-field-value {
+            font-size: 15px;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .subtotal-input {
+            width: 90px;
+            text-align: right;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 4px 8px;
+            font-weight: 700;
+            font-size: 14px;
+            color: #1e293b;
+            background: #fefce8;
+        }
+
+        .subtotal-input:focus {
+            outline: none;
+            border-color: #f59e0b;
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
         }
     </style>
 </head>
 
 <body>
 
-    <!-- Navbar Component -->
     <admin-navbar></admin-navbar>
 
     <main class="main-container">
@@ -199,27 +247,22 @@
                         <tr>
                             <th>ID / Fecha</th>
                             <th>Cliente</th>
-                            <th>Ruta (Origen -> Destino)</th>
-                            <th class="text-center">Viaje</th>
+                            <th>Viajes</th>
                             <th class="text-right">Total</th>
                             <th class="text-center">Status</th>
                             <th class="text-center">Acciones</th>
                         </tr>
                     </thead>
                     <tbody id="orders-table-body">
-                        <!-- Rows -->
                     </tbody>
                 </table>
             </div>
 
-            <!-- Pagination -->
             <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
                 <span class="text-xs font-bold text-slate-400" id="pagination-info">Mostrando 0-0 de 0</span>
                 <div class="flex gap-2">
-                    <button onclick="prevPage()"
-                        class="p-2 hover:bg-white rounded-lg text-slate-400 hover:text-slate-600 disabled:opacity-50 transition-colors">◀</button>
-                    <button onclick="nextPage()"
-                        class="p-2 hover:bg-white rounded-lg text-slate-400 hover:text-slate-600 disabled:opacity-50 transition-colors">▶</button>
+                    <button onclick="prevPage()" class="p-2 hover:bg-white rounded-lg text-slate-400 hover:text-slate-600 transition-colors">◀</button>
+                    <button onclick="nextPage()" class="p-2 hover:bg-white rounded-lg text-slate-400 hover:text-slate-600 transition-colors">▶</button>
                 </div>
             </div>
         </div>
@@ -243,49 +286,62 @@
             <!-- Modal Body -->
             <div class="flex-1 overflow-y-auto p-6 bg-slate-50/50">
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <!-- Columna Izquierda: Detalles del Viaje -->
+                    <!-- Columna Izquierda: Viajes + Cliente -->
                     <div class="lg:col-span-2 space-y-6">
+                        <!-- Tabla de Viajes -->
                         <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
                             <h3 class="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 border-b pb-2">
-                                Información del Viaje</h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8" id="modal-trip-details">
-                                <!-- JS Injection -->
+                                Viajes de la Reserva</h3>
+                            <div class="overflow-x-auto">
+                                <table class="trip-table">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Tipo</th>
+                                            <th>Ruta</th>
+                                            <th>Fecha</th>
+                                            <th>Hora</th>
+                                            <th>Pax</th>
+                                            <th class="text-right">Subtotal</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="modal-trips-body">
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
 
+                        <!-- Cliente -->
                         <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
                             <h3 class="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 border-b pb-2">
                                 Cliente</h3>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8" id="modal-customer-details">
-                                <!-- JS Injection -->
                             </div>
                         </div>
                     </div>
 
-                    <!-- Columna Derecha: Financiero (Editable) -->
+                    <!-- Columna Derecha: Financiero + Acciones -->
                     <div class="space-y-6">
-                        <div
-                            class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 border-l-4 border-l-blue-500">
-                            <h3 class="text-sm font-black text-slate-400 uppercase tracking-widest mb-4">Resumen
-                                Financiero</h3>
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 border-l-4 border-l-blue-500">
+                            <h3 class="text-sm font-black text-slate-400 uppercase tracking-widest mb-4">Resumen Financiero</h3>
                             <div id="payment-breakdown-list">
-                                <!-- JS Injection -->
                             </div>
                         </div>
 
                         <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-                            <h3 class="text-sm font-black text-slate-400 uppercase tracking-widest mb-4">Acciones
-                            </h3>
+                            <h3 class="text-sm font-black text-slate-400 uppercase tracking-widest mb-4">Acciones</h3>
                             <div class="space-y-3">
-                                <label class="block text-xs font-bold text-slate-400 uppercase">Cambiar
-                                    Status</label>
-                                <select id="input-status"
-                                    class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 focus:border-blue-500 outline-none">
-                                    <option value="pending">Pending Payment</option>
-                                    <option value="processing">Processing</option>
-                                    <option value="completed">Completed</option>
-                                    <option value="cancelled">Cancelled</option>
+                                <label class="block text-xs font-bold text-slate-400 uppercase">Estado de Cotización</label>
+                                <select id="input-status-viaje"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 focus:border-blue-500 outline-none"
+                                    onchange="showSaveBtn()">
+                                    <option value="pending">Pendiente</option>
+                                    <option value="processing">En Proceso</option>
+                                    <option value="on-hold">En Espera</option>
+                                    <option value="completed">Completada</option>
+                                    <option value="cancelled">Cancelada</option>
                                 </select>
+                                <p class="text-[10px] text-slate-400">Los viajes aparecerán en la ventana de Viajes solo cuando el estado sea <strong>Completada</strong>.</p>
 
                                 <button id="btn-save" onclick="saveOrderDetails()"
                                     class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-lg shadow-blue-500/30 transition-all mt-4 hidden">
@@ -300,18 +356,17 @@
     </div>
 
     <!-- Scripts -->
-    <script src="menu.js" defer></script>
     <script>
         const API_URL = 'api/cotizaciones.php';
 
-        // Estado
         let allOrders = [];
         let currentFilteredOrders = [];
         let currentPage = 1;
         const itemsPerPage = 20;
         let currentOrderId = null;
+        let currentOrderData = null;
 
-        // Formateadores
+        // Helpers
         const formatDate = (dateStr) => {
             if (!dateStr) return '-';
             const date = new Date(dateStr);
@@ -320,16 +375,37 @@
             }).format(date);
         };
 
-        const renderStatusBadge = (status) => {
+        const translateStatus = (s) => {
+            const map = {
+                'pending': 'Pendiente',
+                'processing': 'En Proceso',
+                'on-hold': 'En Espera',
+                'completed': 'Completada',
+                'cancelled': 'Cancelada',
+                'failed': 'Fallida'
+            };
+            return map[s] || s;
+        };
+
+        const statusClass = (s) => {
             const map = {
                 'completed': 'status-completed',
                 'processing': 'status-processing',
                 'pending': 'status-pending',
                 'cancelled': 'status-cancelled',
-                'on-hold': 'status-on-hold'
+                'on-hold': 'status-on-hold',
+                'failed': 'status-failed'
             };
-            const colorClass = map[status] || 'bg-slate-100 text-slate-500';
-            return `<span class="status-pill ${colorClass}">${status}</span>`;
+            return map[s] || 'bg-slate-100 text-slate-500';
+        };
+
+        const tripTypeLabel = (t) => {
+            const map = { 'llegada': '✈️ Llegada', 'salida': '🛫 Salida', 'interno': '🚐 Interno' };
+            return map[t] || t;
+        };
+
+        const tripTypeClass = (t) => {
+            return `trip-type-${t}` || 'trip-type-interno';
         };
 
         // Cargar Datos
@@ -338,11 +414,11 @@
                 const res = await fetch(API_URL);
                 if (!res.ok) throw new Error('Error fetching data');
                 allOrders = await res.json();
-                currentFilteredOrders = [...allOrders]; // TODO: Implementar filtros si necesario
+                currentFilteredOrders = [...allOrders];
                 renderTable();
             } catch (err) {
                 console.error(err);
-                document.getElementById('orders-table-body').innerHTML = `<tr><td colspan="7" class="text-center py-8 text-red-500">Error cargando datos. Revisa la consola.</td></tr>`;
+                document.getElementById('orders-table-body').innerHTML = `<tr><td colspan="6" class="text-center py-8 text-red-500">Error cargando datos.</td></tr>`;
             }
         }
 
@@ -355,45 +431,47 @@
             const end = start + itemsPerPage;
             const pageData = currentFilteredOrders.slice(start, end);
 
-            // Update Pagination Info
             document.getElementById('pagination-info').innerText =
                 `Mostrando ${currentFilteredOrders.length === 0 ? 0 : start + 1}-${Math.min(end, currentFilteredOrders.length)} de ${currentFilteredOrders.length}`;
 
             if (pageData.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-12 text-slate-400 italic">No se encontraron cotizaciones</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-12 text-slate-400 italic">No se encontraron cotizaciones</td></tr>`;
                 return;
             }
 
             pageData.forEach(o => {
+                const viajes = o.viajes || [];
+                // Build a summary of trip types
+                const tripSummary = viajes.map(v => {
+                    const typeClass = tripTypeClass(v.tipo);
+                    const label = v.tipo === 'interno' ? 'Interno' : v.tipo === 'llegada' ? 'Llegada' : 'Salida';
+                    return `<span class="trip-type-pill ${typeClass}">${label}</span>`;
+                }).join(' ');
+
+                const statusViaje = o.status_viaje || o.status;
+
                 const tr = document.createElement('tr');
+                tr.onclick = () => viewOrder(o.id);
                 tr.innerHTML = `
                     <td>
                         <div class="font-bold text-slate-900">#${o.id}</div>
                         <div class="text-xs text-slate-400">${formatDate(o.date_created)}</div>
                     </td>
                     <td>
-                        <div class="font-bold text-slate-800">${o.billing.first_name || ''} ${o.billing.last_name || ''}</div>
-                        <div class="text-xs text-slate-500">${o.billing.email}</div>
+                        <div class="font-bold text-slate-800">${o.billing.last_name || ''}</div>
+                        <div class="text-xs text-slate-500">${o.billing.email || ''}</div>
                     </td>
                     <td>
-                         <div class="flex flex-col">
-                            <span class="font-bold text-slate-700">${o.origen || 'No definido'}</span>
-                            <span class="text-[10px] text-slate-400 uppercase font-black">Destino:</span>
-                            <span class="font-bold text-slate-700">${o.hotel_nombre || 'No definido'}</span>
-                        </div>
-                    </td>
-                    <td class="text-center">
-                        <div class="flex flex-col items-center">
-                            <span class="font-mono text-slate-600 font-bold">${o.fecha_viaje || '-'}</span>
-                            <span class="text-xs text-slate-400">${o.hora_viaje || '-'}</span>
-                             <span class="text-[10px] bg-slate-100 px-2 rounded-full mt-1 text-slate-500">PAX: ${o.pasajeros}</span>
-                        </div>
+                        <div class="flex flex-wrap gap-1">${tripSummary || '<span class="text-slate-400 text-xs">Sin viajes</span>'}</div>
+                        <div class="text-xs text-slate-400 mt-1">${o.origen || ''} → ${o.hotel_nombre || ''}</div>
                     </td>
                     <td class="text-right font-mono font-bold text-slate-700">$${parseFloat(o.total).toFixed(2)}</td>
-                    <td class="text-center">${renderStatusBadge(o.status)}</td>
                     <td class="text-center">
-                        <button onclick="viewOrder(${o.id})" class="text-blue-600 hover:text-blue-800 font-bold text-xs bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors">
-                            VER DETALLES
+                        <span class="status-pill ${statusClass(statusViaje)}">${translateStatus(statusViaje)}</span>
+                    </td>
+                    <td class="text-center">
+                        <button onclick="event.stopPropagation(); viewOrder(${o.id})" class="text-blue-600 hover:text-blue-800 font-bold text-xs bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors">
+                            VER
                         </button>
                     </td>
                 `;
@@ -401,77 +479,96 @@
             });
         }
 
-        // Pagination Controls
+        // Pagination
         window.prevPage = () => { if (currentPage > 1) { currentPage--; renderTable(); } };
         window.nextPage = () => { if (currentPage * itemsPerPage < currentFilteredOrders.length) { currentPage++; renderTable(); } };
 
-        // Modal Logic
+        // Modal
         window.viewOrder = (id) => {
             currentOrderId = id;
             const o = allOrders.find(x => x.id === id);
             if (!o) return;
+            currentOrderData = o;
 
             document.getElementById('modal-overlay').style.display = 'flex';
             document.getElementById('modal-order-id').innerText = `#${o.id}`;
-            document.getElementById('modal-order-status').className = `status-pill ${renderStatusBadge(o.status).match(/class="status-pill ([^"]+)"/)[1]}`;
-            document.getElementById('modal-order-status').innerText = o.status;
-            document.getElementById('input-status').value = o.status;
 
-            // Render Trip Details
-            document.getElementById('modal-trip-details').innerHTML = `
-                <div>
-                    <span class="meta-field-label">Origen</span>
-                    <div class="meta-field-value">${o.origen || '-'}</div>
-                </div>
-                <div>
-                    <span class="meta-field-label">Destino</span>
-                    <div class="meta-field-value">${o.hotel_nombre || '-'}</div>
-                </div>
-                <div>
-                    <span class="meta-field-label">Fecha</span>
-                    <div class="meta-field-value">${o.fecha_viaje || '-'}</div>
-                </div>
-                <div>
-                    <span class="meta-field-label">Hora</span>
-                    <div class="meta-field-value">${o.hora_viaje || '-'}</div>
-                </div>
-                <div class="md:col-span-2">
-                    <span class="meta-field-label">Notas / Raw Data</span>
-                    <div class="text-xs text-slate-400 bg-slate-50 p-2 rounded overflow-x-auto font-mono">
-                        ${JSON.stringify(o.meta_data, null, 2)}
-                    </div>
-                </div>
-            `;
+            const sv = o.status_viaje || o.status;
+            document.getElementById('modal-order-status').className = `status-pill ${statusClass(sv)}`;
+            document.getElementById('modal-order-status').innerText = translateStatus(sv);
+            document.getElementById('input-status-viaje').value = sv;
 
-            // Render Customer Details
+            // Render Trips Table
+            renderTripsTable(o);
+
+            // Render Customer
             document.getElementById('modal-customer-details').innerHTML = `
                 <div>
                     <span class="meta-field-label">Nombre</span>
-                    <div class="meta-field-value">${o.billing.first_name} ${o.billing.last_name}</div>
+                    <div class="meta-field-value">${o.billing.last_name || '-'}</div>
                 </div>
                 <div>
                     <span class="meta-field-label">Email</span>
-                    <div class="meta-field-value text-blue-600">${o.billing.email}</div>
+                    <div class="meta-field-value text-blue-600">${o.billing.email || '-'}</div>
                 </div>
                 <div>
                     <span class="meta-field-label">Teléfono</span>
-                    <div class="meta-field-value">${o.billing.phone}</div>
+                    <div class="meta-field-value">${o.billing.phone || '-'}</div>
                 </div>
-                 <div>
-                    <span class="meta-field-label">Dirección</span>
-                    <div class="meta-field-value text-xs">${o.billing.address_1}</div>
+                <div>
+                    <span class="meta-field-label">País</span>
+                    <div class="meta-field-value">${o.billing.country || '-'}</div>
                 </div>
             `;
 
+            // Render Financial Summary
             renderPaymentInfo(o);
         };
 
-        window.closeModal = () => {
-            document.getElementById('modal-overlay').style.display = 'none';
-            document.getElementById('btn-save').classList.add('hidden');
-        };
+        function renderTripsTable(o) {
+            const tbody = document.getElementById('modal-trips-body');
+            const viajes = o.viajes || [];
 
-        // Financial Logic (Editable)
+            if (viajes.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-400 italic text-sm">No hay viajes registrados para esta cotización</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = viajes.map((v, i) => {
+                const isInterno = v.tipo === 'interno';
+                const ruta = v.hotel || '-';
+                const fecha = v.fecha || '-';
+                const hora = v.hora ? v.hora.substring(0, 5) : '-';
+                const subtotalVal = parseFloat(v.subtotal) || 0;
+
+                // For internal trips, show editable input. For normal trips, show the subtotal from WooCommerce line_items
+                let subtotalCell;
+                if (isInterno) {
+                    subtotalCell = `<input type="number" step="0.01" class="subtotal-input" 
+                        id="trip-subtotal-${v.id}" value="${subtotalVal.toFixed(2)}" 
+                        oninput="recalculateTotal()" placeholder="0.00">`;
+                } else {
+                    // Try to get the subtotal from line_items
+                    const lineItems = o.line_items || [];
+                    const itemSubtotal = lineItems[v.item_index] ? parseFloat(lineItems[v.item_index].subtotal || 0) : subtotalVal;
+                    subtotalCell = `<span class="font-mono font-bold text-slate-600">$${itemSubtotal.toFixed(2)}</span>`;
+                }
+
+                return `
+                    <tr>
+                        <td class="font-bold text-slate-400">${i + 1}</td>
+                        <td><span class="trip-type-pill ${tripTypeClass(v.tipo)}">${tripTypeLabel(v.tipo)}</span></td>
+                        <td class="font-bold text-slate-700 text-sm">${ruta}</td>
+                        <td class="font-mono text-slate-600">${fecha}</td>
+                        <td class="font-mono text-slate-600">${hora}</td>
+                        <td class="text-center font-bold text-slate-600">${v.pax || 1}</td>
+                        <td class="text-right">${subtotalCell}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Financial Logic
         function renderPaymentInfo(o) {
             const container = document.getElementById('payment-breakdown-list');
             const paymentMethods = ['Cash', 'Credit Card', 'Paypal', 'Bank Transfer'];
@@ -483,9 +580,6 @@
             });
             paymentSelect += `</select>`;
 
-            // Subtotal Input
-            const subtotalVal = parseFloat(o.subtotal) || 0;
-
             container.innerHTML = `
                 <div class="mb-2">
                     <label class="block text-[10px] uppercase font-bold text-slate-400">Método de Pago</label>
@@ -494,8 +588,8 @@
                 
                 <div class="space-y-3">
                     <div class="flex justify-between items-center text-sm">
-                        <span class="font-bold text-slate-500">Subtotal</span>
-                        <input type="number" id="edit-subtotal" value="${subtotalVal.toFixed(2)}" class="w-24 text-right border rounded bg-slate-50 font-bold text-slate-700 px-2 py-1" oninput="recalculateTotal()">
+                        <span class="font-bold text-slate-500">Subtotal Viajes</span>
+                        <span id="display-subtotal" class="font-bold text-slate-700">$0.00</span>
                     </div>
                     
                     <div class="flex justify-between items-center text-sm">
@@ -514,52 +608,118 @@
         }
 
         window.recalculateTotal = function () {
-            const subtotal = parseFloat(document.getElementById('edit-subtotal').value) || 0;
-            const metodo = document.getElementById('edit-payment-method').value;
+            if (!currentOrderData) return;
+            const viajes = currentOrderData.viajes || [];
+            const lineItems = currentOrderData.line_items || [];
 
+            let subtotal = 0;
+
+            viajes.forEach(v => {
+                if (v.tipo === 'interno') {
+                    // Editable: get from input
+                    const input = document.getElementById(`trip-subtotal-${v.id}`);
+                    subtotal += input ? (parseFloat(input.value) || 0) : 0;
+                } else {
+                    // Fixed: get from line_items
+                    const li = lineItems[v.item_index];
+                    subtotal += li ? (parseFloat(li.subtotal) || 0) : (parseFloat(v.subtotal) || 0);
+                }
+            });
+
+            const metodo = document.getElementById('edit-payment-method')?.value || '';
             let cargos = 0;
             if (metodo !== 'Cash' && metodo) {
                 cargos = subtotal * 0.05;
             }
 
             const total = subtotal + cargos;
+            document.getElementById('display-subtotal').innerText = '$' + subtotal.toFixed(2);
             document.getElementById('display-cargos').innerText = '$' + cargos.toFixed(2);
             document.getElementById('display-total').innerText = '$' + total.toFixed(2);
+
+            showSaveBtn();
+        };
+
+        window.showSaveBtn = function () {
             document.getElementById('btn-save').classList.remove('hidden');
         };
 
-        window.saveOrderDetails = async function () {
-            if (!currentOrderId) return;
-            const subtotal = parseFloat(document.getElementById('edit-subtotal').value) || 0;
-            const metodo = document.getElementById('edit-payment-method').value;
-            let cargos = 0;
-            if (metodo !== 'Cash') {
-                cargos = subtotal * 0.05;
-            }
-            const total = subtotal + cargos;
-            const status = document.getElementById('input-status').value;
+        window.closeModal = () => {
+            document.getElementById('modal-overlay').style.display = 'none';
+            document.getElementById('btn-save').classList.add('hidden');
+        };
 
-            const payload = {
-                status: status,
-                subtotal: subtotal,
-                total: total,
-                payment_method_title: metodo
-            };
+        window.saveOrderDetails = async function () {
+            if (!currentOrderId || !currentOrderData) return;
+
+            const btn = document.getElementById('btn-save');
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Guardando...';
 
             try {
+                // Calculate totals
+                const viajes = currentOrderData.viajes || [];
+                const lineItems = currentOrderData.line_items || [];
+                let subtotal = 0;
+
+                viajes.forEach(v => {
+                    if (v.tipo === 'interno') {
+                        const input = document.getElementById(`trip-subtotal-${v.id}`);
+                        subtotal += input ? (parseFloat(input.value) || 0) : 0;
+                    } else {
+                        const li = lineItems[v.item_index];
+                        subtotal += li ? (parseFloat(li.subtotal) || 0) : (parseFloat(v.subtotal) || 0);
+                    }
+                });
+
+                const metodo = document.getElementById('edit-payment-method').value;
+                let cargos = 0;
+                if (metodo !== 'Cash') {
+                    cargos = subtotal * 0.05;
+                }
+                const total = subtotal + cargos;
+                const statusViaje = document.getElementById('input-status-viaje').value;
+
+                // Save cotización
+                const payload = {
+                    status_viaje: statusViaje,
+                    subtotal: subtotal,
+                    total: total,
+                    payment_method_title: metodo
+                };
+
                 const res = await fetch(`${API_URL}?order_id=${currentOrderId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
+
+                // Save individual trip subtotals for internal trips
+                for (const v of viajes) {
+                    if (v.tipo === 'interno') {
+                        const input = document.getElementById(`trip-subtotal-${v.id}`);
+                        const tripSubtotal = input ? (parseFloat(input.value) || 0) : 0;
+                        await fetch(`api/viajes_api.php?viaje_id=${v.id}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ subtotal: tripSubtotal })
+                        });
+                    }
+                }
+
                 if (res.ok) {
-                    alert('Guardado correctamente');
                     closeModal();
                     loadOrders();
                 } else {
                     alert('Error guardando');
                 }
-            } catch (e) { console.error(e); alert('Error de red'); }
+            } catch (e) {
+                console.error(e);
+                alert('Error de red');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '💾 Guardar Cambios';
+            }
         };
 
         // Init
