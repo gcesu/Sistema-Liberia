@@ -168,9 +168,10 @@ function deleteOrderFromDB($pdo, $orderId)
  */
 function esLineItemInterno($item)
 {
-    // Detección por meta key del plugin (método primario)
+    // Detección por meta key del formulario (método primario)
     foreach (($item['meta_data'] ?? []) as $m) {
-        if (($m['key'] ?? '') === 'wccpf_uqmQV1WN1jeT') {
+        $k = $m['key'] ?? '';
+        if ($k === '- Pick-up Location' || $k === 'wccpf_uqmQV1WN1jeT') {
             return true;
         }
     }
@@ -323,16 +324,19 @@ function saveOrderToDB($pdo, $order)
             $itemMeta = $item['meta_data'] ?? [];
             foreach ($itemMeta as $m) {
                 $key = $m['key'] ?? '';
-                if ($key === 'wccpf_uqmQV1WN1jeT')
-                    $origen = $m['value'] ?? '';
-                if ($key === 'wccpf_1leEY9NyPBq8')
-                    $hotelNombre = $m['value'] ?? '';
-                if ($key === 'wccpf_GKaNQcnBtnRd')
-                    $fechaViaje = $m['value'] ?? null;
-                if ($key === 'wccpf_rltyePZt3ZCD')
-                    $horaViaje = $m['value'] ?? null;
-                if ($key === 'wccpf_MikTE0O9596X')
-                    $pasajeros = intval($m['value'] ?? 1);
+                $val = $m['value'] ?? $m['display_value'] ?? '';
+                if (is_array($val)) $val = implode(', ', $val);
+                $val = trim((string)$val);
+                if (($key === '- Pick-up Location' || $key === 'wccpf_uqmQV1WN1jeT') && $val !== '')
+                    $origen = $val;
+                if (($key === '- Drop-off Location' || $key === 'wccpf_1leEY9NyPBq8') && $val !== '')
+                    $hotelNombre = $val;
+                if (($key === '- Pick-up Date' || $key === 'wccpf_GKaNQcnBtnRd') && $val !== '')
+                    $fechaViaje = $val;
+                if (($key === '- Pick-up Time' || $key === 'wccpf_rltyePZt3ZCD') && $val !== '')
+                    $horaViaje = $val;
+                if (($key === '- Passengers' || $key === 'wccpf_MikTE0O9596X') && $val !== '')
+                    $pasajeros = intval($val) ?: 1;
             }
             if ($origen !== '')
                 break; // usar el primer viaje interno encontrado
@@ -406,15 +410,28 @@ function saveOrderToDB($pdo, $order)
 
         if (esLineItemInterno($item)) {
             // ── VIAJE INTERNO ─────────────────────────────────────────────
-            $pickupLocation = $findMeta($itemMeta, 'wccpf_uqmQV1WN1jeT') ?? '';
-            $dropoffLocation = $findMeta($itemMeta, 'wccpf_1leEY9NyPBq8') ?? '';
-            $pickupDate = $parseDate($findMeta($itemMeta, 'wccpf_GKaNQcnBtnRd'));
-            $pickupTime = $parseTime($findMeta($itemMeta, 'wccpf_rltyePZt3ZCD'));
-            $paxStr = $findMeta($itemMeta, 'wccpf_MikTE0O9596X') ?? '1';
+            // Extraer valores con fallback a display_value
+            $getMetaVal = function ($metaArr, $targetKey, $altKey = null) {
+                foreach ($metaArr as $m) {
+                    $k = $m['key'] ?? '';
+                    if ($k === $targetKey || ($altKey && $k === $altKey)) {
+                        $val = $m['value'] ?? $m['display_value'] ?? '';
+                        if (is_array($val)) $val = implode(', ', $val);
+                        return trim((string)$val);
+                    }
+                }
+                return '';
+            };
+
+            $pickupLocation = $getMetaVal($itemMeta, '- Pick-up Location', 'wccpf_uqmQV1WN1jeT');
+            $dropoffLocation = $getMetaVal($itemMeta, '- Drop-off Location', 'wccpf_1leEY9NyPBq8');
+            $pickupDate = $parseDate($getMetaVal($itemMeta, '- Pick-up Date', 'wccpf_GKaNQcnBtnRd'));
+            $pickupTime = $parseTime($getMetaVal($itemMeta, '- Pick-up Time', 'wccpf_rltyePZt3ZCD'));
+            $paxStr = $getMetaVal($itemMeta, '- Passengers', 'wccpf_MikTE0O9596X') ?: '1';
             $pax = intval(preg_replace('/[^0-9]/', '', $paxStr)) ?: 1;
 
             // Si no hay fecha, igual guardamos el viaje con fecha NULL para no perder el registro
-            $rutaCompleta = trim($pickupLocation) !== '' || trim($dropoffLocation) !== ''
+            $rutaCompleta = ($pickupLocation !== '' || $dropoffLocation !== '')
                 ? $pickupLocation . ' → ' . $dropoffLocation
                 : $destinoName;
 
@@ -426,7 +443,7 @@ function saveOrderToDB($pdo, $order)
                 'hora' => $pickupTime,
                 'vuelo' => null,
                 'pax' => $pax,
-                'hotel' => '',
+                'hotel' => $rutaCompleta,
                 'destino' => $rutaCompleta,
             ]);
             $savedTrips[] = ['item_index' => $itemIndex, 'tipo' => 'interno'];

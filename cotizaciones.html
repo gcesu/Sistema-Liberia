@@ -245,7 +245,6 @@
             }
         }
 
-        /* Route cards — identical dark style to reservas */
         .route-visualizer {
             display: flex;
             align-items: center;
@@ -289,7 +288,6 @@
             line-height: 1.2;
         }
 
-        /* Info pills */
         .info-pill {
             background: #f1f5f9;
             color: #475569;
@@ -303,7 +301,6 @@
             border: 1px solid #e2e8f0;
         }
 
-        /* Operation cards */
         .operation-card {
             background: white;
             border: 1px solid #e2e8f0;
@@ -426,6 +423,95 @@
             text-decoration: none;
             border: none;
             cursor: pointer;
+        }
+
+        .btn-section-edit {
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            padding: 4px 10px;
+            background: white;
+            border: 1px solid #cbd5e1;
+            color: #64748b;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-section-edit:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .btn-section-edit.editing {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        .input-editable {
+            width: 100%;
+            background-color: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--primary);
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .input-editable:focus {
+            border-color: var(--accent);
+            background-color: white;
+        }
+
+        .searchable-select-wrapper {
+            position: relative;
+        }
+
+        .searchable-select-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            z-index: 999;
+            background: white;
+            border: 1px solid #cbd5e1;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .searchable-select-option {
+            padding: 8px 12px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--primary);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .searchable-select-option:hover,
+        .searchable-select-option.active {
+            background: #eef4ff;
+            color: var(--accent);
+        }
+
+        .searchable-select-option.selected {
+            background: var(--accent);
+            color: white;
+        }
+
+        .searchable-select-empty {
+            padding: 10px 12px;
+            font-size: 13px;
+            color: #94a3b8;
+            text-align: center;
+            font-style: italic;
         }
 
         #input-status-viaje {
@@ -551,6 +637,13 @@
                 border-bottom: 1px solid #e2e8f0;
             }
         }
+
+        @media (max-width: 640px) {
+            .field-group-row {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+        }
     </style>
 </head>
 
@@ -558,7 +651,6 @@
     <admin-navbar></admin-navbar>
 
     <main class="w-full px-4 md:px-8">
-
         <div class="mt-6 md:mt-8 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <h2 class="text-2xl md:text-3xl font-bold text-[#002a3f] title-font">Cotizaciones</h2>
             <div class="flex items-center gap-2">
@@ -587,13 +679,11 @@
             <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider" id="pagination-info"></p>
             <div class="flex flex-wrap justify-center gap-2" id="pagination-controls"></div>
         </div>
-
     </main>
 
     <!-- Modal -->
     <div id="order-modal" onclick="closeModal()">
         <div id="modal-box" onclick="event.stopPropagation()" class="shadow-2xl overflow-hidden">
-
             <div class="px-6 md:px-8 py-4 border-b flex justify-between items-center bg-white flex-shrink-0">
                 <div class="flex flex-wrap items-center gap-4">
                     <h3 id="modal-title" class="text-xl md:text-2xl font-bold text-[#002a3f] title-font"></h3>
@@ -604,14 +694,12 @@
             </div>
 
             <div class="flex-1 overflow-y-auto column-scroll flex flex-col lg:flex-row min-h-0">
-
                 <!-- Sidebar -->
                 <div class="modal-sidebar w-full lg:w-[320px] lg:flex-shrink-0">
                     <div class="p-6 md:p-8">
                         <div class="flex justify-between items-center mb-6">
                             <h4 class="text-[11px] font-black text-gray-400 uppercase tracking-widest">Cliente</h4>
                         </div>
-
                         <div class="flex flex-col items-center mb-6">
                             <div
                                 class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center text-3xl mb-3">
@@ -619,7 +707,6 @@
                             <div id="modal-client-name"
                                 class="font-bold text-xl text-[#002a3f] text-center leading-tight"></div>
                         </div>
-
                         <div class="space-y-4">
                             <div class="p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
                                 <p class="meta-field-label">📧 Correo</p>
@@ -664,11 +751,10 @@
 
                 <!-- Main -->
                 <div class="modal-main-content flex-1 p-6 md:p-8 bg-white">
-
-                    <!-- Banners de ruta (uno por viaje) -->
+                    <!-- Route banners -->
                     <div id="route-stack" class="route-stack"></div>
 
-                    <!-- Pills Tipo + Pax -->
+                    <!-- Pills -->
                     <div class="flex flex-wrap gap-3 mb-8">
                         <div class="info-pill bg-white shadow-sm">
                             <span class="text-gray-500 text-sm uppercase font-bold">Tipo:</span>
@@ -680,16 +766,15 @@
                         </div>
                     </div>
 
-                    <!-- Tarjetas viajes -->
+                    <!-- Viaje cards -->
                     <div id="viajes-container" class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-8"></div>
 
-                    <!-- Financiero -->
+                    <!-- Financial -->
                     <div class="bg-white border rounded-xl p-5 shadow-sm max-w-md ml-auto">
                         <h5 class="text-xs font-black text-gray-500 uppercase tracking-widest mb-4 pb-2 border-b">
                             Resumen Financiero</h5>
                         <div id="financial-breakdown" class="space-y-3"></div>
                     </div>
-
                 </div>
             </div>
 
@@ -708,67 +793,39 @@
 
     <script>
         const API_URL = 'api/cotizaciones.php';
+        const VIAJES_API = 'api/viajes_api.php';
 
-        // Keys del formulario Hotel-Hotel / One Way Shuttle
-        const KEY_PICKUP_LOC = 'wccpf_uqmQV1WN1jeT';
-        const KEY_DROPOFF_LOC = 'wccpf_1leEY9NyPBq8';
-        const KEY_PICKUP_DATE = 'wccpf_GKaNQcnBtnRd';
-        const KEY_PICKUP_TIME = 'wccpf_rltyePZt3ZCD';
-        const KEY_PAX = 'wccpf_MikTE0O9596X';
+        const KEY_PICKUP_LOC = '- Pick-up Location';
+        const KEY_DROPOFF_LOC = '- Drop-off Location';
+        const KEY_PICKUP_DATE = '- Pick-up Date';
+        const KEY_PICKUP_TIME = '- Pick-up Time';
+        const KEY_PAX = '- Passengers';
 
         let allOrders = [];
         let currentPage = 1;
         const itemsPerPage = 20;
         let currentOrderId = null;
         let originalStatusViaje = '';
+        let currentOrderViajes = [];
+        let originalViajeValues = {};
+
+        // Choferes
+        let CHOFERES = [];
+        let CHOFERES_PHONE = {};
 
         const COUNTRY_MAP = { 'CR': 'Costa Rica', 'US': 'Estados Unidos', 'CA': 'Canadá', 'GB': 'Reino Unido', 'DE': 'Alemania', 'FR': 'Francia', 'ES': 'España', 'MX': 'México', 'BR': 'Brasil', 'AR': 'Argentina', 'CO': 'Colombia', 'CL': 'Chile', 'PE': 'Perú', 'GT': 'Guatemala', 'HN': 'Honduras', 'SV': 'El Salvador', 'NI': 'Nicaragua', 'PA': 'Panamá', 'IT': 'Italia', 'PT': 'Portugal', 'NL': 'Países Bajos', 'AU': 'Australia', 'NZ': 'Nueva Zelanda', 'JP': 'Japón', 'CN': 'China', 'IN': 'India', 'ZA': 'Sudáfrica', 'AE': 'Emiratos Árabes', 'TR': 'Turquía' };
 
-        // ── Helpers ──────────────────────────────────────────────────────────
-
-        function getInitials(name) {
-            if (!name) return '##';
-            const p = name.trim().split(' ').filter(Boolean);
-            return p.length === 1 ? p[0][0].toUpperCase() : (p[0][0] + p[p.length - 1][0]).toUpperCase();
-        }
-
-        function capitalizeName(name) {
-            if (!name) return '';
-            return name.toLowerCase().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-        }
-
-        function formatDateShort(d) {
-            if (!d) return '---';
-            const months = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
-            const s = String(d).split('T')[0];
-            const p = s.split('-');
-            if (p.length === 3) return `${parseInt(p[2])}/${months[parseInt(p[1]) - 1]}/${p[0]}`;
-            return d;
-        }
-
-        function formatTime(t) {
-            if (!t) return '--:--';
-            const m = String(t).match(/^(\d{1,2}):(\d{2})/);
-            if (!m) return String(t);
-            let h = parseInt(m[1]);
-            const min = m[2], ampm = h >= 12 ? 'PM' : 'AM';
-            h = h % 12 || 12;
-            return `${h}:${min} ${ampm}`;
-        }
-
-        function translateStatus(s) {
-            return { pending: 'Pendiente', processing: 'En Proceso', 'on-hold': 'En Espera', completed: 'Completada', cancelled: 'Cancelada', failed: 'Fallida' }[s] || s;
-        }
-
-        function statusClass(s) {
-            return { completed: 'status-completed', processing: 'status-processing', pending: 'status-pending', cancelled: 'status-cancelled', 'on-hold': 'status-on-hold', failed: 'status-failed' }[s] || 'status-pending';
-        }
-
-        function getMeta(arr, key) {
-            if (!Array.isArray(arr)) return null;
-            const m = arr.find(x => x.key === key);
-            return m ? (m.value ?? null) : null;
-        }
+        // ── Helpers ──
+        function getInitials(name) { if (!name) return '##'; const p = name.trim().split(' ').filter(Boolean); return p.length === 1 ? p[0][0].toUpperCase() : (p[0][0] + p[p.length - 1][0]).toUpperCase(); }
+        function capitalizeName(name) { if (!name) return ''; return name.toLowerCase().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '); }
+        function formatDateShort(d) { if (!d) return '---'; const months = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC']; const s = String(d).split('T')[0]; const p = s.split('-'); if (p.length === 3) return `${parseInt(p[2])}/${months[parseInt(p[1]) - 1]}/${p[0]}`; return d; }
+        function formatTime(t) { if (!t) return '--:--'; const m = String(t).match(/^(\d{1,2}):(\d{2})/); if (!m) return String(t); let h = parseInt(m[1]); const min = m[2], ampm = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12; return `${h}:${min} ${ampm}`; }
+        function translateStatus(s) { return { pending: 'Pendiente', processing: 'En Proceso', 'on-hold': 'En Espera', completed: 'Completada', cancelled: 'Cancelada', failed: 'Fallida' }[s] || s; }
+        function statusClass(s) { return { completed: 'status-completed', processing: 'status-processing', pending: 'status-pending', cancelled: 'status-cancelled', 'on-hold': 'status-on-hold', failed: 'status-failed' }[s] || 'status-pending'; }
+        function getMeta(arr, key) { if (!Array.isArray(arr)) return null; const m = arr.find(x => x.key === key); return m ? (m.value ?? null) : null; }
+        function normalizeForInput(val, type) { if (!val) return ''; if (type === 'date') return val.split('T')[0].split(' ')[0]; if (type === 'time') { const match = val.match(/(\d{1,2}):(\d{2})/); if (match) { let h = parseInt(match[1]); if (val.toLowerCase().includes('pm') && h < 12) h += 12; if (val.toLowerCase().includes('am') && h === 12) h = 0; return `${h.toString().padStart(2, '0')}:${match[2]}`; } } return val; }
+        function autoResizeTextarea(textarea) { if (!textarea) return; textarea.style.overflowY = 'hidden'; textarea.style.height = 'auto'; textarea.style.height = `${Math.max(textarea.scrollHeight, 64)}px`; }
+        function cleanDriverName(name) { if (!name) return ''; return name.replace(/\s*\(.*?\)\s*/g, '').trim(); }
 
         function esLineItemInterno(item) {
             if ((item.meta_data || []).some(m => m.key === KEY_PICKUP_LOC)) return true;
@@ -776,103 +833,126 @@
             return ['one way shuttle', 'hotel-hotel', 'hotel to hotel', 'hotel – hotel', 'hotel - hotel'].some(x => n.includes(x));
         }
 
-        // ── Carga ─────────────────────────────────────────────────────────────
+        // ── Load choferes ──
+        async function loadChoferes() {
+            try {
+                const response = await fetch('api/choferes.php');
+                if (response.ok) {
+                    const data = await response.json();
+                    CHOFERES = data.map(c => c.nombre);
+                    data.forEach(c => { if (c.telefono) CHOFERES_PHONE[c.nombre] = c.telefono; });
+                }
+            } catch (err) { console.error('Error cargando choferes:', err); }
+        }
 
+        function initSearchableSelect(selectId) {
+            const hiddenSelect = document.getElementById(selectId);
+            if (!hiddenSelect) return;
+            const currentValue = hiddenSelect.value || '';
+            hiddenSelect.classList.add('hidden');
+            const wrapper = document.createElement('div');
+            wrapper.className = 'searchable-select-wrapper';
+            const input = document.createElement('input');
+            input.type = 'text'; input.className = 'input-editable bg-white'; input.placeholder = 'Buscar chofer...'; input.autocomplete = 'off'; input.value = currentValue;
+            const dropdown = document.createElement('div');
+            dropdown.className = 'searchable-select-dropdown hidden';
+            wrapper.appendChild(input); wrapper.appendChild(dropdown);
+            hiddenSelect.parentNode.insertBefore(wrapper, hiddenSelect);
+            let activeIdx = -1;
+            function renderOptions(filter = '') {
+                const filterLower = filter.toLowerCase();
+                const allOptions = [{ value: '', label: 'No asignado' }, ...CHOFERES.map(c => ({ value: c, label: c }))];
+                const filtered = allOptions.filter(o => o.label.toLowerCase().includes(filterLower));
+                dropdown.innerHTML = ''; activeIdx = -1;
+                if (filtered.length === 0) { dropdown.innerHTML = '<div class="searchable-select-empty">Sin resultados</div>'; return; }
+                filtered.forEach((opt) => {
+                    const div = document.createElement('div');
+                    div.className = 'searchable-select-option' + (opt.value === hiddenSelect.value ? ' selected' : '');
+                    div.textContent = opt.label; div.dataset.value = opt.value;
+                    div.addEventListener('mousedown', (e) => { e.preventDefault(); selectOption(opt.value, opt.label); });
+                    dropdown.appendChild(div);
+                });
+            }
+            function selectOption(value, label) { hiddenSelect.value = value; input.value = label === 'No asignado' ? '' : label; dropdown.classList.add('hidden'); hiddenSelect.dispatchEvent(new Event('change')); }
+            input.addEventListener('focus', () => { input.select(); renderOptions(input.value); dropdown.classList.remove('hidden'); });
+            input.addEventListener('input', () => { renderOptions(input.value); dropdown.classList.remove('hidden'); });
+            input.addEventListener('blur', () => { setTimeout(() => { dropdown.classList.add('hidden'); input.value = hiddenSelect.value || ''; activeIdx = -1; }, 150); });
+            input.addEventListener('keydown', (e) => {
+                const items = dropdown.querySelectorAll('.searchable-select-option');
+                if (items.length === 0) return;
+                if (e.key === 'ArrowDown') { e.preventDefault(); activeIdx = Math.min(activeIdx + 1, items.length - 1); items.forEach((el, i) => el.classList.toggle('active', i === activeIdx)); items[activeIdx]?.scrollIntoView({ block: 'nearest' }); }
+                else if (e.key === 'ArrowUp') { e.preventDefault(); activeIdx = Math.max(activeIdx - 1, 0); items.forEach((el, i) => el.classList.toggle('active', i === activeIdx)); items[activeIdx]?.scrollIntoView({ block: 'nearest' }); }
+                else if (e.key === 'Enter') { e.preventDefault(); if (activeIdx >= 0 && items[activeIdx]) { selectOption(items[activeIdx].dataset.value, items[activeIdx].textContent); input.blur(); } }
+                else if (e.key === 'Escape') { dropdown.classList.add('hidden'); input.blur(); }
+            });
+        }
+
+        // ── Load orders ──
         async function loadOrders() {
+            await loadChoferes();
             try {
                 const res = await fetch(API_URL);
                 if (!res.ok) throw new Error();
                 allOrders = await res.json();
                 renderTable();
             } catch {
-                document.getElementById('table-body').innerHTML =
-                    `<tr><td colspan="6" class="text-center py-10 text-red-400 font-bold text-xs uppercase">Error cargando datos</td></tr>`;
+                document.getElementById('table-body').innerHTML = `<tr><td colspan="6" class="text-center py-10 text-red-400 font-bold text-xs uppercase">Error cargando datos</td></tr>`;
             }
         }
-
         window.refreshData = () => loadOrders();
 
-        // ── Tabla ─────────────────────────────────────────────────────────────
-
+        // ── Table ──
         function renderTable() {
-            const tbody = document.getElementById('table-body');
-            tbody.innerHTML = '';
+            const tbody = document.getElementById('table-body'); tbody.innerHTML = '';
             const start = (currentPage - 1) * itemsPerPage;
             const pageData = allOrders.slice(start, start + itemsPerPage);
             document.getElementById('total-count').textContent = allOrders.length;
             updatePagination();
-
-            if (!pageData.length) {
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-12 text-gray-400 font-bold text-xs uppercase tracking-wider">No se encontraron cotizaciones</td></tr>`;
-                return;
-            }
-
+            if (!pageData.length) { tbody.innerHTML = `<tr><td colspan="6" class="text-center py-12 text-gray-400 font-bold text-xs uppercase tracking-wider">No se encontraron cotizaciones</td></tr>`; return; }
             pageData.forEach(o => {
                 const viajes = o.viajes || [];
                 const sv = o.status_viaje || o.status;
                 const rawName = [o.billing?.last_name, o.billing?.first_name].filter(Boolean).join(' ') || `Cotización #${o.id}`;
                 const name = capitalizeName(rawName);
-
                 const tripBadges = viajes.map(v => {
                     const cls = v.tipo === 'llegada' ? 'badge-llegada' : v.tipo === 'salida' ? 'badge-salida' : 'badge-interno';
                     const label = v.tipo === 'llegada' ? 'Llegada' : v.tipo === 'salida' ? 'Salida' : 'Interno';
                     return `<span class="trip-badge ${cls}">${label}</span>`;
                 }).join(' ');
-
                 const tr = document.createElement('tr');
-                tr.onclick = () => viewOrder(o.id);
                 tr.innerHTML = `
-                    <td data-label="ID" class="pl-6">
-                        <div class="font-bold text-[#002a3f]">#${o.id}</div>
-                        <div class="text-xs text-gray-400 font-bold">${formatDateShort(o.date_created)}</div>
-                    </td>
-                    <td data-label="Cliente">
-                        <div class="flex items-center">
-                            <div class="client-avatar">${getInitials(name)}</div>
-                            <div>
-                                <div class="font-bold text-[#002a3f]">${name}</div>
-                                <div class="text-xs text-gray-400">${o.billing?.email || ''}</div>
-                            </div>
-                        </div>
-                    </td>
+                    <td data-label="ID" class="pl-6"><div class="font-bold text-[#002a3f]">#${o.id}</div><div class="text-xs text-gray-400 font-bold">${formatDateShort(o.date_created)}</div></td>
+                    <td data-label="Cliente"><div class="flex items-center"><div class="client-avatar">${getInitials(name)}</div><div><div class="font-bold text-[#002a3f]">${name}</div><div class="text-xs text-gray-400">${o.billing?.email || ''}</div></div></div></td>
                     <td data-label="Viajes"><div class="flex flex-wrap gap-1">${tripBadges || '<span class="text-gray-400 text-xs">Sin viajes</span>'}</div></td>
                     <td data-label="Total" class="font-bold font-mono text-[#002a3f]">$${parseFloat(o.total || 0).toFixed(2)}</td>
                     <td data-label="Status"><span class="status-pill ${statusClass(sv)}"><span class="status-dot"></span>${translateStatus(sv)}</span></td>
-                    <td data-label="Acción" class="pr-6 text-right">
-                        <button onclick="event.stopPropagation();viewOrder(${o.id})"
-                            class="bg-[#002a3f] text-white px-4 py-2 rounded-lg font-bold uppercase text-xs hover:bg-[#ed4441] transition-all">VER</button>
-                    </td>
-                `;
+                    <td data-label="Acción" class="pr-6 text-right"><button onclick="viewOrder(${o.id})" class="bg-[#002a3f] text-white px-4 py-2 rounded-lg font-bold uppercase text-xs hover:bg-[#ed4441] transition-all">VER</button></td>`;
                 tbody.appendChild(tr);
             });
         }
 
-        // ── Paginación ────────────────────────────────────────────────────────
-
+        // ── Pagination ──
         function updatePagination() {
-            const total = allOrders.length;
-            const totalPages = Math.ceil(total / itemsPerPage) || 1;
+            const total = allOrders.length; const totalPages = Math.ceil(total / itemsPerPage) || 1;
             const start = (currentPage - 1) * itemsPerPage + 1, end = Math.min(currentPage * itemsPerPage, total);
             document.getElementById('pagination-info').textContent = `Mostrando ${total === 0 ? 0 : start}–${end} de ${total}`;
-            const ctrl = document.getElementById('pagination-controls');
-            ctrl.innerHTML = '';
+            const ctrl = document.getElementById('pagination-controls'); ctrl.innerHTML = '';
             if (totalPages <= 1) return;
             const mk = (lbl, fn, act = false) => { const b = document.createElement('button'); b.className = `pagination-btn${act ? ' active' : ''}`; b.textContent = lbl; b.onclick = fn; ctrl.appendChild(b); };
             if (currentPage > 1) mk('◀', () => goToPage(currentPage - 1));
             for (let i = Math.max(1, currentPage - 2); i <= Math.min(totalPages, currentPage + 2); i++) mk(i, () => goToPage(i), i === currentPage);
             if (currentPage < totalPages) mk('▶', () => goToPage(currentPage + 1));
         }
-
         function goToPage(p) { currentPage = p; renderTable(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
-        // ── Modal ─────────────────────────────────────────────────────────────
-
+        // ── View Order (Modal) ──
         function viewOrder(id) {
             const o = allOrders.find(x => x.id === id);
             if (!o) return;
             currentOrderId = id;
+            currentOrderViajes = [];
+            originalViajeValues = {};
 
-            // Parsear raw_data para acceder a los meta_data de los line_items
             let rawOrder = null;
             try { rawOrder = typeof o.raw_data === 'string' ? JSON.parse(o.raw_data) : o.raw_data; } catch { }
 
@@ -880,14 +960,11 @@
             document.getElementById('order-modal').classList.add('open');
             document.getElementById('btn-save').classList.add('hidden');
 
-            // Título y status
             document.getElementById('modal-title').textContent = `Cotización #${o.id}`;
             const sv = o.status_viaje || o.status;
             const pill = document.getElementById('modal-status-pill');
-            pill.className = `status-pill ${statusClass(sv)}`;
-            pill.innerHTML = `<span class="status-dot"></span> ${translateStatus(sv)}`;
+            pill.className = `status-pill ${statusClass(sv)}`; pill.innerHTML = `<span class="status-dot"></span> ${translateStatus(sv)}`;
 
-            // Cliente
             const rawName = [o.billing?.last_name, o.billing?.first_name].filter(Boolean).join(' ') || `Cotización #${o.id}`;
             const name = capitalizeName(rawName);
             const email = (o.billing?.email || '').toLowerCase();
@@ -908,11 +985,10 @@
             if (note.trim()) { document.getElementById('modal-note').textContent = note; noteC.classList.remove('hidden'); }
             else noteC.classList.add('hidden');
 
-            // Status select
             document.getElementById('input-status-viaje').value = sv;
             originalStatusViaje = sv;
 
-            // ── Enriquecer viajes con datos del raw_data ──
+            // ── Enrich viajes with raw_data ──
             const viajesDB = o.viajes || [];
             const lineItemsRaw = rawOrder?.line_items || [];
 
@@ -920,80 +996,72 @@
                 if (v.tipo !== 'interno') {
                     return { ...v, destino_display: v.destino || v.hotel || '' };
                 }
-                // Viaje interno: extraer datos del line_item correspondiente
+                // Parse route from DB fields (hotel or destino contain "Pickup → Dropoff")
+                const routeStr = v.destino || v.hotel || '';
+                const routeParts = routeStr.includes('→') ? routeStr.split('→') : [];
+                const dbPickup = routeParts[0]?.trim() || '';
+                const dbDropoff = routeParts[1]?.trim() || '';
+
+                // Try to get richer data from raw_data line_item meta
                 const li = lineItemsRaw[v.item_index] || lineItemsRaw.find(l => esLineItemInterno(l));
                 if (li) {
                     const meta = li.meta_data || [];
-                    return {
-                        ...v,
-                        pickup: getMeta(meta, KEY_PICKUP_LOC) || v.destino?.split('→')[0]?.trim() || '',
-                        dropoff: getMeta(meta, KEY_DROPOFF_LOC) || v.destino?.split('→')[1]?.trim() || '',
-                        fecha: getMeta(meta, KEY_PICKUP_DATE) || v.fecha,
-                        hora: getMeta(meta, KEY_PICKUP_TIME) || v.hora,
-                        pax: parseInt(getMeta(meta, KEY_PAX) || v.pax || '1'),
+                    // getMeta with display_value fallback for WCCPF plugin
+                    const getVal = (key) => {
+                        const m = meta.find(x => x.key === key);
+                        if (!m) return '';
+                        const val = m.value ?? m.display_value ?? '';
+                        return (typeof val === 'string' ? val : String(val)).trim();
                     };
+                    const pickup = getVal(KEY_PICKUP_LOC) || dbPickup;
+                    const dropoff = getVal(KEY_DROPOFF_LOC) || dbDropoff;
+                    const fecha = getVal(KEY_PICKUP_DATE) || v.fecha;
+                    const hora = getVal(KEY_PICKUP_TIME) || v.hora;
+                    const pax = parseInt(getVal(KEY_PAX) || v.pax || '1');
+                    return { ...v, pickup, dropoff, fecha, hora, pax };
                 }
-                return { ...v, pickup: v.destino?.split('→')[0]?.trim() || '', dropoff: v.destino?.split('→')[1]?.trim() || '' };
+                // Fallback: use DB fields
+                return { ...v, pickup: dbPickup, dropoff: dbDropoff };
             });
 
-            // Ordenar: llegada → interno → salida
+            // Sort: llegada → interno → salida
             const typeOrder = { llegada: 0, interno: 1, salida: 2 };
             const sorted = [...viajes].sort((a, b) => (typeOrder[a.tipo] ?? 9) - (typeOrder[b.tipo] ?? 9));
 
-            // ── Banners de ruta (uno por viaje, idéntico a reservas) ──
-            const routeStack = document.getElementById('route-stack');
-            routeStack.innerHTML = '';
+            currentOrderViajes = sorted;
+
+            // ── Route banners ──
+            const routeStack = document.getElementById('route-stack'); routeStack.innerHTML = '';
             sorted.forEach(v => {
                 let oi = '✈️', on = 'Aeropuerto LIR', di = '🏨', dn = 'Hotel';
-                if (v.tipo === 'llegada') {
-                    oi = '🛬'; on = 'Aeropuerto LIR'; di = '🏨'; dn = v.destino_display || v.destino || 'Hotel';
-                } else if (v.tipo === 'salida') {
-                    oi = '🏨'; on = v.destino_display || v.destino || 'Hotel'; di = '🛫'; dn = 'Aeropuerto LIR';
-                } else {
-                    oi = '🏨'; on = v.pickup || 'Hotel Origen'; di = '🏨'; dn = v.dropoff || 'Hotel Destino';
-                }
-                const card = document.createElement('div');
-                card.className = 'route-visualizer';
-                card.innerHTML = `
-                    <div class="route-point">
-                        <span style="font-size:2rem">${oi}</span>
-                        <span class="route-point-label">Origen</span>
-                        <span class="route-point-name">${on}</span>
-                    </div>
-                    <div style="font-size:1.75rem">➡️</div>
-                    <div class="route-point">
-                        <span style="font-size:2rem">${di}</span>
-                        <span class="route-point-label">Destino</span>
-                        <span class="route-point-name">${dn}</span>
-                    </div>
-                `;
+                if (v.tipo === 'llegada') { oi = '🛬'; on = 'Aeropuerto LIR'; di = '🏨'; dn = v.destino_display || v.destino || 'Hotel'; }
+                else if (v.tipo === 'salida') { oi = '🏨'; on = v.destino_display || v.destino || 'Hotel'; di = '🛫'; dn = 'Aeropuerto LIR'; }
+                else { oi = '🏨'; on = v.pickup || 'Hotel Origen'; di = '🏨'; dn = v.dropoff || 'Hotel Destino'; }
+                const card = document.createElement('div'); card.className = 'route-visualizer';
+                card.innerHTML = `<div class="route-point"><span style="font-size:2rem">${oi}</span><span class="route-point-label">Origen</span><span class="route-point-name">${on}</span></div><div style="font-size:1.75rem">➡️</div><div class="route-point"><span style="font-size:2rem">${di}</span><span class="route-point-label">Destino</span><span class="route-point-name">${dn}</span></div>`;
                 routeStack.appendChild(card);
             });
 
-            // ── Pills Tipo + Pax ──
-            const nLlegada = sorted.filter(v => v.tipo === 'llegada').length;
-            const nSalida = sorted.filter(v => v.tipo === 'salida').length;
-            const nInterno = sorted.filter(v => v.tipo === 'interno').length;
+            // ── Pills ──
+            const nL = sorted.filter(v => v.tipo === 'llegada').length;
+            const nS = sorted.filter(v => v.tipo === 'salida').length;
+            const nI = sorted.filter(v => v.tipo === 'interno').length;
             const total = sorted.length;
-            let tipoLabel = total === 1
-                ? (nLlegada ? 'Solo Llegada' : nSalida ? 'Solo Salida' : 'Viaje Interno')
-                : (nLlegada && nSalida && !nInterno ? 'Ida y Vuelta' : `${total} Viajes`);
+            let tipoLabel = total === 1 ? (nL ? 'Solo Llegada' : nS ? 'Solo Salida' : 'Viaje Interno') : (nL && nS && !nI ? 'Ida y Vuelta' : `${total} Viajes`);
             document.getElementById('pill-tipo').textContent = tipoLabel;
             document.getElementById('pill-pax').textContent = sorted.reduce((mx, v) => Math.max(mx, v.pax || 1), 1);
 
-            // ── Tarjetas de viaje ──
-            renderViajeCards(sorted);
+            // ── Viaje cards (matching reservas style) ──
+            renderViajeCards(sorted, o);
 
-            // ── Financiero ──
+            // ── Financial ──
             renderFinancial(o, rawOrder);
 
-            document.querySelectorAll('#modal-box .modal-main-content, #modal-box .modal-sidebar')
-                .forEach(el => el.scrollTop = 0);
+            document.querySelectorAll('#modal-box .modal-main-content, #modal-box .modal-sidebar').forEach(el => el.scrollTop = 0);
         }
 
-        // ── Tarjetas viaje (idénticas a reservas) ────────────────────────────
-
-        function renderViajeCards(viajes) {
+        // ── Viaje Cards (same style as reservas index.html) ──
+        function renderViajeCards(viajes, order) {
             const container = document.getElementById('viajes-container');
             container.innerHTML = '';
 
@@ -1002,34 +1070,66 @@
                 return;
             }
 
-            viajes.forEach(v => {
+            viajes.forEach((v, idx) => {
                 const isL = v.tipo === 'llegada', isS = v.tipo === 'salida', isI = v.tipo === 'interno';
                 const dotClass = isL ? 'title-dot-llegada' : isS ? 'title-dot-salida' : 'title-dot-interno';
                 const bgBorder = isL ? 'border-blue-100' : isS ? 'border-orange-100' : 'border-yellow-100';
                 const bgFill = isL ? 'bg-blue-50/50' : isS ? 'bg-orange-50/50' : 'bg-yellow-50/50';
                 const lblColor = isL ? 'text-blue-400 border-blue-200' : isS ? 'text-orange-400 border-orange-200' : 'text-amber-500 border-amber-200';
                 const cardLabel = isL ? 'LLEGADA' : isS ? 'SALIDA' : 'VIAJE INTERNO';
+                const viajeId = v.id;
+                const prefix = `cot_viaje_${viajeId}`;
+
+                // Store original values
+                originalViajeValues[`${prefix}_chofer`] = v.chofer || '';
+                originalViajeValues[`${prefix}_subchofer`] = v.subchofer || '';
+                originalViajeValues[`${prefix}_nota_choferes`] = v.nota_choferes || '';
+                originalViajeValues[`${prefix}_notas_internas`] = v.notas_internas || '';
+                originalViajeValues[`${prefix}_fecha`] = v.fecha || '';
+                originalViajeValues[`${prefix}_hora`] = v.hora || '';
+                originalViajeValues[`${prefix}_vuelo`] = v.vuelo || '';
+                originalViajeValues[`${prefix}_hotel`] = v.hotel || '';
+
                 const sub = isI
                     ? (v.pickup && v.dropoff ? `· ${v.pickup} → ${v.dropoff}` : '')
                     : (v.destino_display || v.destino ? `· ${(v.destino_display || v.destino).toUpperCase()}` : '');
 
+                // Logistics fields
                 let logHTML = '';
                 if (isI) {
                     logHTML = `
-                        <div><p class="meta-field-label">Origen</p><p class="meta-field-value text-base">${v.pickup || '<span class="text-gray-300 font-normal text-sm">Sin datos</span>'}</p></div>
-                        <div><p class="meta-field-label">Destino</p><p class="meta-field-value text-base">${v.dropoff || '<span class="text-gray-300 font-normal text-sm">Sin datos</span>'}</p></div>
-                        <div><p class="meta-field-label">Fecha</p><p class="meta-field-value text-base">${formatDateShort(v.fecha)}</p></div>
-                        <div><p class="meta-field-label">Hora</p><p class="meta-field-value text-base">${formatTime(v.hora)}</p></div>
-                    `;
+                        <div><p class="meta-field-label">Origen</p>
+                            <p id="display-${prefix}_origen" class="meta-field-value text-base">${v.pickup || '<span class="text-gray-300 font-normal text-sm">Sin datos</span>'}</p></div>
+                        <div><p class="meta-field-label">Destino</p>
+                            <p id="display-${prefix}_destino" class="meta-field-value text-base">${v.dropoff || '<span class="text-gray-300 font-normal text-sm">Sin datos</span>'}</p></div>
+                        <div><p class="meta-field-label">Fecha</p>
+                            <p id="display-${prefix}_fecha" class="meta-field-value text-base">${formatDateShort(v.fecha)}</p>
+                            <input type="date" id="input-${prefix}_fecha" oninput="checkForChanges()" value="${normalizeForInput(v.fecha || '', 'date')}" class="hidden input-editable mt-1"></div>
+                        <div><p class="meta-field-label">Hora</p>
+                            <p id="display-${prefix}_hora" class="meta-field-value text-base">${formatTime(v.hora)}</p>
+                            <input type="time" id="input-${prefix}_hora" oninput="checkForChanges()" value="${normalizeForInput(v.hora || '', 'time')}" class="hidden input-editable mt-1"></div>`;
                 } else {
                     const fl = isL ? 'Fecha' : 'Fecha de Recogida', hl = isL ? 'Hora' : 'Hora de Recogida';
                     logHTML = `
-                        <div><p class="meta-field-label">${fl}</p><p class="meta-field-value text-base">${formatDateShort(v.fecha)}</p></div>
-                        <div><p class="meta-field-label">${hl}</p><p class="meta-field-value text-base">${formatTime(v.hora)}</p></div>
-                        <div><p class="meta-field-label">Vuelo</p><p class="meta-field-value text-base">${(v.vuelo || '--').toUpperCase()}</p></div>
-                        <div><p class="meta-field-label">Hotel</p><p class="meta-field-value text-base">${v.destino_display || v.destino || v.hotel || '---'}</p></div>
-                    `;
+                        <div><p class="meta-field-label">${fl}</p>
+                            <p id="display-${prefix}_fecha" class="meta-field-value text-base">${formatDateShort(v.fecha)}</p>
+                            <input type="date" id="input-${prefix}_fecha" oninput="checkForChanges()" value="${normalizeForInput(v.fecha || '', 'date')}" class="hidden input-editable mt-1"></div>
+                        <div><p class="meta-field-label">${hl}</p>
+                            <p id="display-${prefix}_hora" class="meta-field-value text-base">${formatTime(v.hora)}</p>
+                            <input type="time" id="input-${prefix}_hora" oninput="checkForChanges()" value="${normalizeForInput(v.hora || '', 'time')}" class="hidden input-editable mt-1"></div>
+                        <div><p class="meta-field-label">Vuelo</p>
+                            <p id="display-${prefix}_vuelo" class="meta-field-value text-base">${(v.vuelo || '--').toUpperCase()}</p>
+                            <input type="text" id="input-${prefix}_vuelo" oninput="checkForChanges()" value="${v.vuelo || ''}" class="hidden input-editable mt-1 uppercase"></div>
+                        <div><p class="meta-field-label">Hotel</p>
+                            <p id="display-${prefix}_hotel" class="meta-field-value text-base">${v.destino_display || v.destino || v.hotel || '---'}</p></div>`;
                 }
+
+                // Chofer options
+                let choferOptions = '<option value="">No asignado</option>';
+                CHOFERES.forEach(c => {
+                    const selected = (v.chofer === c) ? 'selected' : '';
+                    choferOptions += `<option value="${c}" ${selected}>${c}</option>`;
+                });
 
                 const card = document.createElement('div');
                 card.className = 'operation-card';
@@ -1039,37 +1139,110 @@
                             <span class="${dotClass}"></span>${cardLabel}
                             ${sub ? `<span class="text-gray-400 font-normal text-xs">${sub}</span>` : ''}
                         </div>
+                        <button onclick="toggleViajeEdit('${prefix}')" id="btn-edit-${prefix}" class="btn-section-edit">Editar</button>
                     </div>
                     <div class="operation-card-body space-y-5">
                         <div class="grid grid-cols-2 gap-4">${logHTML}</div>
+
                         <div class="${bgFill} ${bgBorder} -mx-5 -mb-5 p-5 border-t">
                             <div class="operation-section-label ${lblColor}">Asignación Operativa</div>
-                            <div class="field-group-row">
-                                <div>
-                                    <p class="meta-field-label">🚐 Chofer</p>
-                                    <p class="meta-field-value text-sm">${v.chofer || '<span class="text-gray-300 font-normal">No asignado</span>'}</p>
+                            <div class="space-y-4">
+                                <div class="field-group-row">
+                                    <div>
+                                        <p class="meta-field-label">🚐 Chofer</p>
+                                        <select id="input-${prefix}_chofer" onchange="checkForChanges()" class="input-editable bg-white">${choferOptions}</select>
+                                    </div>
+                                    <div>
+                                        <p class="meta-field-label">👥 Subchofer</p>
+                                        <input type="text" id="input-${prefix}_subchofer" oninput="checkForChanges()" class="input-editable bg-white" placeholder="Nombre del subchofer" value="${v.subchofer || ''}">
+                                    </div>
                                 </div>
                                 <div>
-                                    <p class="meta-field-label">👥 Subchofer</p>
-                                    <p class="meta-field-value text-sm">${v.subchofer || '<span class="text-gray-300 font-normal">---</span>'}</p>
+                                    <p class="meta-field-label">📢 Nota Choferes</p>
+                                    <textarea id="input-${prefix}_nota_choferes" oninput="checkForChanges(); autoResizeTextarea(this)" rows="2" class="input-editable bg-white resize-none h-16">${v.nota_choferes || ''}</textarea>
+                                </div>
+                                <div>
+                                    <p class="meta-field-label">🔒 Notas Internas</p>
+                                    <textarea id="input-${prefix}_notas_internas" oninput="checkForChanges(); autoResizeTextarea(this)" rows="2" class="input-editable bg-white resize-none h-16">${v.notas_internas || ''}</textarea>
+                                </div>
+                                <div class="flex flex-wrap gap-2 mt-3 pt-3 border-t border-dashed ${bgBorder}">
+                                    <button onclick="sendViajeEmail(${order.id}, ${viajeId})" class="flex-1 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all shadow-sm flex items-center justify-center gap-1">Recordatorio Correo</button>
+                                    <button onclick="sendViajeWhatsApp(${order.id}, ${viajeId})" class="flex-1 px-3 py-2 bg-green-500 hover:bg-green-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all shadow-sm flex items-center justify-center gap-1">Recordatorio WhatsApp</button>
+                                    <button onclick="sendDriverContact(${order.id}, ${viajeId})" class="flex-1 px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all shadow-sm flex items-center justify-center gap-1">📞 Contacto Chofer</button>
                                 </div>
                             </div>
-                            ${v.nota_choferes ? `<div class="mt-3"><p class="meta-field-label">📢 Nota Choferes</p><p class="meta-field-value text-sm">${v.nota_choferes}</p></div>` : ''}
                         </div>
-                    </div>
-                `;
+                    </div>`;
                 container.appendChild(card);
+
+                // Init searchable select for chofer
+                initSearchableSelect(`input-${prefix}_chofer`);
+                // Auto-resize textareas
+                requestAnimationFrame(() => {
+                    autoResizeTextarea(document.getElementById(`input-${prefix}_nota_choferes`));
+                    autoResizeTextarea(document.getElementById(`input-${prefix}_notas_internas`));
+                });
             });
         }
 
-        // ── Financiero ────────────────────────────────────────────────────────
+        function toggleViajeEdit(prefix) {
+            const btn = document.getElementById(`btn-edit-${prefix}`);
+            const isEditing = btn.classList.contains('editing');
+            const fieldKeys = ['fecha', 'hora', 'vuelo', 'hotel'];
+            fieldKeys.forEach(k => {
+                const display = document.getElementById(`display-${prefix}_${k}`);
+                const input = document.getElementById(`input-${prefix}_${k}`);
+                if (display) display.classList.toggle('hidden', !isEditing);
+                if (input) input.classList.toggle('hidden', isEditing);
+            });
+            btn.innerText = isEditing ? 'Editar' : 'Cancelar';
+            btn.classList.toggle('editing', !isEditing);
+            checkForChanges();
+        }
 
+        // ── Message functions ──
+        function sendViajeEmail(orderId, viajeId) {
+            const order = allOrders.find(o => o.id === orderId);
+            if (!order) return;
+            const viaje = currentOrderViajes.find(v => v.id === viajeId);
+            if (!viaje) return;
+            const email = (order.billing?.email || '').toLowerCase();
+            // Simple mailto for now
+            const subject = `Cotización #${orderId} - Recordatorio`;
+            window.open(`mailto:${email}?subject=${encodeURIComponent(subject)}`);
+        }
+
+        function sendViajeWhatsApp(orderId, viajeId) {
+            const order = allOrders.find(o => o.id === orderId);
+            if (!order) return;
+            const phone = order.billing?.phone || '';
+            const country = order.billing?.country || '';
+            const whatsappUrl = PhoneUtils.buildWhatsappUrl(phone, country);
+            if (whatsappUrl) window.open(whatsappUrl, '_blank');
+        }
+
+        function sendDriverContact(orderId, viajeId) {
+            const viaje = currentOrderViajes.find(v => v.id === viajeId);
+            if (!viaje) return;
+            const choferName = viaje.chofer || document.getElementById(`input-cot_viaje_${viajeId}_chofer`)?.value || '';
+            if (!choferName) { alert('No hay chofer asignado a este viaje.'); return; }
+            const phone = CHOFERES_PHONE[choferName];
+            if (!phone) { alert(`No se encontró teléfono para el chofer "${choferName}".`); return; }
+            const order = allOrders.find(o => o.id === orderId);
+            if (!order) return;
+            const cleanPhone = phone.replace(/[\s\-]/g, '');
+            const displayName = cleanDriverName(choferName);
+            const firstName = (order.billing?.first_name || order.billing?.last_name || '').trim();
+            const msg = `Hi ${firstName},\n\nThis is your driver's WhatsApp for tomorrow: wa.me/${cleanPhone}, or if you need to call him directly: ${phone}. His name is ${displayName}. Please use this number only in case of an emergency. See you tomorrow!\n\nBest regards,\nMónica B.`;
+            const whatsappUrl = PhoneUtils.buildWhatsappUrl(order.billing?.phone || '', order.billing?.country || '', msg);
+            if (whatsappUrl) window.open(whatsappUrl, '_blank');
+        }
+
+        // ── Financial ──
         function renderFinancial(o, rawOrder) {
-            const container = document.getElementById('financial-breakdown');
-            container.innerHTML = '';
+            const container = document.getElementById('financial-breakdown'); container.innerHTML = '';
             const addRow = (label, value, bold = false, discount = false) => {
-                const num = parseFloat(value);
-                if (isNaN(num) || num === 0) return;
+                const num = parseFloat(value); if (isNaN(num) || num === 0) return;
                 const fmt = discount ? `-$${Math.abs(num).toFixed(2)}` : `$${num.toFixed(2)}`;
                 const col = discount ? 'text-green-600' : 'text-[#002a3f]';
                 container.innerHTML += `<div class="fin-row ${bold ? 'pt-3 border-t border-dashed border-gray-200 mt-2' : 'text-sm'}"><span class="font-bold uppercase opacity-50 text-[10px] tracking-widest">${label}</span><span class="font-bold ${bold ? 'text-2xl' : 'text-base'} ${col}">${fmt}</span></div>`;
@@ -1084,43 +1257,95 @@
             addRow('Total', o.total);
         }
 
-        // ── Guardar estado ────────────────────────────────────────────────────
-
+        // ── Check for changes ──
         function checkForChanges() {
-            document.getElementById('btn-save').classList.toggle('hidden',
-                document.getElementById('input-status-viaje').value === originalStatusViaje);
+            let changed = document.getElementById('input-status-viaje').value !== originalStatusViaje;
+
+            if (!changed) {
+                for (const v of currentOrderViajes) {
+                    const prefix = `cot_viaje_${v.id}`;
+                    const fields = ['chofer', 'subchofer', 'nota_choferes', 'notas_internas', 'fecha', 'hora', 'vuelo', 'hotel'];
+                    for (const f of fields) {
+                        const inp = document.getElementById(`input-${prefix}_${f}`);
+                        if (inp) {
+                            const original = originalViajeValues[`${prefix}_${f}`] || '';
+                            const current = inp.value;
+                            if (current !== original && current !== normalizeForInput(original, f === 'fecha' ? 'date' : (f === 'hora' ? 'time' : 'text'))) {
+                                changed = true; break;
+                            }
+                        }
+                    }
+                    if (changed) break;
+                }
+            }
+
+            document.getElementById('btn-save').classList.toggle('hidden', !changed);
         }
 
+        // ── Save ──
         async function saveChanges() {
             if (!currentOrderId) return;
             const btn = document.getElementById('btn-save');
             btn.disabled = true; btn.textContent = 'Guardando...';
             const newStatus = document.getElementById('input-status-viaje').value;
+
             try {
-                const res = await fetch(`${API_URL}?order_id=${currentOrderId}`, {
-                    method: 'PUT', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ status_viaje: newStatus })
-                });
-                if (!res.ok) throw new Error();
-                const idx = allOrders.findIndex(o => o.id === currentOrderId);
-                if (idx !== -1) allOrders[idx].status_viaje = newStatus;
-                originalStatusViaje = newStatus;
+                // 1. Save status
+                if (newStatus !== originalStatusViaje) {
+                    const res = await fetch(`${API_URL}?order_id=${currentOrderId}`, {
+                        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ status_viaje: newStatus })
+                    });
+                    if (!res.ok) throw new Error('Error saving status');
+                    const idx = allOrders.findIndex(o => o.id === currentOrderId);
+                    if (idx !== -1) allOrders[idx].status_viaje = newStatus;
+                    originalStatusViaje = newStatus;
+                }
+
+                // 2. Save viaje changes
+                for (const v of currentOrderViajes) {
+                    const prefix = `cot_viaje_${v.id}`;
+                    const viajePayload = {};
+                    let viajeChanged = false;
+                    const fieldsMap = { chofer: 'chofer', subchofer: 'subchofer', nota_choferes: 'nota_choferes', notas_internas: 'notas_internas', fecha: 'fecha', hora: 'hora', vuelo: 'vuelo', hotel: 'hotel' };
+                    for (const [fieldKey, apiKey] of Object.entries(fieldsMap)) {
+                        const inp = document.getElementById(`input-${prefix}_${fieldKey}`);
+                        if (inp) {
+                            const original = originalViajeValues[`${prefix}_${fieldKey}`] || '';
+                            if (inp.value !== original && inp.value !== normalizeForInput(original, fieldKey === 'fecha' ? 'date' : (fieldKey === 'hora' ? 'time' : 'text'))) {
+                                viajePayload[apiKey] = inp.value;
+                                viajeChanged = true;
+                            }
+                        }
+                    }
+                    if (viajeChanged && v.id) {
+                        const vResp = await fetch(`${VIAJES_API}?viaje_id=${v.id}`, {
+                            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(viajePayload)
+                        });
+                        if (!vResp.ok) throw new Error(`Error saving viaje ${v.id}`);
+                        // Update originals
+                        for (const [fieldKey] of Object.entries(fieldsMap)) {
+                            const inp = document.getElementById(`input-${prefix}_${fieldKey}`);
+                            if (inp) originalViajeValues[`${prefix}_${fieldKey}`] = inp.value;
+                        }
+                    }
+                }
+
+                // Update UI
                 btn.classList.add('hidden');
                 const pill = document.getElementById('modal-status-pill');
                 pill.className = `status-pill ${statusClass(newStatus)}`;
                 pill.innerHTML = `<span class="status-dot"></span> ${translateStatus(newStatus)}`;
                 renderTable();
-            } catch { alert('Error al guardar'); }
-            finally { btn.disabled = false; btn.textContent = 'Guardar Cambios'; }
+            } catch (e) {
+                console.error(e);
+                alert('Error al guardar: ' + e.message);
+            } finally { btn.disabled = false; btn.textContent = 'Guardar Cambios'; }
         }
 
-        // ── Cerrar ────────────────────────────────────────────────────────────
-
-        function closeModal() {
-            document.getElementById('order-modal').classList.remove('open');
-            document.body.style.overflow = '';
-        }
-
+        // ── Close ──
+        function closeModal() { document.getElementById('order-modal').classList.remove('open'); document.body.style.overflow = ''; }
         document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
         loadOrders();

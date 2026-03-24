@@ -518,6 +518,15 @@
             margin-right: 6px;
         }
 
+        .title-dot-interno {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #f59e0b;
+            display: inline-block;
+            margin-right: 6px;
+        }
+
         .btn-whatsapp {
             background-color: #25d366;
             color: white;
@@ -1344,7 +1353,7 @@
                                 order_status: order.status,
                                 trip_status: viaje.status || "",
                                 client: clientName,
-                                type: isArrival ? 'arrival' : 'departure',
+                                type: viaje.tipo === 'llegada' ? 'arrival' : (viaje.tipo === 'interno' ? 'interno' : 'departure'),
                                 dateStr: formatDateStandard(parsedDate),
                                 time: formatTime12H(viaje.hora),
                                 route: isArrival ? `Aeropuerto LIR ➝ ${destName}` : `${destName} ➝ Aeropuerto LIR`,
@@ -1815,16 +1824,9 @@
             }
 
             // Tarjeta de logística
-            document.getElementById('trip-card-title').innerText = isArrival ? 'Llegada' : 'Salida';
-
-            const titleDot = document.getElementById('trip-title-dot');
-            if (titleDot) {
-                if (isArrival) {
-                    titleDot.className = 'title-dot-arrival';
-                } else {
-                    titleDot.className = 'title-dot-departure';
-                }
-            }
+            const tripLabel = isArrival ? 'Llegada' : (trip.type === 'interno' ? 'Viaje Interno' : 'Salida');
+            const dotClass = isArrival ? 'title-dot-arrival' : (trip.type === 'interno' ? 'title-dot-interno' : 'title-dot-departure');
+            document.getElementById('trip-card-title').innerHTML = `<span id="trip-title-dot" class="${dotClass}"></span>${tripLabel}`;
 
             const assignSection = document.getElementById('trip-assign-section');
             const assignLabel = document.getElementById('trip-assign-label');
