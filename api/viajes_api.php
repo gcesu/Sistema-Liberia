@@ -97,14 +97,13 @@ if ($method === 'GET') {
     $orderBy = "fecha ASC, hora ASC";
 
     // Obtener viajes con datos de la reserva
-    // Para cotizaciones: solo mostrar viajes cuando la cotización está completada
+    // Para cotizaciones: solo mostrar viajes cuando el status en reservas es 'completed'
     $sql = "
         SELECT v.*, r.cliente_nombre, r.cliente_email, r.cliente_telefono, r.status as reserva_status
         FROM viajes v
         LEFT JOIN reservas r ON v.reserva_id = r.id
-        LEFT JOIN cotizaciones c ON v.reserva_id = c.id AND r.es_cotizacion = 1
         WHERE $whereClause
-          AND (r.es_cotizacion = 0 OR r.es_cotizacion IS NULL OR c.status_viaje = 'completed')
+          AND (r.es_cotizacion = 0 OR r.es_cotizacion IS NULL OR r.status = 'completed')
         ORDER BY $orderBy
     ";
 

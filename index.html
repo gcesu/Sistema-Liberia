@@ -888,97 +888,6 @@
             transition: all 0.3s ease;
         }
 
-        /* Toast de nuevas reservas */
-        #new-reservations-toast {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
-            padding: 16px 20px;
-            border-radius: 16px;
-            font-size: 14px;
-            font-weight: 700;
-            z-index: 200;
-            box-shadow: 0 10px 40px rgba(16, 185, 129, 0.4);
-            display: none;
-            align-items: center;
-            gap: 12px;
-            animation: toastSlideIn 0.4s ease;
-            max-width: 360px;
-        }
-
-        #new-reservations-toast.show {
-            display: flex;
-        }
-
-        @keyframes toastSlideIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px) scale(0.95);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
-        }
-
-        #new-reservations-toast .toast-icon {
-            font-size: 24px;
-            flex-shrink: 0;
-        }
-
-        #new-reservations-toast .toast-content {
-            flex: 1;
-        }
-
-        #new-reservations-toast .toast-title {
-            font-size: 15px;
-            font-weight: 800;
-            margin-bottom: 4px;
-        }
-
-        #new-reservations-toast .toast-message {
-            font-size: 12px;
-            opacity: 0.9;
-        }
-
-        #new-reservations-toast .toast-btn {
-            background: rgba(255, 255, 255, 0.2);
-            border: none;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 11px;
-            font-weight: 800;
-            text-transform: uppercase;
-            cursor: pointer;
-            transition: background 0.2s;
-            white-space: nowrap;
-        }
-
-        #new-reservations-toast .toast-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
-
-        #new-reservations-toast .toast-close {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            background: none;
-            border: none;
-            color: white;
-            opacity: 0.6;
-            font-size: 18px;
-            cursor: pointer;
-            padding: 0;
-            line-height: 1;
-        }
-
-        #new-reservations-toast .toast-close:hover {
-            opacity: 1;
-        }
     </style>
 </head>
 
@@ -990,16 +899,6 @@
         <span id="indexing-text">Indexando...</span>
     </div>
 
-    <!-- Toast de Nuevas Reservas -->
-    <div id="new-reservations-toast">
-        <button class="toast-close" onclick="hideNewReservationsToast()">&times;</button>
-        <div class="toast-icon">🔔</div>
-        <div class="toast-content">
-            <div class="toast-title">Nuevas Reservas</div>
-            <div class="toast-message" id="toast-message">Hay 1 nueva reserva disponible</div>
-        </div>
-        <button class="toast-btn" onclick="loadNewReservations()">Ver Ahora</button>
-    </div>
 
     <!-- AQUÍ ESTÁ EL MENÚ CENTRALIZADO -->
     <admin-navbar></admin-navbar>
@@ -3107,147 +3006,6 @@
             applyFilters();
         }
 
-        // ========== POLLING PARA NUEVAS RESERVAS ==========
-        let lastCheckTime = null;
-        let pollingInterval = null;
-        let pollingPaused = false; // Para pausar temporalmente después de interacción
-        const POLLING_INTERVAL_MS = 30000; // 30 segundos
-
-        function startPolling() {
-            // Inicializar tiempo de última verificación
-            lastCheckTime = new Date().toISOString().replace('T', ' ').substring(0, 19);
-            sessionStorage.setItem('last_check_time', lastCheckTime);
-
-            // Iniciar polling
-            pollingInterval = setInterval(checkForNewReservations, POLLING_INTERVAL_MS);
-            console.log('🔄 Polling iniciado (cada 30s)');
-        }
-
-        function pausePolling(seconds = 60) {
-            pollingPaused = true;
-            console.log(`⏸️ Polling pausado por ${seconds}s`);
-            setTimeout(() => {
-                pollingPaused = false;
-                console.log('▶️ Polling reanudado');
-            }, seconds * 1000);
-        }
-
-        async function checkForNewReservations() {
-            // Si está pausado, no verificar
-            if (pollingPaused) return;
-
-            try {
-                const token = sessionStorage.getItem('session_token');
-                if (!token) return;
-
-                const since = sessionStorage.getItem('last_check_time') || lastCheckTime;
-                const response = await fetch(`api/check_new.php?since=${encodeURIComponent(since)}`, {
-                    headers: { 'X-Session-Token': token }
-                });
-
-                if (!response.ok) return;
-
-                const data = await response.json();
-
-                if (data.new_count > 0 && data.reservations) {
-                    // Obtener IDs ya notificadas (usar localStorage para persistencia)
-                    const notifiedIds = JSON.parse(localStorage.getItem('notified_reservation_ids') || '[]');
-
-                    // Filtrar solo las que NO hemos notificado
-                    const newReservations = data.reservations.filter(r => !notifiedIds.includes(r.id));
-
-                    if (newReservations.length > 0) {
-                        // Guardar las IDs como notificadas
-                        const newIds = newReservations.map(r => r.id);
-                        const allNotifiedIds = [...notifiedIds, ...newIds].slice(-200); // Guardar últimas 200
-                        localStorage.setItem('notified_reservation_ids', JSON.stringify(allNotifiedIds));
-
-                        console.log('🔔 Nuevas reservas detectadas:', newIds);
-
-                        // Mostrar notificación
-                        showNewReservationsToast(newReservations.length, newReservations);
-                    }
-                }
-
-                // Actualizar tiempo de última verificación con hora del SERVIDOR
-                if (data.server_time) {
-                    sessionStorage.setItem('last_check_time', data.server_time);
-                }
-
-            } catch (err) {
-                console.error('Error verificando nuevas reservas:', err);
-            }
-        }
-
-        function showNewReservationsToast(count, reservations) {
-            const toast = document.getElementById('new-reservations-toast');
-            const message = document.getElementById('toast-message');
-
-            if (count === 1 && reservations && reservations[0]) {
-                const r = reservations[0];
-                message.textContent = `${r.cliente_nombre} - #${r.id}`;
-            } else {
-                message.textContent = `Hay ${count} nueva${count > 1 ? 's' : ''} reserva${count > 1 ? 's' : ''} disponible${count > 1 ? 's' : ''}`;
-            }
-
-            toast.classList.add('show');
-
-            // Reproducir sonido de notificación
-            playNotificationSound();
-        }
-
-        function playNotificationSound() {
-            try {
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-
-                // Sonido tipo notificación de celular (tono doble)
-                const playTone = (freq, startTime, duration) => {
-                    const oscillator = audioContext.createOscillator();
-                    const gainNode = audioContext.createGain();
-
-                    oscillator.connect(gainNode);
-                    gainNode.connect(audioContext.destination);
-
-                    oscillator.frequency.value = freq;
-                    oscillator.type = 'sine';
-
-                    // Envelope tipo "ding" - ataque rápido, decay suave
-                    gainNode.gain.setValueAtTime(0, startTime);
-                    gainNode.gain.linearRampToValueAtTime(0.4, startTime + 0.01);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
-
-                    oscillator.start(startTime);
-                    oscillator.stop(startTime + duration);
-                };
-
-                // Dos tonos cortos como notificación típica de celular
-                const now = audioContext.currentTime;
-                playTone(880, now, 0.12);        // A5 - primer tono
-                playTone(1175, now + 0.15, 0.15); // D6 - segundo tono más alto
-
-            } catch (e) {
-                console.log('Audio no disponible:', e);
-            }
-        }
-
-        function hideNewReservationsToast() {
-            document.getElementById('new-reservations-toast').classList.remove('show');
-            // Actualizar tiempo para no volver a mostrar la misma reserva
-            sessionStorage.setItem('last_check_time', new Date().toISOString().replace('T', ' ').substring(0, 19));
-            // Pausar polling por 60 segundos
-            pausePolling(60);
-        }
-
-        function loadNewReservations() {
-            hideNewReservationsToast();
-            // Actualizar tiempo antes de recargar
-            sessionStorage.setItem('last_check_time', new Date().toISOString().replace('T', ' ').substring(0, 19));
-            // Pausar polling por 60 segundos para evitar notificación repetida
-            pausePolling(60);
-            // Recargar datos
-            window.refreshData(1);
-        }
-
         function parseFlexibleDate(dateStr) {
             if (!dateStr) return null;
             let s = dateStr.toString().trim();
@@ -3278,10 +3036,6 @@
             return `Hace ${Math.abs(diff)} días`;
         }
 
-        // Iniciar polling cuando se carga la página
-        document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(startPolling, 3000); // Esperar 3s después de cargar
-        });
     </script>
 </body>
 

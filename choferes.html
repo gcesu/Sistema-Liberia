@@ -226,6 +226,12 @@
             border: 1px solid #ffedd5;
         }
 
+        .badge-interno {
+            background: #f5f3ff;
+            color: #6d28d9;
+            border: 1px solid #ede9fe;
+        }
+
         .date-cell {
             display: flex;
             flex-direction: column;
@@ -522,7 +528,7 @@
             width: 8px;
             height: 8px;
             border-radius: 50%;
-            background: #f59e0b;
+            background: #7c3aed;
             display: inline-block;
             margin-right: 6px;
         }
@@ -876,6 +882,7 @@
                     <option value="all">Todos</option>
                     <option value="arrival">Solo Llegadas</option>
                     <option value="departure">Solo Salidas</option>
+                    <option value="interno">Solo Internos</option>
                 </select>
             </div>
 
@@ -1356,7 +1363,7 @@
                                 type: viaje.tipo === 'llegada' ? 'arrival' : (viaje.tipo === 'interno' ? 'interno' : 'departure'),
                                 dateStr: formatDateStandard(parsedDate),
                                 time: formatTime12H(viaje.hora),
-                                route: isArrival ? `Aeropuerto LIR ➝ ${destName}` : `${destName} ➝ Aeropuerto LIR`,
+                                route: isArrival ? `Aeropuerto LIR ➝ ${destName}` : (viaje.tipo === 'interno' ? (() => { const rs = viaje.destino || viaje.hotel || ''; const rp = rs.split(/\s*(?:[\u2190-\u21FF\u27F0-\u27FF\u2900-\u297F\u2794\u279C\u279D\u279E]|->)\s*/); return rp.length >= 2 ? `${rp[0].trim()} ➝ ${rp[1].trim()}` : (destName || 'Viaje Interno'); })() : `${destName} ➝ Aeropuerto LIR`),
                                 flight: viaje.vuelo || '--',
                                 raw_date: parsedDate,
                                 driver: viaje.chofer || "",
@@ -1374,6 +1381,8 @@
                                 tripPrice,
                                 showFinanciero,
                                 paymentMethod: order.payment_method_title || '--',
+                                precio_neto: viaje.precio_neto || "",
+                                viaje_subtotal: viaje.subtotal || "",
                                 order
                             });
                         }
@@ -1676,7 +1685,7 @@
                         <td data-label="Pax" class="text-sm font-bold text-[#002a3f]">${trip.pax || 1}</td>
                         <td data-label="Origen" class="bold-label font-extrabold text-[#002a3f]">${trip.route ? trip.route.split(' ➝ ')[0] : '--'}</td>
                         <td data-label="Destino" class="bold-label font-extrabold text-[#002a3f]">${trip.route ? trip.route.split(' ➝ ')[1] || '--' : '--'}</td>
-                        <td data-label="Hotel" class="font-semibold text-gray-600 text-sm">${trip.hotel || '--'}</td>
+                        <td data-label="Hotel" class="font-semibold text-gray-600 text-sm">${(trip.type === 'interno' && trip.hotel && trip.hotel.includes('→')) ? '--' : (trip.hotel || '--')}</td>
                         <td data-label="Vuelo" class="text-sm text-gray-500 font-semibold">${(trip.flight || '').toUpperCase()}</td>
                         <td data-label="Chofer" class="text-sm font-semibold text-gray-700">${trip.driver && trip.driver.trim() !== '' ? trip.driver : 'No asignado'}</td>
                         <td data-label="Subchofer" class="text-sm font-semibold text-gray-500">${trip.subchofer && trip.subchofer.trim() !== '' ? trip.subchofer : '--'}</td>
@@ -1731,13 +1740,21 @@
 
             const order = trip.order || {};
             const isArrival = trip.type === 'arrival';
-            const hotel = trip.hotel || 'Hotel no especificado';
             const hotelManual = findMetaValue(order, ["hotel_manual"]) || "";
             const zoneName = order.line_items?.[0]?.name || 'Hotel no especificado';
-            const displayHotelName = hotel || hotelManual || zoneName;
 
-            const originName = isArrival ? 'Aeropuerto LIR' : displayHotelName;
-            const destName = isArrival ? displayHotelName : 'Aeropuerto LIR';
+            let originName, destName;
+            if (trip.type === 'interno') {
+                const routeStr = trip.destino || trip.hotel || '';
+                const routeParts = routeStr.split(/\s*(?:[\u2190-\u21FF\u27F0-\u27FF\u2900-\u297F\u2794\u279C\u279D\u279E]|->)\s*/);
+                originName = (routeParts.length >= 2 ? routeParts[0].trim() : routeStr) || 'Viaje Interno';
+                destName = (routeParts.length >= 2 ? routeParts[1].trim() : '') || '';
+            } else {
+                const hotel = trip.hotel || 'Hotel no especificado';
+                const displayHotelName = hotel || hotelManual || zoneName;
+                originName = isArrival ? 'Aeropuerto LIR' : displayHotelName;
+                destName = isArrival ? displayHotelName : 'Aeropuerto LIR';
+            }
 
             const statusKeyViaje = isArrival ? 'status_llegada' : 'status_salida';
             const statusViajeVal = findMetaValue(order, [statusKeyViaje]) || '';
@@ -1803,20 +1820,21 @@
             // Ruta
             document.getElementById('trip-origin-name').innerText = originName;
             document.getElementById('trip-dest-name').innerText = destName;
-            document.getElementById('trip-origin-icon').innerText = isArrival ? '🛬' : '🏨';
-            document.getElementById('trip-dest-icon').innerText = isArrival ? '🏨' : '🛫';
+            document.getElementById('trip-origin-icon').innerText = isArrival ? '🛬' : (trip.type === 'interno' ? '📍' : '🏨');
+            document.getElementById('trip-dest-icon').innerText = isArrival ? '🏨' : (trip.type === 'interno' ? '📍' : '🛫');
             document.getElementById('trip-route-separator-emoji').innerText = '➡️';
             document.getElementById('trip-origin-label').innerText = isArrival ? 'Origen' : 'Origen';
             document.getElementById('trip-dest-label').innerText = isArrival ? 'Destino' : 'Destino';
 
-            document.getElementById('trip-general-trip-type').innerText = isArrival ? 'Llegada' : 'Salida';
+            document.getElementById('trip-general-trip-type').innerText = isArrival ? 'Llegada' : (trip.type === 'interno' ? 'Viaje Interno' : 'Salida');
             document.getElementById('trip-general-pax-value').innerText = trip.pax || '1';
             document.getElementById('trip-general-pax-value').innerText = trip.pax || '1';
             document.getElementById('trip-general-relative').innerText = getRelativeTime(trip.raw_date);
 
-            // Hotel Pill Logic
+            // Hotel Pill Logic - don't show route string as hotel for internal trips
             const hotelPill = document.getElementById('trip-hotel-pill');
-            if (trip.hotel && trip.hotel !== 'Hotel no especificado') {
+            const isRouteHotel = trip.type === 'interno' && trip.hotel && trip.hotel.includes('→');
+            if (trip.hotel && trip.hotel !== 'Hotel no especificado' && !isRouteHotel) {
                 document.getElementById('trip-general-hotel-value').innerText = trip.hotel;
                 hotelPill.classList.remove('hidden');
             } else {
@@ -1834,6 +1852,9 @@
                 if (isArrival) {
                     assignSection.className = 'bg-blue-50/50 -mx-5 -mb-5 p-5 border-t border-blue-100';
                     assignLabel.className = 'operation-section-label text-blue-400 border-blue-200';
+                } else if (trip.type === 'interno') {
+                    assignSection.className = 'bg-violet-50/50 -mx-5 -mb-5 p-5 border-t border-violet-100';
+                    assignLabel.className = 'operation-section-label text-violet-400 border-violet-200';
                 } else {
                     assignSection.className = 'bg-orange-50/50 -mx-5 -mb-5 p-5 border-t border-orange-100';
                     assignLabel.className = 'operation-section-label text-orange-400 border-orange-200';
@@ -1883,6 +1904,31 @@
             // Privacidad: si showFinanciero es false, ocultar todo
             if (trip && trip.showFinanciero === false) {
                 container.innerHTML = '<div class="text-sm text-gray-400 italic p-4 text-center">Información financiera oculta</div>';
+                return;
+            }
+
+            // ── Viajes internos: lógica independiente (no aplican fees, roundtrip ni divisiones) ──
+            if (trip && trip.type === 'interno') {
+                const internoSubtotal = parseFloat(trip.viaje_subtotal) || parseFloat(trip.precio_neto) || 0;
+
+                if (order.payment_method_title) {
+                    container.innerHTML += `<div class="text-[10px] uppercase font-black text-gray-400 mb-4 border-b pb-2">Método: ${order.payment_method_title}</div>`;
+                }
+
+                if (internoSubtotal > 0) {
+                    container.innerHTML += `
+                        <div class="flex justify-between items-center pt-3 border-t border-dashed border-gray-200 mt-2">
+                            <span class="font-bold uppercase opacity-50 text-[10px] tracking-widest">Subtotal Este Servicio</span>
+                            <span class="font-bold text-2xl text-[#002a3f]">$${internoSubtotal.toFixed(2)}</span>
+                        </div>`;
+                    container.innerHTML += `
+                        <div class="flex justify-between items-center text-sm">
+                            <span class="font-bold uppercase opacity-50 text-[10px] tracking-widest">Total Este Viaje</span>
+                            <span class="font-bold text-base text-[#002a3f]">$${internoSubtotal.toFixed(2)}</span>
+                        </div>`;
+                } else {
+                    container.innerHTML += `<div class="text-[10px] uppercase font-black text-gray-400 py-2">Sin precio definido (definir en Cotizaciones)</div>`;
+                }
                 return;
             }
 

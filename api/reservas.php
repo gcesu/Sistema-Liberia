@@ -32,7 +32,7 @@ if ($method === 'GET') {
     // Si se pide una reserva específica
     if (isset($_GET['order_id']) && $_GET['order_id'] !== '') {
         $id = intval($_GET['order_id']);
-        $stmt = $pdo->prepare("SELECT * FROM reservas WHERE id = ? AND es_cotizacion = 0");
+        $stmt = $pdo->prepare("SELECT * FROM reservas WHERE id = ? AND (es_cotizacion = 0 OR (es_cotizacion = 1 AND status = 'completed'))");
         $stmt->execute([$id]);
         $reserva = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -51,7 +51,7 @@ if ($method === 'GET') {
     $offset = ($page - 1) * $per_page;
 
     // Filtro por fecha (after)
-    $whereClause = "1=1 AND status != 'trash' AND es_cotizacion = 0";
+    $whereClause = "1=1 AND status != 'trash' AND (es_cotizacion = 0 OR (es_cotizacion = 1 AND status = 'completed'))";
     $params = [];
 
     if (isset($_GET['after']) && $_GET['after'] !== '') {
@@ -314,10 +314,15 @@ function transformarReservaParaFrontend($r)
             $candidateIndexes[] = 0;
             $candidateIndexes = array_values(array_unique($candidateIndexes));
 
-            foreach ($candidateIndexes as $candidateIdx) {
-                if (isset($originalLineItems[$candidateIdx])) {
-                    $subtotal = $originalLineItems[$candidateIdx]['subtotal'] ?? '0.00';
-                    break;
+            // Viajes internos: su subtotal viene de la tabla viajes, no de WooCommerce
+            if ($viaje['tipo'] === 'interno') {
+                $subtotal = $viaje['subtotal'] ?? '0.00';
+            } else {
+                foreach ($candidateIndexes as $candidateIdx) {
+                    if (isset($originalLineItems[$candidateIdx])) {
+                        $subtotal = $originalLineItems[$candidateIdx]['subtotal'] ?? '0.00';
+                        break;
+                    }
                 }
             }
 
@@ -408,7 +413,8 @@ function transformarReservaParaFrontend($r)
             'pax' => (int) ($v['pax'] ?? 1),
             'hotel' => $v['hotel'],
             'destino' => $v['destino_resuelto'] ?? ($v['destino'] ?? ''),
-            'precio_neto' => $v['precio_neto'] ?? ''
+            'precio_neto' => $v['precio_neto'] ?? '',
+            'subtotal' => $v['subtotal'] ?? ''
         ];
     }, $viajes);
 

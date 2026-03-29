@@ -55,8 +55,8 @@ class AdminNavbar extends HTMLElement {
             text-decoration: none;
         }
 
-        .nav-item:hover, .nav-item.active { 
-            opacity: 1; 
+        .nav-item:hover, .nav-item.active {
+            opacity: 1;
             background: rgba(255,255,255,0.05);
         }
 
@@ -126,7 +126,76 @@ class AdminNavbar extends HTMLElement {
             background: white;
             transition: all 0.3s linear;
         }
+
+        /* Toast de notificaciones */
+        .notif-toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            color: white;
+            padding: 16px 20px;
+            border-radius: 16px;
+            font-size: 14px;
+            font-weight: 700;
+            z-index: 200;
+            display: none;
+            align-items: center;
+            gap: 12px;
+            animation: notifToastSlideIn 0.4s ease;
+            max-width: 360px;
+        }
+        .notif-toast.show { display: flex; }
+        .notif-toast.notif-toast-reserva {
+            background: linear-gradient(135deg, #10b981, #059669);
+            box-shadow: 0 10px 40px rgba(16, 185, 129, 0.4);
+        }
+        .notif-toast.notif-toast-cotizacion {
+            background: linear-gradient(135deg, #7c3aed, #6d28d9);
+            box-shadow: 0 10px 40px rgba(124, 58, 237, 0.4);
+            bottom: 90px;
+        }
+        @keyframes notifToastSlideIn {
+            from { opacity: 0; transform: translateY(20px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .notif-toast .notif-toast-icon { font-size: 24px; flex-shrink: 0; }
+        .notif-toast .notif-toast-content { flex: 1; }
+        .notif-toast .notif-toast-title { font-size: 15px; font-weight: 800; margin-bottom: 4px; }
+        .notif-toast .notif-toast-message { font-size: 12px; opacity: 0.9; }
+        .notif-toast .notif-toast-btn {
+            background: rgba(255,255,255,0.2); border: none; color: white;
+            padding: 8px 16px; border-radius: 8px; font-size: 11px; font-weight: 800;
+            text-transform: uppercase; cursor: pointer; transition: background 0.2s; white-space: nowrap;
+        }
+        .notif-toast .notif-toast-btn:hover { background: rgba(255,255,255,0.3); }
+        .notif-toast .notif-toast-close {
+            position: absolute; top: 8px; right: 8px; background: none; border: none;
+            color: white; opacity: 0.6; font-size: 18px; cursor: pointer; padding: 0; line-height: 1;
+        }
+        .notif-toast .notif-toast-close:hover { opacity: 1; }
       </style>
+
+      <!-- Toast Nuevas Reservas -->
+      <div id="notif-toast-reservas" class="notif-toast notif-toast-reserva">
+          <button class="notif-toast-close" id="notif-close-reservas">&times;</button>
+          <div class="notif-toast-icon">🔔</div>
+          <div class="notif-toast-content">
+              <div class="notif-toast-title">Nuevas Reservas</div>
+              <div class="notif-toast-message" id="notif-msg-reservas">Hay 1 nueva reserva disponible</div>
+          </div>
+          <button class="notif-toast-btn" id="notif-btn-reservas">Ver Ahora</button>
+      </div>
+
+      <!-- Toast Nuevas Cotizaciones -->
+      <div id="notif-toast-cotizaciones" class="notif-toast notif-toast-cotizacion">
+          <button class="notif-toast-close" id="notif-close-cotizaciones">&times;</button>
+          <div class="notif-toast-icon">🔔</div>
+          <div class="notif-toast-content">
+              <div class="notif-toast-title">Nueva Cotización</div>
+              <div class="notif-toast-message" id="notif-msg-cotizaciones">Hay 1 nueva cotización disponible</div>
+          </div>
+          <button class="notif-toast-btn" id="notif-btn-cotizaciones">Ver Ahora</button>
+      </div>
 
       <div id="mobile-menu-overlay" class="mobile-menu-overlay">
         <div class="flex justify-between items-center mb-10">
@@ -147,11 +216,11 @@ class AdminNavbar extends HTMLElement {
         <button id="hamburger-btn" class="hamburger-btn">
             <span></span><span></span><span></span>
         </button>
-        
+
         <a href="/reservas" class="flex items-center">
             <img src="https://liberiaairportshuttle.com/wp-content/uploads/2024/11/Grupo.png" alt="Logo" class="h-6 md:h-8">
         </a>
-        
+
         <nav class="nav-links-desktop">
             <a href="/reservas" class="nav-item">Reservas</a>
             <a href="/cotizaciones" class="nav-item">Cotizaciones</a>
@@ -165,7 +234,7 @@ class AdminNavbar extends HTMLElement {
                 <span id="api-dot" class="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
                 <span class="text-[10px] font-black uppercase tracking-widest text-white">Online</span>
             </div>
-            
+
             <button id="global-refresh-btn" class="btn-sync tracking-widest">Actualizar</button>
             <button id="logout-btn" class="hidden lg:flex items-center gap-2 bg-white/10 hover:bg-red-500 px-3 py-1.5 rounded-full transition-all cursor-pointer border-none">
                 <span class="text-[10px] font-black uppercase tracking-widest text-white">Salir</span>
@@ -264,6 +333,7 @@ class AdminNavbar extends HTMLElement {
 
         this.setupEvents();
         this.highlightActiveLink();
+        this.setupNotifications();
     }
 
     setupEvents() {
@@ -348,6 +418,175 @@ class AdminNavbar extends HTMLElement {
                 link.classList.add('active');
             }
         });
+    }
+
+    // ========== SISTEMA DE NOTIFICACIONES GLOBAL ==========
+    setupNotifications() {
+        this._pollingPaused = false;
+        this._pollingInterval = null;
+        const POLLING_MS = 30000;
+
+        // Inicializar tiempos de última verificación
+        const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
+        if (!sessionStorage.getItem('last_check_time')) {
+            sessionStorage.setItem('last_check_time', now);
+        }
+        if (!sessionStorage.getItem('last_quote_check_time')) {
+            sessionStorage.setItem('last_quote_check_time', now);
+        }
+
+        // Event listeners para toasts
+        this.querySelector('#notif-close-reservas').addEventListener('click', () => this.hideToast('reservas'));
+        this.querySelector('#notif-btn-reservas').addEventListener('click', () => this.handleVerAhora('reservas'));
+        this.querySelector('#notif-close-cotizaciones').addEventListener('click', () => this.hideToast('cotizaciones'));
+        this.querySelector('#notif-btn-cotizaciones').addEventListener('click', () => this.handleVerAhora('cotizaciones'));
+
+        // Iniciar polling después de 3 segundos
+        setTimeout(() => {
+            this._pollingInterval = setInterval(() => this.checkForNew(), POLLING_MS);
+        }, 3000);
+    }
+
+    async checkForNew() {
+        if (this._pollingPaused) return;
+        try {
+            const token = sessionStorage.getItem('session_token');
+            if (!token) return;
+
+            // Usar el timestamp más antiguo entre reservas y cotizaciones
+            const sinceRes = sessionStorage.getItem('last_check_time');
+            const sinceQuote = sessionStorage.getItem('last_quote_check_time');
+            const since = sinceRes < sinceQuote ? sinceRes : sinceQuote;
+
+            const response = await fetch(`api/check_new.php?since=${encodeURIComponent(since)}`, {
+                headers: { 'X-Session-Token': token }
+            });
+            if (!response.ok) return;
+
+            const data = await response.json();
+
+            // Verificar nuevas reservas
+            if (data.new_count > 0 && data.reservations) {
+                const notifiedIds = JSON.parse(localStorage.getItem('notified_reservation_ids') || '[]');
+                const newItems = data.reservations.filter(r => !notifiedIds.includes(r.id));
+
+                if (newItems.length > 0) {
+                    const newIds = newItems.map(r => r.id);
+                    const allIds = [...notifiedIds, ...newIds].slice(-200);
+                    localStorage.setItem('notified_reservation_ids', JSON.stringify(allIds));
+                    this.showToast('reservas', newItems.length, newItems);
+                }
+            }
+
+            // Verificar nuevas cotizaciones
+            if (data.new_quotes_count > 0 && data.quotes) {
+                const notifiedIds = JSON.parse(localStorage.getItem('notified_quote_ids') || '[]');
+                const newItems = data.quotes.filter(q => !notifiedIds.includes(q.id));
+
+                if (newItems.length > 0) {
+                    const newIds = newItems.map(q => q.id);
+                    const allIds = [...notifiedIds, ...newIds].slice(-200);
+                    localStorage.setItem('notified_quote_ids', JSON.stringify(allIds));
+                    this.showToast('cotizaciones', newItems.length, newItems);
+                }
+            }
+
+            // Actualizar tiempos con hora del servidor
+            if (data.server_time) {
+                sessionStorage.setItem('last_check_time', data.server_time);
+                sessionStorage.setItem('last_quote_check_time', data.server_time);
+            }
+
+        } catch (err) {
+            console.error('Error verificando notificaciones:', err);
+        }
+    }
+
+    showToast(type, count, items) {
+        const toast = this.querySelector(`#notif-toast-${type}`);
+        const msg = this.querySelector(`#notif-msg-${type}`);
+
+        if (type === 'reservas') {
+            if (count === 1 && items[0]) {
+                msg.textContent = `${items[0].cliente_nombre} - #${items[0].id}`;
+            } else {
+                msg.textContent = `Hay ${count} nueva${count > 1 ? 's' : ''} reserva${count > 1 ? 's' : ''} disponible${count > 1 ? 's' : ''}`;
+            }
+        } else {
+            if (count === 1 && items[0]) {
+                msg.textContent = `${items[0].cliente_nombre} - #${items[0].id}`;
+            } else {
+                msg.textContent = `Hay ${count} nueva${count > 1 ? 's' : ''} cotización${count > 1 ? 'es' : ''} disponible${count > 1 ? 's' : ''}`;
+            }
+        }
+
+        toast.classList.add('show');
+        this.playNotificationSound();
+    }
+
+    hideToast(type) {
+        const toast = this.querySelector(`#notif-toast-${type}`);
+        toast.classList.remove('show');
+
+        const timeKey = type === 'reservas' ? 'last_check_time' : 'last_quote_check_time';
+        sessionStorage.setItem(timeKey, new Date().toISOString().replace('T', ' ').substring(0, 19));
+
+        this.pausePolling(60);
+    }
+
+    handleVerAhora(type) {
+        this.hideToast(type);
+
+        const currentPath = window.location.pathname;
+        const isOnReservas = currentPath === '/' || currentPath === '/reservas' || currentPath.endsWith('index.html');
+        const isOnCotizaciones = currentPath === '/cotizaciones' || currentPath.endsWith('cotizaciones.html');
+
+        if (type === 'reservas') {
+            if (isOnReservas && typeof window.refreshData === 'function') {
+                window.refreshData(1);
+            } else {
+                window.location.href = '/reservas';
+            }
+        } else {
+            if (isOnCotizaciones) {
+                if (typeof window.loadOrders === 'function') {
+                    window.loadOrders();
+                } else if (typeof window.refreshData === 'function') {
+                    window.refreshData(1);
+                } else {
+                    window.location.reload();
+                }
+            } else {
+                window.location.href = '/cotizaciones';
+            }
+        }
+    }
+
+    pausePolling(seconds = 60) {
+        this._pollingPaused = true;
+        setTimeout(() => { this._pollingPaused = false; }, seconds * 1000);
+    }
+
+    playNotificationSound() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const playTone = (freq, startTime, duration) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.frequency.value = freq;
+                osc.type = 'sine';
+                gain.gain.setValueAtTime(0, startTime);
+                gain.gain.linearRampToValueAtTime(0.4, startTime + 0.01);
+                gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+                osc.start(startTime);
+                osc.stop(startTime + duration);
+            };
+            const now = ctx.currentTime;
+            playTone(880, now, 0.12);
+            playTone(1175, now + 0.15, 0.15);
+        } catch (e) {}
     }
 }
 

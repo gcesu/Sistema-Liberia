@@ -124,10 +124,14 @@ elseif ($method === 'PUT') {
             $params[] = $input['status'];
         }
 
-        // 2. Status de viaje (control de visibilidad en Viajes)
+        // 2. Estado de cotización (se guarda en cotizaciones Y en reservas)
         if (isset($input['status_viaje'])) {
             $fieldsToUpdate[] = "status_viaje = ?";
             $params[] = $input['status_viaje'];
+
+            // Sincronizar estado en tabla reservas
+            $stmtRes = $pdo->prepare("UPDATE reservas SET status = ? WHERE id = ?");
+            $stmtRes->execute([$input['status_viaje'], $id]);
         }
 
         // 3. Datos Financieros (Editables Manualmente)
@@ -295,7 +299,8 @@ function transformarCotizacionParaFrontend($r)
         'fecha_viaje' => $r['fecha_viaje'],
         'hora_viaje' => $r['hora_viaje'],
         'pasajeros' => $r['pasajeros'],
-        'status_viaje' => $r['status_viaje']
+        'status_viaje' => $r['status_viaje'],
+        'customer_note' => $r['nota_cliente'] ?? ''
     ];
 }
 ?>

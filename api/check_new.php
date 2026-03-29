@@ -36,29 +36,51 @@ try {
         exit;
     }
 
-    // Contar reservas creadas después del último check
+    // Contar reservas (no cotizaciones) creadas después del último check
     $stmt = $pdo->prepare("
-        SELECT COUNT(*) as count 
-        FROM reservas 
-        WHERE date_created > ?
+        SELECT COUNT(*) as count
+        FROM reservas
+        WHERE date_created > ? AND (es_cotizacion = 0 OR es_cotizacion IS NULL)
     ");
     $stmt->execute([$lastCheck]);
     $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    // Obtener las IDs de las nuevas reservas (para mostrar en notificación)
+    // Obtener las IDs de las nuevas reservas
     $stmt2 = $pdo->prepare("
         SELECT id, cliente_nombre, tipo_viaje, llegada_fecha, salida_fecha
-        FROM reservas 
-        WHERE date_created > ?
+        FROM reservas
+        WHERE date_created > ? AND (es_cotizacion = 0 OR es_cotizacion IS NULL)
         ORDER BY date_created DESC
         LIMIT 5
     ");
     $stmt2->execute([$lastCheck]);
     $newReservations = $stmt2->fetchAll(PDO::FETCH_ASSOC);
 
+    // Contar cotizaciones creadas después del último check
+    $stmtQ = $pdo->prepare("
+        SELECT COUNT(*) as count
+        FROM reservas
+        WHERE date_created > ? AND es_cotizacion = 1
+    ");
+    $stmtQ->execute([$lastCheck]);
+    $resultQ = $stmtQ->fetch(PDO::FETCH_ASSOC);
+
+    // Obtener las IDs de las nuevas cotizaciones
+    $stmtQ2 = $pdo->prepare("
+        SELECT id, cliente_nombre, tipo_viaje, llegada_fecha, salida_fecha
+        FROM reservas
+        WHERE date_created > ? AND es_cotizacion = 1
+        ORDER BY date_created DESC
+        LIMIT 5
+    ");
+    $stmtQ2->execute([$lastCheck]);
+    $newQuotes = $stmtQ2->fetchAll(PDO::FETCH_ASSOC);
+
     echo json_encode([
         'new_count' => (int) $result['count'],
         'reservations' => $newReservations,
+        'new_quotes_count' => (int) $resultQ['count'],
+        'quotes' => $newQuotes,
         'server_time' => date('Y-m-d H:i:s'),
         'last_sync' => getLastSync($pdo)
     ]);

@@ -223,6 +223,12 @@
       border: 1px solid #ffedd5;
     }
 
+    .badge-interno {
+      background: #f5f3ff;
+      color: #6d28d9;
+      border: 1px solid #ede9fe;
+    }
+
     .date-cell {
       display: flex;
       flex-direction: column;
@@ -440,7 +446,7 @@
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: #f59e0b;
+      background: #7c3aed;
       display: inline-block;
       margin-right: 6px;
     }
@@ -1140,6 +1146,7 @@
           <option value="all">Todos</option>
           <option value="arrival">Solo Llegadas</option>
           <option value="departure">Solo Salidas</option>
+          <option value="interno">Solo Internos</option>
         </select>
       </div>
 
@@ -2054,7 +2061,7 @@
                 time: formatTime12H(viaje.hora),
                 route: isArrival
                   ? `Aeropuerto LIR ➝ ${destName}`
-                  : `${destName} ➝ Aeropuerto LIR`,
+                  : (viaje.tipo === 'interno' ? (() => { const rs = viaje.destino || viaje.hotel || ''; const rp = rs.split(/\s*(?:[\u2190-\u21FF\u27F0-\u27FF\u2900-\u297F\u2794\u279C\u279D\u279E]|->)\s*/); return rp.length >= 2 ? `${rp[0].trim()} ➝ ${rp[1].trim()}` : (destName || 'Viaje Interno'); })() : `${destName} ➝ Aeropuerto LIR`),
                 flight: viaje.vuelo || "--",
                 raw_date: fullDate,
                 hotel: viaje.hotel || "",
@@ -2068,6 +2075,7 @@
                 nota_choferes: viaje.nota_choferes || "",
                 notas_internas: viaje.notas_internas || "",
                 precio_neto: viaje.precio_neto || "",
+                viaje_subtotal: viaje.subtotal || "",
               });
             }
           });
@@ -2614,8 +2622,8 @@
                             </div>
                         </td>
                         <td data-label="Tipo">
-                            <span class="trip-badge ${isArrival ? "badge-arrival" : "badge-departure"}">
-                                ${isArrival ? "Llegada" : "Salida"}
+                            <span class="trip-badge ${isArrival ? "badge-arrival" : (trip.type === "interno" ? "badge-interno" : "badge-departure")}">
+                                ${isArrival ? "Llegada" : (trip.type === "interno" ? "Interno" : "Salida")}
                             </span>
                         </td>
                         <td data-label="Ruta" class="font-semibold text-gray-600 text-sm">${trip.route}</td>
@@ -2694,7 +2702,12 @@
       };
       tripOriginalValues["status_reserva"] = statusReservaVal;
       tripOriginalValues["status_viaje"] = statusViajeVal;
-      tripOriginalValues["precio_neto"] = String(trip.precio_neto || '');
+      // Para internos: si precio_neto es dato legacy (sin viaje_subtotal), tratar como vacío
+      if (trip.type === 'interno' && !trip.viaje_subtotal) {
+        tripOriginalValues["precio_neto"] = '';
+      } else {
+        tripOriginalValues["precio_neto"] = String(trip.precio_neto || '');
+      }
 
       // Privacy settings
       const privacyShowEmail = findMetaValue(order, ["privacy_show_email"]);
@@ -2768,26 +2781,30 @@
       // Ruta
       document.getElementById("trip-origin-name").innerText = originName;
       document.getElementById("trip-dest-name").innerText = destName;
-      document.getElementById("trip-origin-icon").innerText = isArrival
-        ? "🛬"
-        : "🏨";
-      document.getElementById("trip-dest-icon").innerText = isArrival
-        ? "🏨"
-        : "🛫";
-      document.getElementById("trip-route-separator-emoji").innerText = "➡️";
-
       // Hotel Name Logic - usar nombre del producto, NO trip.hotel
       const itemIdx = trip.item_index >= 1000 ? trip.item_index - 1000 : trip.item_index;
       const displayHotelName = order.line_items?.[itemIdx]?.name || order.line_items?.[0]?.name || 'Hotel no especificado';
 
       // Update Origin/Dest based on Trip Type
       if (trip.type === 'arrival') {
+        document.getElementById("trip-origin-icon").innerText = "🛬";
+        document.getElementById("trip-dest-icon").innerText = "🏨";
         document.getElementById("trip-origin-name").innerText = "Aeropuerto LIR";
         document.getElementById("trip-dest-name").innerText = displayHotelName;
+      } else if (trip.type === 'interno') {
+        document.getElementById("trip-origin-icon").innerText = "📍";
+        document.getElementById("trip-dest-icon").innerText = "📍";
+        const routeStr = trip.destino || trip.hotel || '';
+        const routeParts = routeStr.split(/\s*(?:[\u2190-\u21FF\u27F0-\u27FF\u2900-\u297F\u2794\u279C\u279D\u279E]|->)\s*/);
+        document.getElementById("trip-origin-name").innerText = (routeParts.length >= 2 ? routeParts[0].trim() : routeStr) || 'Viaje Interno';
+        document.getElementById("trip-dest-name").innerText = (routeParts.length >= 2 ? routeParts[1].trim() : '') || '';
       } else {
+        document.getElementById("trip-origin-icon").innerText = "🏨";
+        document.getElementById("trip-dest-icon").innerText = "🛫";
         document.getElementById("trip-origin-name").innerText = displayHotelName;
         document.getElementById("trip-dest-name").innerText = "Aeropuerto LIR";
       }
+      document.getElementById("trip-route-separator-emoji").innerText = "➡️";
 
       document.getElementById("trip-origin-label").innerText = isArrival
         ? "Origen"
@@ -2799,7 +2816,7 @@
 
 
       // Populate Pills
-      document.getElementById("trip-general-trip-type").innerText = isArrival ? "Llegada" : "Salida";
+      document.getElementById("trip-general-trip-type").innerText = isArrival ? "Llegada" : (trip.type === 'interno' ? "Viaje Interno" : "Salida");
       document.getElementById("trip-general-pax-value").innerText = trip.pax || "1";
       document.getElementById("trip-general-relative").innerText = getRelativeTime(trip.raw_date);
 
@@ -2818,6 +2835,11 @@
             "bg-blue-50/50 -mx-5 -mb-5 p-5 border-t border-blue-100";
           assignLabel.className =
             "operation-section-label text-blue-400 border-blue-200";
+        } else if (trip.type === 'interno') {
+          assignSection.className =
+            "bg-violet-50/50 -mx-5 -mb-5 p-5 border-t border-violet-100";
+          assignLabel.className =
+            "operation-section-label text-violet-400 border-violet-200";
         } else {
           assignSection.className =
             "bg-orange-50/50 -mx-5 -mb-5 p-5 border-t border-orange-100";
@@ -2838,7 +2860,7 @@
       const normalizedTripTime = normalizeTime(trip.time || "");
       const tripTimeInputValue = normalizedTripTime !== "--:--" ? normalizedTripTime : "";
       const tripFlightInputValue = (trip.flight && trip.flight !== "--") ? trip.flight : "";
-      const tripHotelInputValue = trip.hotel || "";
+      const tripHotelInputValue = (trip.type === 'interno' && trip.hotel && trip.hotel.includes('→')) ? '' : (trip.hotel || "");
       tripOriginalValues["fecha"] = tripDateInputValue;
       tripOriginalValues["hora"] = tripTimeInputValue;
       tripOriginalValues["vuelo"] = tripFlightInputValue;
@@ -2985,32 +3007,69 @@
       const container = document.getElementById('trip-payment-breakdown');
       container.innerHTML = '';
 
-      // Si tenemos información del viaje específico, buscar el line_item correspondiente
+      // ── Viajes internos: lógica independiente (no aplican fees, roundtrip ni divisiones) ──
+      if (trip && trip.type === 'interno') {
+        const internoSubtotal = parseFloat(trip.viaje_subtotal) || parseFloat(trip.precio_neto) || 0;
+
+        if (order.payment_method_title) {
+          container.innerHTML += `<div class="text-[10px] uppercase font-black text-gray-400 mb-4 border-b pb-2">Método: ${order.payment_method_title}</div>`;
+        }
+
+        if (internoSubtotal > 0) {
+          container.innerHTML += `
+            <div class="flex justify-between items-center pt-3 border-t border-dashed border-gray-200 mt-2">
+              <span class="font-bold uppercase opacity-50 text-[10px] tracking-widest">Subtotal Este Servicio</span>
+              <span class="font-bold text-2xl text-[#002a3f]">$${internoSubtotal.toFixed(2)}</span>
+            </div>
+            <div class="flex justify-between items-center text-sm">
+              <span class="font-bold uppercase opacity-50 text-[10px] tracking-widest">Total Este Viaje</span>
+              <span class="font-bold text-base text-[#002a3f]">$${internoSubtotal.toFixed(2)}</span>
+            </div>`;
+        } else {
+          container.innerHTML += `<div class="text-[10px] uppercase font-black text-gray-400 py-2">Sin precio definido (definir en Cotizaciones)</div>`;
+        }
+
+        // Precio neto para internos
+        let precioNetoInterno = '';
+        if (trip.viaje_subtotal && parseFloat(trip.viaje_subtotal) > 0) {
+          precioNetoInterno = trip.precio_neto || '';
+        }
+
+        container.innerHTML += `
+          <div class="flex justify-between items-center pt-3 border-t border-dashed border-gray-200 mt-2">
+            <span class="font-bold uppercase opacity-50 text-[10px] tracking-widest">PRECIO NETO</span>
+            <div class="flex items-center gap-1 w-36">
+              <span class="font-bold text-base text-[#002a3f]">$</span>
+              <input type="number" step="0.01" id="trip-input-precio-neto"
+                value="${precioNetoInterno ? String(precioNetoInterno).replace(/"/g, '&quot;') : ''}"
+                oninput="tripCheckForChanges()"
+                class="input-editable bg-white w-full text-left font-bold"
+                placeholder="0.00">
+            </div>
+          </div>`;
+        return;
+      }
+
+      // ── Llegadas y Salidas: lógica original con line_items, roundtrip, fees ──
       let tripSubtotal = null;
       let isRoundTrip = false;
       let tripLineItem = null;
 
       if (trip && trip.item_index !== undefined && order.line_items) {
-        // Buscar el line_item que corresponde a este viaje
         const originalIdx = trip.item_index >= 1000 ? trip.item_index - 1000 : trip.item_index;
 
         tripLineItem = order.line_items.find((li, idx) => {
-          // Primero intentar por viaje_id (comparación loose para evitar int vs string)
           if (trip.viaje_id && li.id == trip.viaje_id) return true;
           return false;
         });
 
-        // Fallback: si no encontró por viaje_id, buscar por item_index original
         if (!tripLineItem) {
-          // Buscar cualquier line_item que comparta el mismo item_index original
-          // En roundtrips, tanto llegada (idx 0) como salida (idx 1000) apuntan al mismo producto
           if (order.viajes && order.viajes.length > 0) {
             const viajeIdx = order.viajes.findIndex(v => v.id == trip.viaje_id || v.item_index === trip.item_index);
             if (viajeIdx !== -1 && order.line_items[viajeIdx]) {
               tripLineItem = order.line_items[viajeIdx];
             }
           }
-          // Último fallback: buscar por posición usando item_index original
           if (!tripLineItem && order.line_items[originalIdx]) {
             tripLineItem = order.line_items[originalIdx];
           }
@@ -3020,22 +3079,19 @@
           tripSubtotal = parseFloat(tripLineItem.subtotal || 0);
         }
 
-        // Si el subtotal es 0 pero el order.total no, calcular proporcionalmente
         if ((tripSubtotal === null || tripSubtotal === 0) && parseFloat(order.total) > 0) {
-          const numViajes = order.viajes?.length || order.line_items?.length || 1;
+          // Contar solo viajes no-internos para la proporción
+          const viajesNoInternos = order.viajes ? order.viajes.filter(v => v.tipo !== 'interno').length : (order.line_items?.length || 1);
+          const numViajes = viajesNoInternos || 1;
           tripSubtotal = parseFloat(order.total) / numViajes;
         }
 
-        // Detectar si este viaje es parte de un roundtrip
-        // Un roundtrip tiene item_index >= 1000 para la salida (mismo line_item que la llegada)
         if (trip.item_index >= 1000) {
           isRoundTrip = true;
         } else if (order.viajes && order.viajes.length > 0) {
-          // Verificar si hay otro viaje con item_index = trip.item_index + 1000 (la salida del roundtrip)
           isRoundTrip = order.viajes.some(v => v.item_index === trip.item_index + 1000);
         }
       } else {
-        // Fallback: detectar roundtrip por metadata legacy
         const hasArrival = !!findMetaValue(order, ["- Arrival Date"]);
         const hasDeparture = !!findMetaValue(order, ["- Departure Date"]);
         isRoundTrip = hasArrival && hasDeparture;
@@ -3046,12 +3102,9 @@
       const addRow = (label, value, isBold = false, isAccent = false, isDiscount = false, skipDivisor = false) => {
         let numVal = parseFloat(value);
         if (value === undefined || value === null || value === "" || isNaN(numVal) || numVal === 0) return;
-
-        // Dividir por 2 solo si es round-trip y no se omite el divisor
         if (!skipDivisor) {
           numVal = numVal / divisor;
         }
-
         const formattedValue = isDiscount ? `-$${Math.abs(numVal).toFixed(2)}` : `$${numVal.toFixed(2)}`;
         const colorClass = isDiscount ? 'text-green-600' : (isAccent ? 'text-red-500' : 'text-[#002a3f]');
         container.innerHTML += `
@@ -3061,7 +3114,6 @@
           </div>`;
       };
 
-      // Indicador de round-trip
       if (isRoundTrip) {
         container.innerHTML += `<div class="text-[10px] uppercase font-black text-orange-500 mb-3 pb-2 border-b">⚠️ Round Trip - Montos divididos entre 2</div>`;
       }
@@ -3070,7 +3122,6 @@
         container.innerHTML += `<div class="text-[10px] uppercase font-black text-gray-400 mb-4 border-b pb-2">Método: ${order.payment_method_title}</div>`;
       }
 
-      // Si es roundtrip, mostrar el total original de la reserva completa primero
       if (isRoundTrip) {
         const originalTotal = parseFloat(order.total || 0);
         container.innerHTML += `
@@ -3080,7 +3131,6 @@
           </div>`;
       }
 
-      // Usar el subtotal del line_item específico si está disponible
       if (tripSubtotal !== null) {
         addRow("Subtotal Este Servicio", tripSubtotal, true);
       } else {
@@ -3088,8 +3138,9 @@
         addRow("Subtotal Servicios", subtotal, true);
       }
 
-      // Proporcionar cargos adicionales e impuestos entre todos los viajes
-      const totalViajes = order.viajes?.length || order.line_items?.length || 1;
+      // Proporcionar cargos entre viajes no-internos solamente
+      const viajesNoInternos = order.viajes ? order.viajes.filter(v => v.tipo !== 'interno').length : (order.line_items?.length || 1);
+      const totalViajes = viajesNoInternos || 1;
       const proportion = 1 / totalViajes;
       let feeSum = 0;
       let taxSum = 0;
@@ -3097,10 +3148,9 @@
 
       if (order.fee_lines && order.fee_lines.length > 0) {
         order.fee_lines.forEach(fee => {
-          // Dividir el cargo total entre todos los viajes
           const feeAmount = parseFloat(fee.total || 0) * proportion;
           feeSum += feeAmount;
-          addRow(fee.name || 'Cargo Adicional', feeAmount, false, false, false, true); // true = no aplicar divisor
+          addRow(fee.name || 'Cargo Adicional', feeAmount, false, false, false, true);
         });
       }
 
@@ -3120,28 +3170,21 @@
         });
       }
 
-      // Total de este viaje
       if (tripSubtotal !== null) {
         const baseSubtotal = tripSubtotal / divisor;
         const tripTotal = baseSubtotal + feeSum + taxSum - couponSum;
-
-
-
         addRow("Total Este Viaje", tripTotal, false, false, false, true);
       } else {
         addRow("Total Este Viaje", order.total);
       }
 
-      const precioNetoVal = trip.precio_neto || '';
+      const precioNetoVal = trip ? (trip.precio_neto || '') : '';
       container.innerHTML += `
         <div class="flex justify-between items-center pt-3 border-t border-dashed border-gray-200 mt-2">
           <span class="font-bold uppercase opacity-50 text-[10px] tracking-widest">PRECIO NETO</span>
           <div class="flex items-center gap-1 w-36">
             <span class="font-bold text-base text-[#002a3f]">$</span>
-            <input
-              type="number"
-              step="0.01"
-              id="trip-input-precio-neto"
+            <input type="number" step="0.01" id="trip-input-precio-neto"
               value="${precioNetoVal ? String(precioNetoVal).replace(/"/g, '&quot;') : ''}"
               oninput="tripCheckForChanges()"
               class="input-editable bg-white w-full text-left font-bold"

@@ -13,6 +13,7 @@
         rel="stylesheet">
 
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 
     <script>
         (async function checkAuth() {
@@ -150,6 +151,15 @@
             color: #991b1b;
         }
 
+        .status-pill-clickable {
+            cursor: pointer;
+        }
+
+        .status-pill-clickable:hover {
+            transform: scale(1.05);
+            filter: brightness(0.9);
+        }
+
         .trip-badge {
             font-size: var(--font-xxxs);
             font-weight: 900;
@@ -173,9 +183,9 @@
         }
 
         .badge-interno {
-            background: #fef3c7;
-            color: #92400e;
-            border: 1px solid #fde68a;
+            background: #ede9fe;
+            color: #5b21b6;
+            border: 1px solid #ddd6fe;
         }
 
         .client-avatar {
@@ -367,7 +377,7 @@
             width: 8px;
             height: 8px;
             border-radius: 50%;
-            background: #f59e0b;
+            background: #7c3aed;
             display: inline-block;
         }
 
@@ -513,24 +523,6 @@
             font-style: italic;
         }
 
-        #input-status-viaje {
-            width: 100%;
-            padding: 10px 14px;
-            border: 1px solid #cbd5e1;
-            border-radius: 8px;
-            font-size: var(--font-sm);
-            font-weight: 700;
-            color: var(--primary);
-            background: #f8fafc;
-            outline: none;
-            transition: all 0.2s;
-        }
-
-        #input-status-viaje:focus {
-            border-color: var(--accent);
-            background: white;
-        }
-
         .column-scroll {
             scrollbar-width: thin;
             scrollbar-color: #cbd5e1 transparent;
@@ -647,6 +639,7 @@
 </head>
 
 <body>
+
     <admin-navbar></admin-navbar>
 
     <main class="w-full px-4 md:px-8">
@@ -662,10 +655,10 @@
             <table>
                 <thead>
                     <tr>
-                        <th class="pl-6">ID / Fecha</th>
+                        <th class="pl-6">ID</th>
                         <th>Cliente</th>
                         <th>Viajes</th>
-                        <th>Total</th>
+                        <th>Fecha Cotización</th>
                         <th>Status</th>
                         <th class="pr-6 text-right">Acción</th>
                     </tr>
@@ -686,7 +679,31 @@
             <div class="px-6 md:px-8 py-4 border-b flex justify-between items-center bg-white flex-shrink-0">
                 <div class="flex flex-wrap items-center gap-4">
                     <h3 id="modal-title" class="text-xl md:text-2xl font-bold text-[#002a3f] title-font"></h3>
-                    <span id="modal-status-pill" class="status-pill"></span>
+
+                    <div id="status-display-container" onclick="toggleStatusEditQuick()"
+                        class="flex items-center gap-2 group cursor-pointer">
+                        <span id="modal-status-pill"
+                            class="status-pill status-pill-clickable transition-all duration-300"></span>
+                        <svg class="w-4 h-4 text-gray-400 group-hover:text-gray-600" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z">
+                            </path>
+                        </svg>
+                    </div>
+
+                    <div id="status-edit-container" class="hidden">
+                        <select id="input-status-viaje" onchange="checkForChanges()"
+                            class="bg-white border-2 border-gray-200 rounded-lg px-3 py-1 text-sm font-bold uppercase outline-none focus:border-[#ed4441]">
+                            <option value="pending">Pendiente</option>
+                            <option value="processing">En Proceso</option>
+                            <option value="on-hold">En Espera</option>
+                            <option value="completed">Completada</option>
+                            <option value="cancelled">Cancelada</option>
+                        </select>
+                    </div>
+
+                    <p class="text-xs text-gray-400 hidden md:block">Los viajes aparecen en Viajes solo cuando el estado es <strong>Completada</strong>.</p>
                 </div>
                 <button onclick="closeModal()"
                     class="text-3xl text-gray-300 hover:text-gray-600 transition">&times;</button>
@@ -733,18 +750,6 @@
                             </div>
                         </div>
 
-                        <div class="mt-6 p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
-                            <p class="meta-field-label mb-3">Estado de Cotización</p>
-                            <select id="input-status-viaje" onchange="checkForChanges()">
-                                <option value="pending">Pendiente</option>
-                                <option value="processing">En Proceso</option>
-                                <option value="on-hold">En Espera</option>
-                                <option value="completed">Completada</option>
-                                <option value="cancelled">Cancelada</option>
-                            </select>
-                            <p class="text-[10px] text-gray-400 mt-2">Los viajes aparecen en Viajes solo cuando el
-                                estado es <strong>Completada</strong>.</p>
-                        </div>
                     </div>
                 </div>
 
@@ -777,15 +782,22 @@
                 </div>
             </div>
 
-            <div class="p-4 border-t bg-white flex justify-end gap-3 flex-shrink-0">
-                <button onclick="saveChanges()" id="btn-save"
-                    class="hidden px-6 py-2 bg-green-600 text-white rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-green-700 transition shadow-md">
-                    Guardar Cambios
+            <div class="p-4 border-t bg-white flex justify-between flex-shrink-0">
+                <button onclick="generatePDF()"
+                    class="px-6 py-2 bg-[#002a3f] text-white rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-[#ed4441] transition-all shadow-md flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    Descargar PDF
                 </button>
-                <button onclick="closeModal()"
-                    class="px-6 py-2 bg-gray-100 text-gray-600 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-gray-200 transition">
-                    Cerrar
-                </button>
+                <div class="flex gap-3">
+                    <button onclick="saveChanges()" id="btn-save"
+                        class="hidden px-6 py-2 bg-green-600 text-white rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-green-700 transition shadow-md">
+                        Guardar Cambios
+                    </button>
+                    <button onclick="closeModal()"
+                        class="px-6 py-2 bg-gray-100 text-gray-600 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-gray-200 transition">
+                        Cerrar
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -807,6 +819,7 @@
         let originalStatusViaje = '';
         let currentOrderViajes = [];
         let originalViajeValues = {};
+        let currentRawOrder = null;
 
         // Choferes
         let CHOFERES = [];
@@ -821,6 +834,7 @@
         function formatTime(t) { if (!t) return '--:--'; const m = String(t).match(/^(\d{1,2}):(\d{2})/); if (!m) return String(t); let h = parseInt(m[1]); const min = m[2], ampm = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12; return `${h}:${min} ${ampm}`; }
         function translateStatus(s) { return { pending: 'Pendiente', processing: 'En Proceso', 'on-hold': 'En Espera', completed: 'Completada', cancelled: 'Cancelada', failed: 'Fallida' }[s] || s; }
         function statusClass(s) { return { completed: 'status-completed', processing: 'status-processing', pending: 'status-pending', cancelled: 'status-cancelled', 'on-hold': 'status-on-hold', failed: 'status-failed' }[s] || 'status-pending'; }
+
         function getMeta(arr, key) { if (!Array.isArray(arr)) return null; const m = arr.find(x => x.key === key); return m ? (m.value ?? null) : null; }
         function normalizeForInput(val, type) { if (!val) return ''; if (type === 'date') return val.split('T')[0].split(' ')[0]; if (type === 'time') { const match = val.match(/(\d{1,2}):(\d{2})/); if (match) { let h = parseInt(match[1]); if (val.toLowerCase().includes('pm') && h < 12) h += 12; if (val.toLowerCase().includes('am') && h === 12) h = 0; return `${h.toString().padStart(2, '0')}:${match[2]}`; } } return val; }
         function autoResizeTextarea(textarea) { if (!textarea) return; textarea.style.overflowY = 'hidden'; textarea.style.height = 'auto'; textarea.style.height = `${Math.max(textarea.scrollHeight, 64)}px`; }
@@ -910,7 +924,7 @@
             if (!pageData.length) { tbody.innerHTML = `<tr><td colspan="6" class="text-center py-12 text-gray-400 font-bold text-xs uppercase tracking-wider">No se encontraron cotizaciones</td></tr>`; return; }
             pageData.forEach(o => {
                 const viajes = o.viajes || [];
-                const sv = o.status_viaje || o.status;
+                const sv = o.status;
                 const rawName = [o.billing?.last_name, o.billing?.first_name].filter(Boolean).join(' ') || `Cotización #${o.id}`;
                 const name = capitalizeName(rawName);
                 const tripBadges = viajes.map(v => {
@@ -920,10 +934,10 @@
                 }).join(' ');
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td data-label="ID" class="pl-6"><div class="font-bold text-[#002a3f]">#${o.id}</div><div class="text-xs text-gray-400 font-bold">${formatDateShort(o.date_created)}</div></td>
+                    <td data-label="ID" class="pl-6"><div class="font-bold text-[#002a3f]">#${o.id}</div></td>
                     <td data-label="Cliente"><div class="flex items-center"><div class="client-avatar">${getInitials(name)}</div><div><div class="font-bold text-[#002a3f]">${name}</div><div class="text-xs text-gray-400">${o.billing?.email || ''}</div></div></div></td>
                     <td data-label="Viajes"><div class="flex flex-wrap gap-1">${tripBadges || '<span class="text-gray-400 text-xs">Sin viajes</span>'}</div></td>
-                    <td data-label="Total" class="font-bold font-mono text-[#002a3f]">$${parseFloat(o.total || 0).toFixed(2)}</td>
+                    <td data-label="Fecha"><div class="flex flex-col justify-center"><span class="font-bold text-[#002a3f]">${formatDateShort(o.date_created)}</span></div></td>
                     <td data-label="Status"><span class="status-pill ${statusClass(sv)}"><span class="status-dot"></span>${translateStatus(sv)}</span></td>
                     <td data-label="Acción" class="pr-6 text-right"><button onclick="viewOrder(${o.id})" class="bg-[#002a3f] text-white px-4 py-2 rounded-lg font-bold uppercase text-xs hover:bg-[#ed4441] transition-all">VER</button></td>`;
                 tbody.appendChild(tr);
@@ -954,15 +968,18 @@
 
             let rawOrder = null;
             try { rawOrder = typeof o.raw_data === 'string' ? JSON.parse(o.raw_data) : o.raw_data; } catch { }
+            currentRawOrder = rawOrder;
 
             document.body.style.overflow = 'hidden';
             document.getElementById('order-modal').classList.add('open');
             document.getElementById('btn-save').classList.add('hidden');
 
             document.getElementById('modal-title').textContent = `Cotización #${o.id}`;
-            const sv = o.status_viaje || o.status;
+            const sv = o.status;
             const pill = document.getElementById('modal-status-pill');
-            pill.className = `status-pill ${statusClass(sv)}`; pill.innerHTML = `<span class="status-dot"></span> ${translateStatus(sv)}`;
+            pill.className = `status-pill status-pill-clickable ${statusClass(sv)}`; pill.innerHTML = `<span class="status-dot"></span> ${translateStatus(sv)}`;
+            document.getElementById('status-display-container').classList.remove('hidden');
+            document.getElementById('status-edit-container').classList.add('hidden');
 
             const rawName = [o.billing?.last_name, o.billing?.first_name].filter(Boolean).join(' ') || `Cotización #${o.id}`;
             const name = capitalizeName(rawName);
@@ -1072,9 +1089,9 @@
             viajes.forEach((v, idx) => {
                 const isL = v.tipo === 'llegada', isS = v.tipo === 'salida', isI = v.tipo === 'interno';
                 const dotClass = isL ? 'title-dot-llegada' : isS ? 'title-dot-salida' : 'title-dot-interno';
-                const bgBorder = isL ? 'border-blue-100' : isS ? 'border-orange-100' : 'border-yellow-100';
-                const bgFill = isL ? 'bg-blue-50/50' : isS ? 'bg-orange-50/50' : 'bg-yellow-50/50';
-                const lblColor = isL ? 'text-blue-400 border-blue-200' : isS ? 'text-orange-400 border-orange-200' : 'text-amber-500 border-amber-200';
+                const bgBorder = isL ? 'border-blue-100' : isS ? 'border-orange-100' : 'border-violet-100';
+                const bgFill = isL ? 'bg-blue-50/50' : isS ? 'bg-orange-50/50' : 'bg-violet-50/50';
+                const lblColor = isL ? 'text-blue-400 border-blue-200' : isS ? 'text-orange-400 border-orange-200' : 'text-violet-500 border-violet-200';
                 const cardLabel = isL ? 'LLEGADA' : isS ? 'SALIDA' : 'VIAJE INTERNO';
                 const viajeId = v.id;
                 const prefix = `cot_viaje_${viajeId}`;
@@ -1088,6 +1105,8 @@
                 originalViajeValues[`${prefix}_hora`] = v.hora || '';
                 originalViajeValues[`${prefix}_vuelo`] = v.vuelo || '';
                 originalViajeValues[`${prefix}_hotel`] = v.hotel || '';
+                originalViajeValues[`${prefix}_pickup`] = v.pickup || '';
+                originalViajeValues[`${prefix}_dropoff`] = v.dropoff || '';
 
                 const sub = isI
                     ? (v.pickup && v.dropoff ? `· ${v.pickup} → ${v.dropoff}` : '')
@@ -1098,9 +1117,11 @@
                 if (isI) {
                     logHTML = `
                         <div><p class="meta-field-label">Origen</p>
-                            <p id="display-${prefix}_origen" class="meta-field-value text-base">${v.pickup || '<span class="text-gray-300 font-normal text-sm">Sin datos</span>'}</p></div>
+                            <p id="display-${prefix}_pickup" class="meta-field-value text-base">${v.pickup || '<span class="text-gray-300 font-normal text-sm">Sin datos</span>'}</p>
+                            <input type="text" id="input-${prefix}_pickup" oninput="checkForChanges()" value="${v.pickup || ''}" class="hidden input-editable mt-1" placeholder="Lugar de origen"></div>
                         <div><p class="meta-field-label">Destino</p>
-                            <p id="display-${prefix}_destino" class="meta-field-value text-base">${v.dropoff || '<span class="text-gray-300 font-normal text-sm">Sin datos</span>'}</p></div>
+                            <p id="display-${prefix}_dropoff" class="meta-field-value text-base">${v.dropoff || '<span class="text-gray-300 font-normal text-sm">Sin datos</span>'}</p>
+                            <input type="text" id="input-${prefix}_dropoff" oninput="checkForChanges()" value="${v.dropoff || ''}" class="hidden input-editable mt-1" placeholder="Lugar de destino"></div>
                         <div><p class="meta-field-label">Fecha</p>
                             <p id="display-${prefix}_fecha" class="meta-field-value text-base">${formatDateShort(v.fecha)}</p>
                             <input type="date" id="input-${prefix}_fecha" oninput="checkForChanges()" value="${normalizeForInput(v.fecha || '', 'date')}" class="hidden input-editable mt-1"></div>
@@ -1120,7 +1141,8 @@
                             <p id="display-${prefix}_vuelo" class="meta-field-value text-base">${(v.vuelo || '--').toUpperCase()}</p>
                             <input type="text" id="input-${prefix}_vuelo" oninput="checkForChanges()" value="${v.vuelo || ''}" class="hidden input-editable mt-1 uppercase"></div>
                         <div><p class="meta-field-label">Hotel</p>
-                            <p id="display-${prefix}_hotel" class="meta-field-value text-base">${v.destino_display || v.destino || v.hotel || '---'}</p></div>`;
+                            <p id="display-${prefix}_hotel" class="meta-field-value text-base">${v.hotel || '<span class="text-gray-300 font-normal text-sm">Sin especificar</span>'}</p>
+                            <input type="text" id="input-${prefix}_hotel" oninput="checkForChanges()" value="${v.hotel || ''}" class="hidden input-editable mt-1" placeholder="Nombre del hotel"></div>`;
                 }
 
                 // Chofer options
@@ -1187,7 +1209,7 @@
         function toggleViajeEdit(prefix) {
             const btn = document.getElementById(`btn-edit-${prefix}`);
             const isEditing = btn.classList.contains('editing');
-            const fieldKeys = ['fecha', 'hora', 'vuelo', 'hotel'];
+            const fieldKeys = ['fecha', 'hora', 'vuelo', 'hotel', 'pickup', 'dropoff'];
             fieldKeys.forEach(k => {
                 const display = document.getElementById(`display-${prefix}_${k}`);
                 const input = document.getElementById(`input-${prefix}_${k}`);
@@ -1238,22 +1260,383 @@
         }
 
         // ── Financial ──
+        // Métodos de pago que cobran el 5% de cargo
+        const FEE_PAYMENT_METHODS = ['paypal', 'stripe', 'card', 'tarjeta', 'credit card'];
+
+        function hasFeePaymentMethod(methodTitle) {
+            if (!methodTitle) return false;
+            const m = methodTitle.toLowerCase();
+            return FEE_PAYMENT_METHODS.some(f => m.includes(f));
+        }
+
         function renderFinancial(o, rawOrder) {
             const container = document.getElementById('financial-breakdown'); container.innerHTML = '';
-            const addRow = (label, value, bold = false, discount = false) => {
-                const num = parseFloat(value); if (isNaN(num) || num === 0) return;
-                const fmt = discount ? `-$${Math.abs(num).toFixed(2)}` : `$${num.toFixed(2)}`;
-                const col = discount ? 'text-green-600' : 'text-[#002a3f]';
-                container.innerHTML += `<div class="fin-row ${bold ? 'pt-3 border-t border-dashed border-gray-200 mt-2' : 'text-sm'}"><span class="font-bold uppercase opacity-50 text-[10px] tracking-widest">${label}</span><span class="font-bold ${bold ? 'text-2xl' : 'text-base'} ${col}">${fmt}</span></div>`;
-            };
-            if (o.payment_method_title) container.innerHTML += `<div class="text-[10px] uppercase font-black text-gray-400 mb-4 border-b pb-2">Método: ${o.payment_method_title}</div>`;
+
+            // Guardar datos base para recálculo dinámico
+            // baseSubtotal = precio de viajes NO internos (roundtrip/llegada/salida)
+            // Los viajes internos se suman aparte desde los inputs editables
             const lis = rawOrder?.line_items || [];
-            const sub = lis.length ? lis.reduce((s, li) => s + parseFloat(li.subtotal || 0), 0) : parseFloat(o.subtotal || 0);
-            addRow('Subtotal Servicios', sub, true);
-            (rawOrder?.fee_lines || []).forEach(f => addRow(f.name || 'Cargo', f.total));
-            (rawOrder?.tax_lines || []).forEach(t => addRow(t.label || 'Impuesto', t.tax_total));
-            (rawOrder?.coupon_lines || []).forEach(c => addRow(`Cupón: ${c.code}`, c.discount, false, true));
-            addRow('Total', o.total);
+            const internoViajes = (o.viajes || []).filter(v => v.tipo === 'interno');
+            const nonInternoViajes = (o.viajes || []).filter(v => v.tipo !== 'interno');
+            let baseSubtotal = 0;
+
+            if (lis.length > 1) {
+                // Múltiples line_items = datos reales de WooCommerce
+                // Mapear viajes no-internos a sus line_items por item_index
+                nonInternoViajes.forEach(v => {
+                    const idx = parseInt(v.item_index);
+                    const liIdx = idx >= 1000 ? idx - 1000 : idx;
+                    const li = lis[liIdx];
+                    if (li) baseSubtotal += parseFloat(li.subtotal || 0);
+                });
+            }
+
+            if (baseSubtotal === 0) {
+                // Dummy/single line_item o sin match: usar el mayor entre subtotal y total
+                // (subtotal puede incluir internos ya guardados, total puede ser el original de WooCommerce)
+                const orderBase = Math.max(parseFloat(o.subtotal || 0), parseFloat(o.total || 0));
+                let knownInternos = 0;
+                internoViajes.forEach(v => { knownInternos += parseFloat(v.subtotal || 0); });
+                baseSubtotal = Math.max(0, orderBase - knownInternos);
+            }
+            container.setAttribute('data-base-subtotal', baseSubtotal);
+            container.setAttribute('data-payment-method', o.payment_method_title || '');
+            container.setAttribute('data-has-original-fees', (rawOrder?.fee_lines || []).length > 0 ? '1' : '0');
+
+            // Método de pago
+            if (o.payment_method_title) container.innerHTML += `<div class="text-[10px] uppercase font-black text-gray-400 mb-4 border-b pb-2">Método: ${o.payment_method_title}</div>`;
+
+            // 1. Viajes internos (inputs editables - se guarda como subtotal del viaje)
+            const internos = currentOrderViajes.filter(v => v.tipo === 'interno');
+            internos.forEach(v => {
+                const subtotalVal = v.subtotal || '';
+                const inputId = `input-cot_viaje_${v.id}_subtotal`;
+                const ruta = v.destino || v.hotel || 'Viaje Interno';
+                container.innerHTML += `
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="font-bold uppercase opacity-50 text-[10px] tracking-widest">${ruta}</span>
+                        <div class="flex items-center gap-1 w-36">
+                            <span class="font-bold text-base text-[#002a3f]">$</span>
+                            <input type="number" step="0.01" id="${inputId}"
+                                value="${subtotalVal ? String(subtotalVal).replace(/"/g, '&quot;') : ''}"
+                                oninput="updateFinancialTotal(); checkForChanges()"
+                                class="input-editable bg-white w-full text-left font-bold"
+                                placeholder="0.00">
+                        </div>
+                    </div>`;
+                originalViajeValues[`cot_viaje_${v.id}_subtotal`] = String(subtotalVal || '');
+            });
+
+            // 2. Subtotal (grande)
+            container.innerHTML += `<div class="fin-row pt-3 border-t border-dashed border-gray-200 mt-2"><span class="font-bold uppercase opacity-50 text-[10px] tracking-widest">Subtotal Servicios</span><span id="financial-subtotal" class="font-bold text-2xl text-[#002a3f]"></span></div>`;
+
+            // 3. Cargos — se muestra solo si aplica
+            container.innerHTML += `<div id="financial-fees-row" class="fin-row text-sm hidden"><span class="font-bold uppercase opacity-50 text-[10px] tracking-widest">Cargos</span><span id="financial-fees" class="font-bold text-base text-[#002a3f]"></span></div>`;
+
+            // 4. Total
+            container.innerHTML += `<div class="fin-row text-sm"><span class="font-bold uppercase opacity-50 text-[10px] tracking-widest">Total</span><span id="financial-total" class="font-bold text-base text-[#002a3f]"></span></div>`;
+
+            updateFinancialTotal();
+        }
+
+        function updateFinancialTotal() {
+            const container = document.getElementById('financial-breakdown');
+            if (!container) return;
+
+            const baseSubtotal = parseFloat(container.getAttribute('data-base-subtotal') || 0);
+            const paymentMethod = container.getAttribute('data-payment-method') || '';
+            const hasOriginalFees = container.getAttribute('data-has-original-fees') === '1';
+
+            // Sumar precios de viajes internos
+            let internosSum = 0;
+            currentOrderViajes.filter(v => v.tipo === 'interno').forEach(v => {
+                const inp = document.getElementById(`input-cot_viaje_${v.id}_subtotal`);
+                if (inp) internosSum += parseFloat(inp.value) || 0;
+            });
+
+            const subtotal = baseSubtotal + internosSum;
+
+            // Calcular fees (5% redondeado al entero más cercano, como WooCommerce)
+            let fees = 0;
+            if ((hasFeePaymentMethod(paymentMethod) || hasOriginalFees) && subtotal > 0) {
+                fees = Math.round(subtotal * 0.05);
+            }
+
+            const total = subtotal + fees;
+
+            // Actualizar UI
+            const subtotalEl = document.getElementById('financial-subtotal');
+            const feesEl = document.getElementById('financial-fees');
+            const feesRow = document.getElementById('financial-fees-row');
+            const totalEl = document.getElementById('financial-total');
+
+            if (subtotalEl) subtotalEl.textContent = `$${subtotal.toFixed(2)}`;
+            if (feesRow) feesRow.classList.toggle('hidden', fees === 0);
+            if (feesEl) feesEl.textContent = `$${fees.toFixed(2)}`;
+            if (totalEl) totalEl.textContent = `$${total.toFixed(2)}`;
+        }
+
+        // ── PDF Generation ──
+        // Pre-load logo for PDF
+        const pdfLogoImg = new Image();
+        pdfLogoImg.src = 'assets/logo.png';
+
+        function pdfSafe(text) {
+            return (text || '').replace(/→/g, '->').replace(/➡️/g, '->').replace(/»/g, '->');
+        }
+
+        function generatePDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'mm', 'letter');
+            const o = allOrders.find(x => x.id === currentOrderId);
+            if (!o) return;
+
+            const pageW = doc.internal.pageSize.getWidth();
+            const pageH = doc.internal.pageSize.getHeight();
+            const margin = 20;
+            const contentW = pageW - margin * 2;
+            let y = 0;
+
+            // Colors
+            const primary = [0, 42, 63];       // #002a3f
+            const accent = [237, 68, 65];       // #ed4441
+            const white = [255, 255, 255];
+            const gray = [100, 116, 139];
+            const lightGray = [226, 232, 240];
+
+            // ── Dark Header Bar ──
+            const headerH = 32;
+            doc.setFillColor(...primary);
+            doc.rect(0, 0, pageW, headerH, 'F');
+
+            // Logo from pre-loaded image
+            try {
+                if (pdfLogoImg.complete && pdfLogoImg.naturalWidth > 0) {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = pdfLogoImg.naturalWidth;
+                    canvas.height = pdfLogoImg.naturalHeight;
+                    canvas.getContext('2d').drawImage(pdfLogoImg, 0, 0);
+                    const logoData = canvas.toDataURL('image/png');
+                    const logoH = 14;
+                    const logoW = (pdfLogoImg.naturalWidth / pdfLogoImg.naturalHeight) * logoH;
+                    doc.addImage(logoData, 'PNG', margin, (headerH - logoH) / 2, logoW, logoH);
+                } else { throw new Error('logo not loaded'); }
+            } catch (e) {
+                doc.setFontSize(16);
+                doc.setTextColor(...white);
+                doc.setFont(undefined, 'bold');
+                doc.text('LIBERIA AIRPORT SHUTTLE', margin, 14);
+            }
+
+            // Quote number (right)
+            doc.setFontSize(22);
+            doc.setTextColor(...white);
+            doc.setFont(undefined, 'bold');
+            doc.text('QUOTE', pageW - margin, 14, { align: 'right' });
+            doc.setFontSize(11);
+            doc.setFont(undefined, 'normal');
+            doc.setTextColor(180, 200, 215);
+            doc.text(`#${o.id}`, pageW - margin, 22, { align: 'right' });
+
+            // Red accent line under header
+            doc.setDrawColor(...accent);
+            doc.setLineWidth(1);
+            doc.line(0, headerH, pageW, headerH);
+
+            y = headerH + 10;
+
+            // ── Date ──
+            doc.setFontSize(9);
+            doc.setTextColor(...gray);
+            const dateStr = o.date_created ? new Date(o.date_created).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
+            doc.text(`Date: ${dateStr}`, margin, y);
+            y += 10;
+
+            // ── Client Info ──
+            doc.setFillColor(248, 250, 252);
+            doc.roundedRect(margin, y, contentW, 28, 3, 3, 'F');
+            y += 7;
+            doc.setFontSize(8);
+            doc.setTextColor(...gray);
+            doc.text('CLIENT', margin + 5, y);
+            y += 5;
+            const rawName = [o.billing?.last_name, o.billing?.first_name].filter(Boolean).join(' ') || `Quote #${o.id}`;
+            doc.setFontSize(11);
+            doc.setTextColor(...primary);
+            doc.setFont(undefined, 'bold');
+            doc.text(capitalizeName(rawName), margin + 5, y);
+            doc.setFont(undefined, 'normal');
+            y += 5;
+            doc.setFontSize(9);
+            doc.setTextColor(...gray);
+            const clientInfo = [o.billing?.email, o.billing?.phone].filter(Boolean).join('  |  ');
+            doc.text(clientInfo, margin + 5, y);
+            y += 5;
+            if (o.billing?.address_1) {
+                doc.text(o.billing.address_1, margin + 5, y);
+            }
+            y += 12;
+
+            // ── Trip Details ──
+            doc.setFontSize(8);
+            doc.setTextColor(...gray);
+            doc.text('TRIP DETAILS', margin, y);
+            y += 5;
+
+            // Table header
+            doc.setFillColor(...primary);
+            doc.roundedRect(margin, y, contentW, 7, 1.5, 1.5, 'F');
+            doc.setFontSize(7.5);
+            doc.setTextColor(...white);
+            doc.text('TYPE', margin + 4, y + 5);
+            doc.text('ROUTE', margin + 30, y + 5);
+            doc.text('DATE', margin + 115, y + 5);
+            doc.text('TIME', margin + 145, y + 5);
+            y += 9;
+
+            // Table rows
+            currentOrderViajes.forEach((v, i) => {
+                const bgColor = i % 2 === 0 ? [255, 255, 255] : [248, 250, 252];
+                doc.setFillColor(...bgColor);
+                doc.rect(margin, y - 1, contentW, 7, 'F');
+
+                const tipoLabel = v.tipo === 'llegada' ? 'Arrival' : v.tipo === 'salida' ? 'Departure' : 'Internal';
+                const ruta = pdfSafe(v.destino || v.hotel || '---');
+                const dateV = v.fecha ? new Date(v.fecha + 'T12:00:00').toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) : '---';
+                const timeV = v.hora ? formatTime(v.hora) : '---';
+
+                doc.setFontSize(7.5);
+                doc.setTextColor(...primary);
+                doc.setFont(undefined, 'bold');
+                doc.text(tipoLabel, margin + 4, y + 4);
+                doc.setFont(undefined, 'normal');
+                doc.setTextColor(51, 65, 85);
+
+                // Truncate route if too long
+                const maxRutaW = 80;
+                let rutaText = ruta;
+                while (doc.getTextWidth(rutaText) > maxRutaW && rutaText.length > 3) {
+                    rutaText = rutaText.slice(0, -4) + '...';
+                }
+                doc.text(rutaText, margin + 30, y + 4);
+                doc.text(dateV, margin + 115, y + 4);
+                doc.text(timeV, margin + 145, y + 4);
+                y += 8;
+            });
+
+            y += 8;
+
+            // ── Financial Summary ──
+            const finW = contentW;
+            const finX = margin;
+
+            doc.setFillColor(248, 250, 252);
+            doc.roundedRect(finX, y, finW, 8, 2, 2, 'F');
+            doc.setFontSize(7.5);
+            doc.setTextColor(...gray);
+            doc.text('FINANCIAL SUMMARY', finX + 4, y + 5.5);
+            y += 11;
+
+            // Payment method
+            if (o.payment_method_title) {
+                doc.setFontSize(7);
+                doc.setTextColor(...gray);
+                doc.text(`Payment Method: ${o.payment_method_title}`, finX + 4, y);
+                y += 3;
+                doc.setDrawColor(...lightGray);
+                doc.setLineWidth(0.3);
+                doc.line(finX + 4, y, finX + finW - 4, y);
+                y += 5;
+            }
+
+            const addFinRow = (label, value, bold = false) => {
+                const maxLabelW = finW - 35;
+                doc.setFontSize(bold ? 10 : 8);
+                doc.setTextColor(...(bold ? primary : gray));
+                doc.setFont(undefined, 'bold');
+                // Truncate label if needed
+                let truncLabel = label;
+                while (doc.getTextWidth(truncLabel) > maxLabelW && truncLabel.length > 3) {
+                    truncLabel = truncLabel.slice(0, -4) + '...';
+                }
+                doc.text(truncLabel, finX + 4, y);
+                doc.setTextColor(...primary);
+                doc.text(value, finX + finW - 4, y, { align: 'right' });
+                doc.setFont(undefined, 'normal');
+                y += bold ? 7 : 5;
+            };
+
+            // Trips - usar baseSubtotal del modal para consistencia
+            const pdfBaseSubtotal = parseFloat(document.getElementById('financial-breakdown')?.getAttribute('data-base-subtotal') || 0);
+            const pdfLlegadas = currentOrderViajes.filter(v => v.tipo === 'llegada');
+            const pdfSalidas = currentOrderViajes.filter(v => v.tipo === 'salida');
+            const pdfInternos = currentOrderViajes.filter(v => v.tipo === 'interno');
+            const isRoundtrip = pdfLlegadas.length > 0 && pdfSalidas.length > 0;
+
+            if (isRoundtrip) {
+                // Roundtrip: una sola línea con el baseSubtotal (precio combinado llegada+salida)
+                const rtRuta = pdfSafe(pdfLlegadas[0].destino || pdfLlegadas[0].hotel || 'Roundtrip');
+                if (pdfBaseSubtotal > 0) addFinRow(`Roundtrip - ${rtRuta}`, `$${pdfBaseSubtotal.toFixed(2)}`);
+            } else {
+                // Solo llegadas o solo salidas: dividir baseSubtotal entre los viajes
+                const nonInternos = [...pdfLlegadas, ...pdfSalidas];
+                const precioPorViaje = nonInternos.length > 0 ? pdfBaseSubtotal / nonInternos.length : 0;
+                nonInternos.forEach(v => {
+                    if (precioPorViaje > 0) addFinRow(pdfSafe(v.destino || v.hotel || 'Transfer'), `$${precioPorViaje.toFixed(2)}`);
+                });
+            }
+
+            // Internos: precio desde los inputs editables
+            pdfInternos.forEach(v => {
+                const inp = document.getElementById(`input-cot_viaje_${v.id}_subtotal`);
+                const precio = parseFloat(inp?.value) || 0;
+                if (precio > 0) addFinRow(pdfSafe(v.destino || v.hotel || 'Internal'), `$${precio.toFixed(2)}`);
+            });
+
+            // Subtotal
+            const subtotalEl = document.getElementById('financial-subtotal');
+            addFinRow('Subtotal', subtotalEl?.textContent || '$0.00', true);
+
+            // Fees
+            const feesRow = document.getElementById('financial-fees-row');
+            const feesEl = document.getElementById('financial-fees');
+            if (feesRow && !feesRow.classList.contains('hidden')) {
+                addFinRow('Fees', feesEl?.textContent || '$0.00');
+            }
+
+            // Line before total
+            doc.setDrawColor(...lightGray);
+            doc.setLineWidth(0.3);
+            doc.line(finX + 4, y, finX + finW - 4, y);
+            y += 5;
+
+            // Total
+            const totalEl = document.getElementById('financial-total');
+            doc.setFontSize(13);
+            doc.setFont(undefined, 'bold');
+            doc.setTextColor(...primary);
+            doc.text('TOTAL', finX + 4, y);
+            doc.text(totalEl?.textContent || '$0.00', finX + finW - 4, y, { align: 'right' });
+
+            // ── Footer ──
+            const footerY = pageH - 15;
+            doc.setDrawColor(...lightGray);
+            doc.setLineWidth(0.3);
+            doc.line(margin, footerY - 5, pageW - margin, footerY - 5);
+            doc.setFontSize(7);
+            doc.setFont(undefined, 'normal');
+            doc.setTextColor(...gray);
+            doc.text('Liberia Airport Shuttle  |  liberiaairportshuttle.com', pageW / 2, footerY, { align: 'center' });
+            doc.text('This document is a quote receipt.', pageW / 2, footerY + 4, { align: 'center' });
+
+            // ── Download ──
+            doc.save(`Quote_${o.id}.pdf`);
+        }
+
+        function toggleStatusEditQuick() {
+            document.getElementById('status-display-container').classList.add('hidden');
+            document.getElementById('status-edit-container').classList.remove('hidden');
+            document.getElementById('input-status-viaje').focus();
         }
 
         // ── Check for changes ──
@@ -1263,7 +1646,7 @@
             if (!changed) {
                 for (const v of currentOrderViajes) {
                     const prefix = `cot_viaje_${v.id}`;
-                    const fields = ['chofer', 'subchofer', 'nota_choferes', 'notas_internas', 'fecha', 'hora', 'vuelo', 'hotel'];
+                    const fields = ['chofer', 'subchofer', 'nota_choferes', 'notas_internas', 'fecha', 'hora', 'vuelo', 'hotel', 'subtotal', 'pickup', 'dropoff'];
                     for (const f of fields) {
                         const inp = document.getElementById(`input-${prefix}_${f}`);
                         if (inp) {
@@ -1285,7 +1668,9 @@
         async function saveChanges() {
             if (!currentOrderId) return;
             const btn = document.getElementById('btn-save');
-            btn.disabled = true; btn.textContent = 'Guardando...';
+            const originalBtnText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Guardando...`;
             const newStatus = document.getElementById('input-status-viaje').value;
 
             try {
@@ -1297,7 +1682,7 @@
                     });
                     if (!res.ok) throw new Error('Error saving status');
                     const idx = allOrders.findIndex(o => o.id === currentOrderId);
-                    if (idx !== -1) allOrders[idx].status_viaje = newStatus;
+                    if (idx !== -1) { allOrders[idx].status_viaje = newStatus; allOrders[idx].status = newStatus; }
                     originalStatusViaje = newStatus;
                 }
 
@@ -1306,7 +1691,7 @@
                     const prefix = `cot_viaje_${v.id}`;
                     const viajePayload = {};
                     let viajeChanged = false;
-                    const fieldsMap = { chofer: 'chofer', subchofer: 'subchofer', nota_choferes: 'nota_choferes', notas_internas: 'notas_internas', fecha: 'fecha', hora: 'hora', vuelo: 'vuelo', hotel: 'hotel' };
+                    const fieldsMap = { chofer: 'chofer', subchofer: 'subchofer', nota_choferes: 'nota_choferes', notas_internas: 'notas_internas', fecha: 'fecha', hora: 'hora', vuelo: 'vuelo', hotel: 'hotel', subtotal: 'subtotal' };
                     for (const [fieldKey, apiKey] of Object.entries(fieldsMap)) {
                         const inp = document.getElementById(`input-${prefix}_${fieldKey}`);
                         if (inp) {
@@ -1317,30 +1702,124 @@
                             }
                         }
                     }
+                    // Para internos: si se guarda subtotal, limpiar precio_neto legacy
+                    if (v.tipo === 'interno' && viajePayload.subtotal !== undefined) {
+                        viajePayload.precio_neto = '';
+                    }
                     if (viajeChanged && v.id) {
                         const vResp = await fetch(`${VIAJES_API}?viaje_id=${v.id}`, {
                             method: 'PUT', headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(viajePayload)
                         });
                         if (!vResp.ok) throw new Error(`Error saving viaje ${v.id}`);
-                        // Update originals
+                        // Update originals and sync to allOrders/currentOrderViajes
                         for (const [fieldKey] of Object.entries(fieldsMap)) {
                             const inp = document.getElementById(`input-${prefix}_${fieldKey}`);
-                            if (inp) originalViajeValues[`${prefix}_${fieldKey}`] = inp.value;
+                            if (inp) {
+                                originalViajeValues[`${prefix}_${fieldKey}`] = inp.value;
+                                // Sync value back to viaje object so reopening modal shows updated data
+                                v[fieldKey] = inp.value;
+                            }
+                        }
+                        // Also sync precio_neto if it was cleared
+                        if (viajePayload.precio_neto !== undefined) {
+                            v.precio_neto = viajePayload.precio_neto;
+                        }
+                        // Sync to allOrders viajes array
+                        const orderIdx = allOrders.findIndex(o => o.id === currentOrderId);
+                        if (orderIdx !== -1) {
+                            const vIdx = allOrders[orderIdx].viajes.findIndex(ov => ov.id === v.id);
+                            if (vIdx !== -1) Object.assign(allOrders[orderIdx].viajes[vIdx], v);
                         }
                     }
+                }
+
+                // 3. Guardar totales financieros actualizados en la BD
+                const updatedSubtotalEl = document.getElementById('financial-subtotal');
+                const updatedTotalEl = document.getElementById('financial-total');
+                const newSubtotal = updatedSubtotalEl ? updatedSubtotalEl.textContent.replace('$', '').trim() : null;
+                const newTotal = updatedTotalEl ? updatedTotalEl.textContent.replace('$', '').trim() : null;
+
+                if (newTotal && currentOrderId) {
+                    const finPayload = {};
+                    if (newSubtotal) finPayload.subtotal = newSubtotal;
+                    if (newTotal) finPayload.total = newTotal;
+
+                    await fetch(`${API_URL}?order_id=${currentOrderId}`, {
+                        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(finPayload)
+                    });
+
+                    // Actualizar en allOrders para la tabla
+                    const idx = allOrders.findIndex(o => o.id === currentOrderId);
+                    if (idx !== -1) {
+                        allOrders[idx].total = newTotal;
+                        allOrders[idx].subtotal = newSubtotal;
+                    }
+                }
+
+                // Resetear modo edición de todas las tarjetas de viajes
+                document.querySelectorAll('[id^="btn-edit-cot_viaje_"].editing').forEach(editBtn => {
+                    const prefix = editBtn.id.replace('btn-edit-', '');
+                    const fieldKeys = ['fecha', 'hora', 'vuelo', 'hotel', 'pickup', 'dropoff'];
+                    fieldKeys.forEach(k => {
+                        const display = document.getElementById(`display-${prefix}_${k}`);
+                        const input = document.getElementById(`input-${prefix}_${k}`);
+                        if (display) display.classList.remove('hidden');
+                        if (input) input.classList.add('hidden');
+                    });
+                    editBtn.innerText = 'Editar';
+                    editBtn.classList.remove('editing');
+                });
+
+                // Actualizar valores originales y datos en memoria con los nuevos valores guardados
+                for (const v of currentOrderViajes) {
+                    const prefix = `cot_viaje_${v.id}`;
+                    ['fecha', 'hora', 'vuelo', 'hotel', 'pickup', 'dropoff', 'subtotal', 'chofer', 'subchofer', 'nota_choferes', 'notas_internas'].forEach(k => {
+                        const inp = document.getElementById(`input-${prefix}_${k}`);
+                        if (inp) {
+                            originalViajeValues[`${prefix}_${k}`] = inp.value;
+                            v[k] = inp.value; // Actualizar objeto en memoria
+                            // Actualizar display con el nuevo valor
+                            const display = document.getElementById(`display-${prefix}_${k}`);
+                            if (display) {
+                                if (k === 'fecha') display.textContent = formatDateShort(inp.value);
+                                else if (k === 'hora') display.textContent = formatTime(inp.value);
+                                else if (k === 'vuelo') display.textContent = (inp.value || '--').toUpperCase();
+                                else if (k === 'hotel') display.innerHTML = inp.value || '<span class="text-gray-300 font-normal text-sm">Sin especificar</span>';
+                                else if (k === 'pickup' || k === 'dropoff') display.innerHTML = inp.value || '<span class="text-gray-300 font-normal text-sm">Sin datos</span>';
+                            }
+                        }
+                    });
+                }
+
+                // Reconstruir tarjetas azules de ruta con los datos actualizados
+                const routeStack = document.getElementById('route-stack');
+                if (routeStack) {
+                    routeStack.innerHTML = '';
+                    currentOrderViajes.forEach(v => {
+                        let oi = '✈️', on = 'Aeropuerto LIR', di = '🏨', dn = 'Hotel';
+                        if (v.tipo === 'llegada') { oi = '🛬'; on = 'Aeropuerto LIR'; di = '🏨'; dn = v.destino_display || v.destino || 'Hotel'; }
+                        else if (v.tipo === 'salida') { oi = '🏨'; on = v.destino_display || v.destino || 'Hotel'; di = '🛫'; dn = 'Aeropuerto LIR'; }
+                        else { oi = '🏨'; on = v.pickup || 'Hotel Origen'; di = '🏨'; dn = v.dropoff || 'Hotel Destino'; }
+                        const card = document.createElement('div'); card.className = 'route-visualizer';
+                        card.innerHTML = `<div class="route-point"><span style="font-size:2rem">${oi}</span><span class="route-point-label">Origen</span><span class="route-point-name">${on}</span></div><div style="font-size:1.75rem">➡️</div><div class="route-point"><span style="font-size:2rem">${di}</span><span class="route-point-label">Destino</span><span class="route-point-name">${dn}</span></div>`;
+                        routeStack.appendChild(card);
+                    });
                 }
 
                 // Update UI
                 btn.classList.add('hidden');
                 const pill = document.getElementById('modal-status-pill');
-                pill.className = `status-pill ${statusClass(newStatus)}`;
+                pill.className = `status-pill status-pill-clickable ${statusClass(newStatus)}`;
                 pill.innerHTML = `<span class="status-dot"></span> ${translateStatus(newStatus)}`;
+                document.getElementById('status-display-container').classList.remove('hidden');
+                document.getElementById('status-edit-container').classList.add('hidden');
                 renderTable();
             } catch (e) {
                 console.error(e);
                 alert('Error al guardar: ' + e.message);
-            } finally { btn.disabled = false; btn.textContent = 'Guardar Cambios'; }
+            } finally { btn.disabled = false; btn.innerHTML = originalBtnText; }
         }
 
         // ── Close ──
@@ -1348,6 +1827,7 @@
         document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
         loadOrders();
+
     </script>
 </body>
 
