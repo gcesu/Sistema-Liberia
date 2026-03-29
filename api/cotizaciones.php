@@ -300,7 +300,7 @@ function transformarCotizacionParaFrontend($r)
         'hora_viaje' => $r['hora_viaje'],
         'pasajeros' => $r['pasajeros'],
         'status_viaje' => $r['status_viaje'],
-        'customer_note' => $r['nota_cliente'] ?? ''
+        'customer_note' => $r['nota_cliente'] ?: ($rawData['customer_note'] ?? '')
     ];
 }
 ?>
