@@ -32,7 +32,9 @@ if ($method === 'GET') {
     // Si se pide una reserva específica
     if (isset($_GET['order_id']) && $_GET['order_id'] !== '') {
         $id = intval($_GET['order_id']);
-        $stmt = $pdo->prepare("SELECT * FROM reservas WHERE id = ? AND (es_cotizacion = 0 OR (es_cotizacion = 1 AND status = 'completed'))");
+        $includeCot = isset($_GET['include_completed_cot']) && $_GET['include_completed_cot'] === '1';
+        $cotFilter = $includeCot ? "(es_cotizacion = 0 OR (es_cotizacion = 1 AND status = 'completed'))" : "es_cotizacion = 0";
+        $stmt = $pdo->prepare("SELECT * FROM reservas WHERE id = ? AND $cotFilter");
         $stmt->execute([$id]);
         $reserva = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -51,7 +53,9 @@ if ($method === 'GET') {
     $offset = ($page - 1) * $per_page;
 
     // Filtro por fecha (after)
-    $whereClause = "1=1 AND status != 'trash' AND (es_cotizacion = 0 OR (es_cotizacion = 1 AND status = 'completed'))";
+    $includeCotList = isset($_GET['include_completed_cot']) && $_GET['include_completed_cot'] === '1';
+    $cotFilterList = $includeCotList ? "(es_cotizacion = 0 OR (es_cotizacion = 1 AND status = 'completed'))" : "es_cotizacion = 0";
+    $whereClause = "1=1 AND status != 'trash' AND $cotFilterList";
     $params = [];
 
     if (isset($_GET['after']) && $_GET['after'] !== '') {

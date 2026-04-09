@@ -19,7 +19,12 @@
             try {
                 const response = await fetch('api/check_session.php', { headers: { 'X-Session-Token': token } });
                 const data = await response.json();
-                if (!data.authenticated) { sessionStorage.removeItem('session_token'); window.location.href = '/login'; }
+                if (!data.authenticated) { sessionStorage.removeItem('session_token'); window.location.href = '/login'; return; }
+                if (!data.is_admin && data.permisos && !data.permisos.contabilidad) {
+                    const pages = ['cotizaciones','reservas','viajes','choferes','contabilidad'];
+                    const allowed = pages.find(p => data.permisos[p]);
+                    window.location.href = '/' + (allowed || 'login'); return;
+                }
             } catch (error) { console.error('Error verificando sesión:', error); window.location.href = '/login'; }
         })();
     </script>
@@ -467,6 +472,171 @@
             letter-spacing: 0.5px;
         }
 
+        /* ═══ Note button ═══ */
+        .btn-nota {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            color: #94a3b8;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .btn-nota:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .btn-nota.has-note {
+            background: #fef3c7;
+            border-color: #f59e0b;
+            color: #d97706;
+        }
+
+        .btn-nota.has-note:hover {
+            background: #f59e0b;
+            color: white;
+        }
+
+        /* ═══ Note modal overlay ═══ */
+        .nota-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 42, 63, 0.4);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .nota-overlay.active {
+            display: flex;
+        }
+
+        .nota-modal {
+            background: white;
+            border-radius: 14px;
+            width: 400px;
+            max-width: 90vw;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            animation: notaSlideIn 0.2s ease;
+        }
+
+        @keyframes notaSlideIn {
+            from { opacity: 0; transform: translateY(10px) scale(0.97); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .nota-modal-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .nota-modal-header h3 {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--primary);
+            margin: 0;
+            letter-spacing: 0.5px;
+        }
+
+        .nota-modal-close {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            border: none;
+            background: #f1f5f9;
+            cursor: pointer;
+            font-size: 14px;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+
+        .nota-modal-close:hover {
+            background: var(--accent);
+            color: white;
+        }
+
+        .nota-modal-body {
+            padding: 20px;
+        }
+
+        .nota-modal-body textarea {
+            width: 100%;
+            min-height: 120px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 12px 14px;
+            font-family: 'Lato', sans-serif;
+            font-size: var(--font-sm);
+            color: #334155;
+            resize: vertical;
+            transition: border-color 0.2s;
+            box-sizing: border-box;
+        }
+
+        .nota-modal-body textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(0, 42, 63, 0.08);
+        }
+
+        .nota-modal-footer {
+            padding: 12px 20px 16px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .nota-btn {
+            padding: 8px 18px;
+            border-radius: 8px;
+            font-size: var(--font-xs);
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            transition: all 0.15s;
+        }
+
+        .nota-btn-cancel {
+            background: #f1f5f9;
+            color: #64748b;
+        }
+
+        .nota-btn-cancel:hover {
+            background: #e2e8f0;
+        }
+
+        .nota-btn-save {
+            background: var(--primary);
+            color: white;
+        }
+
+        .nota-btn-save:hover {
+            opacity: 0.9;
+        }
+
+        .nota-btn-save:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         .method-cash {
             background: #dcfce7;
             color: #166534;
@@ -700,9 +870,17 @@
                     <div class="stat-label">Subtotal</div>
                     <div class="stat-value blue" id="stat-subtotal">$0</div>
                 </div>
+                <div class="stat-card" id="stat-paypal-card" style="display: none;">
+                    <div class="stat-label">PayPal</div>
+                    <div class="stat-value blue" id="stat-paypal">$0</div>
+                </div>
                 <div class="stat-card">
                     <div class="stat-label">Comisión Total</div>
                     <div class="stat-value green" id="stat-comision">$0</div>
+                </div>
+                <div class="stat-card" id="stat-ledebo-card" style="display: none;">
+                    <div class="stat-label">Le Debo</div>
+                    <div class="stat-value amber" id="stat-ledebo">$0</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-label">Pendiente</div>
@@ -848,6 +1026,7 @@
         function renderTable() {
             const container = document.getElementById('table-container');
             const showNeto = currentChoferInfo?.comision_tipo === 'neto';
+            const showPaypal = currentChoferInfo?.comision_tipo === 'porcentaje';
 
             if (currentViajes.length === 0) {
                 container.innerHTML = `
@@ -872,9 +1051,10 @@
                                 <th>Recogida</th>
                                 <th>Destino</th>
                                 <th>Subtotal</th>
-                                <th>Método</th>
+                                ${showPaypal ? '<th>PayPal</th>' : '<th>Método</th>'}
                                 ${showNeto ? '<th>Neto</th>' : ''}
                                 <th>Comisión</th>
+                                <th style="width: 44px;"></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -883,11 +1063,6 @@
             currentViajes.forEach(v => {
                 const paidClass = v.pagado ? 'paid' : '';
                 const checked = v.pagado ? 'checked' : '';
-                const tipo = v.tipo === 'llegada' ? 'llegada' : 'salida';
-                const tipoBadge = tipo === 'llegada'
-                    ? '<span class="type-badge type-llegada">Llegada</span>'
-                    : '<span class="type-badge type-salida">Salida</span>';
-
                 const fechaFormatted = formatDateShort(v.fecha);
                 // Recogida = origen, Destino = destino final
                 const recogida = v.tipo === 'llegada' ? 'Aeropuerto LIR' : v.destino;
@@ -903,22 +1078,29 @@
                         </td>
                         <td data-label="Reserva">
                             <span style="font-weight: 800; color: var(--primary);">${v.reserva_id}</span>
-                            ${tipoBadge}
                         </td>
                         <td data-label="Cliente"><span style="font-weight: 700;">${v.cliente_nombre}</span></td>
                         <td data-label="Fecha"><span style="font-weight: 700;">${fechaFormatted}</span></td>
                         <td data-label="Recogida">${recogida}</td>
                         <td data-label="Destino">${destino}</td>
                         <td data-label="Subtotal"><span class="money">$${v.subtotal.toFixed(2)}</span></td>
-                        <td data-label="Método"><span class="method-pill ${methodClass}">${methodLabel}</span></td>
+                        ${showPaypal
+                            ? `<td data-label="PayPal"><span class="money">${isPaypalOrCard(v.metodo_pago) ? '$' + v.subtotal.toFixed(2) : ''}</span></td>`
+                            : `<td data-label="Método"><span class="method-pill ${methodClass}">${methodLabel}</span></td>`
+                        }
                         ${showNeto ? `<td data-label="Neto"><span class="money">${v.precio_neto > 0 ? '$' + v.precio_neto.toFixed(2) : '--'}</span></td>` : ''}
                         <td data-label="Comisión"><span class="money green">${v.comision !== null ? '$' + v.comision.toFixed(2) : '--'}</span></td>
+                        <td><button class="btn-nota ${v.nota_contabilidad ? 'has-note' : ''}" onclick="openNotaModal(${v.id})" title="${v.nota_contabilidad ? 'Ver nota' : 'Agregar nota'}">&#9998;</button></td>
                     </tr>
                 `;
             });
 
             // Totals row
             const totals = calcTotals();
+            const balanceAmount = totals.paypal - totals.comision;
+            const balanceLabel = balanceAmount >= 0 ? 'Le Debo' : 'Me Debe';
+            const balanceDisplay = Math.abs(balanceAmount);
+            const balanceColor = balanceAmount >= 0 ? 'var(--accent)' : '#dc2626';
             html += `
                         </tbody>
                         <tfoot>
@@ -926,10 +1108,19 @@
                                 <td></td>
                                 <td colspan="5" style="font-weight: 900; text-transform: uppercase; letter-spacing: 1px;">Totales</td>
                                 <td data-label="Total Subtotal"><span class="money">$${totals.subtotal.toFixed(2)}</span></td>
-                                <td></td>
+                                ${showPaypal ? `<td data-label="Total PayPal"><span class="money">$${totals.paypal.toFixed(2)}</span></td>` : '<td></td>'}
                                 ${showNeto ? `<td data-label="Total Neto"><span class="money">$${totals.neto.toFixed(2)}</span></td>` : ''}
                                 <td data-label="Total Comisión"><span class="money green">$${totals.comision.toFixed(2)}</span></td>
+                                <td></td>
                             </tr>
+                            ${showPaypal ? `<tr>
+                                <td></td>
+                                <td colspan="5" style="font-weight: 900; text-transform: uppercase; letter-spacing: 1px; color: ${balanceColor};">${balanceLabel}</td>
+                                <td></td>
+                                <td></td>
+                                <td data-label="${balanceLabel}"><span class="money" style="font-weight: 900; font-size: 16px; color: ${balanceColor};">$${balanceDisplay.toFixed(2)}</span></td>
+                                <td></td>
+                            </tr>` : ''}
                         </tfoot>
                     </table>
                 </div>
@@ -941,17 +1132,51 @@
         // ═══ Stats ═══
         function updateStats() {
             const totals = calcTotals();
+            const showPaypal = currentChoferInfo?.comision_tipo === 'porcentaje';
             document.getElementById('stat-viajes').textContent = currentViajes.length;
             document.getElementById('stat-subtotal').textContent = `$${totals.subtotal.toFixed(2)}`;
             document.getElementById('stat-comision').textContent = `$${totals.comision.toFixed(2)}`;
             document.getElementById('stat-pendiente').textContent = `$${totals.pendiente.toFixed(2)}`;
+
+            const paypalCard = document.getElementById('stat-paypal-card');
+            const ledeboCard = document.getElementById('stat-ledebo-card');
+            if (showPaypal) {
+                paypalCard.style.display = '';
+                ledeboCard.style.display = '';
+                document.getElementById('stat-paypal').textContent = `$${totals.paypal.toFixed(2)}`;
+                const bal = totals.paypal - totals.comision;
+                const ledeboLabel = document.querySelector('#stat-ledebo-card .stat-label');
+                const ledeboValue = document.getElementById('stat-ledebo');
+                if (bal >= 0) {
+                    ledeboLabel.textContent = 'Le Debo';
+                    ledeboValue.textContent = `$${bal.toFixed(2)}`;
+                    ledeboValue.className = 'stat-value amber';
+                } else {
+                    ledeboLabel.textContent = 'Me Debe';
+                    ledeboValue.textContent = `$${Math.abs(bal).toFixed(2)}`;
+                    ledeboValue.className = 'stat-value';
+                    ledeboValue.style.color = '#dc2626';
+                }
+            } else {
+                paypalCard.style.display = 'none';
+                ledeboCard.style.display = 'none';
+            }
+        }
+
+        function isPaypalOrCard(method) {
+            if (!method) return false;
+            const m = method.toLowerCase();
+            return m.includes('paypal') || m.includes('card') || m.includes('tarjeta') || m.includes('stripe');
         }
 
         function calcTotals() {
-            let subtotal = 0, neto = 0, comision = 0, pendiente = 0, pagado = 0;
+            let subtotal = 0, neto = 0, comision = 0, pendiente = 0, pagado = 0, paypal = 0;
             currentViajes.forEach(v => {
                 subtotal += v.subtotal;
                 neto += v.precio_neto;
+                if (isPaypalOrCard(v.metodo_pago)) {
+                    paypal += v.subtotal;
+                }
                 if (v.comision !== null) {
                     comision += v.comision;
                     if (v.pagado) {
@@ -961,7 +1186,7 @@
                     }
                 }
             });
-            return { subtotal, neto, comision, pendiente, pagado };
+            return { subtotal, neto, comision, pendiente, pagado, paypal };
         }
 
         // ═══ Toggle pagado ═══
@@ -1038,7 +1263,92 @@
             if (m.includes('card') || m.includes('tarjeta') || m.includes('stripe')) return 'Tarjeta';
             return method;
         }
+        // ═══ Notas de contabilidad ═══
+        let notaViajeId = null;
+
+        function openNotaModal(viajeId) {
+            notaViajeId = viajeId;
+            const viaje = currentViajes.find(v => v.id === viajeId);
+            const textarea = document.getElementById('nota-textarea');
+            textarea.value = viaje?.nota_contabilidad || '';
+            document.getElementById('nota-overlay').classList.add('active');
+            setTimeout(() => textarea.focus(), 100);
+        }
+
+        function closeNotaModal() {
+            document.getElementById('nota-overlay').classList.remove('active');
+            notaViajeId = null;
+        }
+
+        async function saveNota() {
+            if (!notaViajeId) return;
+            const textarea = document.getElementById('nota-textarea');
+            const nota = textarea.value.trim();
+            const btn = document.getElementById('nota-btn-save');
+            const originalBtnText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Guardando...`;
+
+            try {
+                const response = await fetch(`api/viajes_api.php?viaje_id=${notaViajeId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nota_contabilidad: nota })
+                });
+
+                if (!response.ok) throw new Error('Error guardando nota');
+
+                // Actualizar datos locales
+                const viaje = currentViajes.find(v => v.id === notaViajeId);
+                if (viaje) viaje.nota_contabilidad = nota;
+
+                // Actualizar botón en la tabla
+                const btnNota = document.querySelector(`#row-${notaViajeId} .btn-nota`);
+                if (btnNota) {
+                    btnNota.classList.toggle('has-note', !!nota);
+                    btnNota.title = nota ? 'Ver nota' : 'Agregar nota';
+                }
+
+                closeNotaModal();
+            } catch (err) {
+                console.error('Error guardando nota:', err);
+                alert('Error al guardar la nota');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalBtnText;
+            }
+        }
+
+        // Cerrar modal con Escape o click fuera
+        document.getElementById('nota-overlay').addEventListener('click', function (e) {
+            if (e.target === this) closeNotaModal();
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && document.getElementById('nota-overlay').classList.contains('active')) {
+                closeNotaModal();
+            }
+        });
     </script>
+
+    <!-- Modal de Notas -->
+    <div class="nota-overlay" id="nota-overlay">
+        <div class="nota-modal">
+            <div class="nota-modal-header">
+                <h3>NOTA DE CONTABILIDAD</h3>
+                <button class="nota-modal-close" onclick="closeNotaModal()">&#10005;</button>
+            </div>
+            <div class="nota-modal-body">
+                <textarea id="nota-textarea" placeholder="Escribir nota..."></textarea>
+            </div>
+            <div class="nota-modal-footer">
+                <button class="nota-btn nota-btn-cancel" onclick="closeNotaModal()">Cancelar</button>
+                <button id="nota-btn-save" onclick="saveNota()"
+                    class="px-6 py-2 bg-green-600 text-white rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-green-700 transition shadow-md">
+                    Guardar
+                </button>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>

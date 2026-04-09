@@ -30,6 +30,13 @@
                 if (!data.authenticated) {
                     sessionStorage.removeItem('session_token');
                     window.location.href = '/login';
+                    return;
+                }
+                if (!data.is_admin && data.permisos && !data.permisos.reservas) {
+                    const pages = ['cotizaciones','viajes','choferes','contabilidad'];
+                    const allowed = pages.find(p => data.permisos[p]);
+                    window.location.href = '/' + (allowed || 'login');
+                    return;
                 }
             } catch (error) {
                 console.error('Error verificando sesión:', error);

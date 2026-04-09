@@ -148,7 +148,8 @@ if ($method === 'PUT') {
         'pax',
         'hotel',
         'precio_neto',
-        'subtotal'
+        'subtotal',
+        'nota_contabilidad'
     ];
 
     $updates = [];

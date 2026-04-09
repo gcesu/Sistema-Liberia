@@ -203,11 +203,12 @@ class AdminNavbar extends HTMLElement {
             <button id="close-mobile-btn" class="text-white text-4xl">&times;</button>
         </div>
         <nav class="flex flex-col gap-6">
-            <a href="/reservas" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline">📅 Reservas</a>
-            <a href="/cotizaciones" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline">📝 Cotizaciones</a>
-            <a href="/viajes" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline">🚐 Viajes</a>
-            <a href="/choferes" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline">👤 Choferes</a>
-            <a href="/contabilidad" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline">💰 Contabilidad</a>
+            <a href="/cotizaciones" data-page="cotizaciones" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline">📝 Cotizaciones</a>
+            <a href="/reservas" data-page="reservas" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline">📅 Reservas</a>
+            <a href="/viajes" data-page="viajes" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline">🚐 Viajes</a>
+            <a href="/choferes" data-page="choferes" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline">👤 Choferes</a>
+            <a href="/contabilidad" data-page="contabilidad" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline">💰 Contabilidad</a>
+            <a href="/admin" data-page="admin" class="text-white text-2xl font-bold border-b border-white/10 pb-4 no-underline" style="display:none;">⚙️ Admin</a>
             <a href="#" id="mobile-logout-btn" class="text-red-400 text-2xl font-bold border-b border-white/10 pb-4 no-underline">🚪 Cerrar Sesión</a>
         </nav>
       </div>
@@ -222,11 +223,12 @@ class AdminNavbar extends HTMLElement {
         </a>
 
         <nav class="nav-links-desktop">
-            <a href="/reservas" class="nav-item">Reservas</a>
-            <a href="/cotizaciones" class="nav-item">Cotizaciones</a>
-            <a href="/viajes" class="nav-item">Viajes</a>
-            <a href="/choferes" class="nav-item">Choferes</a>
-            <a href="/contabilidad" class="nav-item">Contabilidad</a>
+            <a href="/cotizaciones" class="nav-item" data-page="cotizaciones">Cotizaciones</a>
+            <a href="/reservas" class="nav-item" data-page="reservas">Reservas</a>
+            <a href="/viajes" class="nav-item" data-page="viajes">Viajes</a>
+            <a href="/choferes" class="nav-item" data-page="choferes">Choferes</a>
+            <a href="/contabilidad" class="nav-item" data-page="contabilidad">Contabilidad</a>
+            <a href="/admin" class="nav-item" data-page="admin" style="display:none;">Admin</a>
         </nav>
 
         <div class="ml-auto flex items-center gap-2 md:gap-4">
@@ -334,6 +336,7 @@ class AdminNavbar extends HTMLElement {
         this.setupEvents();
         this.highlightActiveLink();
         this.setupNotifications();
+        this.applyPermissions();
     }
 
     setupEvents() {
@@ -565,6 +568,35 @@ class AdminNavbar extends HTMLElement {
     pausePolling(seconds = 60) {
         this._pollingPaused = true;
         setTimeout(() => { this._pollingPaused = false; }, seconds * 1000);
+    }
+
+    async applyPermissions() {
+        try {
+            const token = sessionStorage.getItem('session_token');
+            if (!token) return;
+
+            const resp = await fetch('api/check_session.php', { headers: { 'X-Session-Token': token } });
+            const data = await resp.json();
+            if (!data.authenticated) return;
+
+            // Mostrar link Admin solo para admins
+            if (data.is_admin) {
+                this.querySelectorAll('[data-page="admin"]').forEach(el => el.style.display = '');
+            }
+
+            // Si es admin o no tiene permisos configurados (null), mostrar todo
+            if (data.is_admin || !data.permisos) return;
+
+            // Ocultar links sin permiso
+            const pages = ['reservas', 'cotizaciones', 'viajes', 'choferes', 'contabilidad'];
+            pages.forEach(page => {
+                if (!data.permisos[page]) {
+                    this.querySelectorAll(`[data-page="${page}"]`).forEach(el => el.style.display = 'none');
+                }
+            });
+        } catch (e) {
+            console.error('Error aplicando permisos:', e);
+        }
     }
 
     playNotificationSound() {

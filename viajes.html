@@ -15,7 +15,6 @@
   <!-- VERIFICACIÓN DE SESIÓN -->
   <script>
     (async function checkAuth() {
-      // Verificar si hay token en sessionStorage (expira al cerrar pestaña)
       const token = sessionStorage.getItem('session_token');
       if (!token) {
         window.location.href = '/login';
@@ -30,6 +29,13 @@
         if (!data.authenticated) {
           sessionStorage.removeItem('session_token');
           window.location.href = '/login';
+          return;
+        }
+        if (!data.is_admin && data.permisos && !data.permisos.viajes) {
+          const pages = ['cotizaciones','reservas','viajes','choferes','contabilidad'];
+          const allowed = pages.find(p => data.permisos[p]);
+          window.location.href = '/' + (allowed || 'login');
+          return;
         }
       } catch (error) {
         console.error('Error verificando sesión:', error);
@@ -1969,7 +1975,7 @@
       try {
         while (keepFetching) {
           const response = await fetch(
-            `${API_PROXY}?per_page=100&page=${page}&after=${START_DATE_FILTER}&orderby=date&order=desc`,
+            `${API_PROXY}?per_page=100&page=${page}&after=${START_DATE_FILTER}&orderby=date&order=desc&include_completed_cot=1`,
           );
 
           if (!response.ok) throw new Error("Error API");

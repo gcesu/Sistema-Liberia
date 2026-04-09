@@ -13,7 +13,7 @@
         rel="stylesheet">
 
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
 
     <script>
         (async function checkAuth() {
@@ -22,7 +22,12 @@
             try {
                 const response = await fetch('api/check_session.php', { headers: { 'X-Session-Token': token } });
                 const data = await response.json();
-                if (!data.authenticated) { sessionStorage.removeItem('session_token'); window.location.href = '/login'; }
+                if (!data.authenticated) { sessionStorage.removeItem('session_token'); window.location.href = '/login'; return; }
+                if (!data.is_admin && data.permisos && !data.permisos.cotizaciones) {
+                    const pages = ['cotizaciones','reservas','viajes','choferes','contabilidad'];
+                    const allowed = pages.find(p => data.permisos[p]);
+                    window.location.href = '/' + (allowed || 'login'); return;
+                }
             } catch (error) { window.location.href = '/login'; }
         })();
     </script>
@@ -783,11 +788,16 @@
             </div>
 
             <div class="p-4 border-t bg-white flex justify-between flex-shrink-0">
-                <button onclick="generatePDF()"
+                <div class="flex gap-3">
+                    <button onclick="confirmDeleteOrder()"
+                        class="px-4 py-2 bg-red-100 text-red-600 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-red-200 transition border border-red-200">🗑️
+                        Eliminar</button>
+                    <button onclick="generateWord()"
                     class="px-6 py-2 bg-[#002a3f] text-white rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-[#ed4441] transition-all shadow-md flex items-center gap-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                    Descargar PDF
+                    Descargar Word
                 </button>
+                </div>
                 <div class="flex gap-3">
                     <button onclick="saveChanges()" id="btn-save"
                         class="hidden px-6 py-2 bg-green-600 text-white rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-green-700 transition shadow-md">
@@ -798,6 +808,25 @@
                         Cerrar
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Confirmación Eliminar -->
+    <div id="delete-confirm-modal"
+        class="fixed inset-0 bg-black/70 backdrop-blur-sm z-[300] hidden flex items-center justify-center p-4"
+        onclick="closeDeleteModal()">
+        <div onclick="event.stopPropagation()" class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 text-center">
+            <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span class="text-3xl">⚠️</span>
+            </div>
+            <h3 class="text-xl font-bold text-gray-800 mb-2">¿Eliminar Cotización?</h3>
+            <p id="delete-confirm-message" class="text-gray-500 mb-6">Se eliminará permanentemente la cotización #0 y sus viajes asociados.</p>
+            <div class="flex gap-3 justify-center">
+                <button onclick="closeDeleteModal()"
+                    class="px-6 py-3 bg-gray-100 text-gray-600 rounded-lg font-bold text-sm uppercase hover:bg-gray-200 transition">Cancelar</button>
+                <button onclick="executeDeleteOrder()"
+                    class="px-6 py-3 bg-red-600 text-white rounded-lg font-bold text-sm uppercase hover:bg-red-700 transition">Eliminar</button>
             </div>
         </div>
     </div>
@@ -1376,261 +1405,251 @@
             if (totalEl) totalEl.textContent = `$${total.toFixed(2)}`;
         }
 
-        // ── PDF Generation ──
-        // Pre-load logo for PDF
-        const pdfLogoImg = new Image();
-        pdfLogoImg.src = 'assets/logo.png';
+        // ── Word Document Generation ──
+        const docLogoImg = new Image();
+        docLogoImg.src = 'assets/logo.png';
 
-        function pdfSafe(text) {
+        function docSafe(text) {
             return (text || '').replace(/→/g, '->').replace(/➡️/g, '->').replace(/»/g, '->');
         }
 
-        function generatePDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF('p', 'mm', 'letter');
+        async function generateWord() {
+            const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+                    ImageRun, AlignmentType, WidthType, ShadingType, BorderStyle } = window.docx;
+
             const o = allOrders.find(x => x.id === currentOrderId);
             if (!o) return;
 
-            const pageW = doc.internal.pageSize.getWidth();
-            const pageH = doc.internal.pageSize.getHeight();
-            const margin = 20;
-            const contentW = pageW - margin * 2;
-            let y = 0;
+            const W = 9360;
+            const noBorder = { style: BorderStyle.NONE, size: 0, color: "FFFFFF" };
+            const noBorders = { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder };
+            const cellB = { style: BorderStyle.SINGLE, size: 1, color: "E2E8F0" };
+            const cellBorders = { top: cellB, bottom: cellB, left: cellB, right: cellB };
 
-            // Colors
-            const primary = [0, 42, 63];       // #002a3f
-            const accent = [237, 68, 65];       // #ed4441
-            const white = [255, 255, 255];
-            const gray = [100, 116, 139];
-            const lightGray = [226, 232, 240];
-
-            // ── Dark Header Bar ──
-            const headerH = 32;
-            doc.setFillColor(...primary);
-            doc.rect(0, 0, pageW, headerH, 'F');
-
-            // Logo from pre-loaded image
+            // -- Logo --
+            let logoChildren = [new TextRun({ text: "LIBERIA AIRPORT SHUTTLE", bold: true, color: "FFFFFF", size: 28, font: "Arial" })];
             try {
-                if (pdfLogoImg.complete && pdfLogoImg.naturalWidth > 0) {
+                if (docLogoImg.complete && docLogoImg.naturalWidth > 0) {
                     const canvas = document.createElement('canvas');
-                    canvas.width = pdfLogoImg.naturalWidth;
-                    canvas.height = pdfLogoImg.naturalHeight;
-                    canvas.getContext('2d').drawImage(pdfLogoImg, 0, 0);
-                    const logoData = canvas.toDataURL('image/png');
-                    const logoH = 14;
-                    const logoW = (pdfLogoImg.naturalWidth / pdfLogoImg.naturalHeight) * logoH;
-                    doc.addImage(logoData, 'PNG', margin, (headerH - logoH) / 2, logoW, logoH);
-                } else { throw new Error('logo not loaded'); }
-            } catch (e) {
-                doc.setFontSize(16);
-                doc.setTextColor(...white);
-                doc.setFont(undefined, 'bold');
-                doc.text('LIBERIA AIRPORT SHUTTLE', margin, 14);
-            }
+                    canvas.width = docLogoImg.naturalWidth;
+                    canvas.height = docLogoImg.naturalHeight;
+                    canvas.getContext('2d').drawImage(docLogoImg, 0, 0);
+                    const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+                    const buffer = await blob.arrayBuffer();
+                    const h = 45;
+                    const w = Math.round((docLogoImg.naturalWidth / docLogoImg.naturalHeight) * h);
+                    logoChildren = [new ImageRun({
+                        type: "png", data: buffer,
+                        transformation: { width: w, height: h },
+                        altText: { title: "Logo", description: "Liberia Airport Shuttle", name: "logo" }
+                    })];
+                }
+            } catch (e) { }
 
-            // Quote number (right)
-            doc.setFontSize(22);
-            doc.setTextColor(...white);
-            doc.setFont(undefined, 'bold');
-            doc.text('QUOTE', pageW - margin, 14, { align: 'right' });
-            doc.setFontSize(11);
-            doc.setFont(undefined, 'normal');
-            doc.setTextColor(180, 200, 215);
-            doc.text(`#${o.id}`, pageW - margin, 22, { align: 'right' });
+            // -- Data --
+            const rawName = [o.billing?.last_name, o.billing?.first_name].filter(Boolean).join(' ') || `Quote #${o.id}`;
+            const clientName = capitalizeName(rawName);
+            const dateStr = o.date_created ? new Date(o.date_created).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
+            const clientContact = [o.billing?.email, o.billing?.phone].filter(Boolean).join('  |  ');
 
-            // Red accent line under header
-            doc.setDrawColor(...accent);
-            doc.setLineWidth(1);
-            doc.line(0, headerH, pageW, headerH);
+            // ── Header Table ──
+            const headerTable = new Table({
+                width: { size: W, type: WidthType.DXA },
+                columnWidths: [W - 2500, 2500],
+                rows: [new TableRow({ children: [
+                    new TableCell({
+                        width: { size: W - 2500, type: WidthType.DXA },
+                        shading: { fill: "002A3F", type: ShadingType.CLEAR },
+                        borders: noBorders,
+                        margins: { top: 150, bottom: 150, left: 200, right: 0 },
+                        children: [new Paragraph({ children: logoChildren })]
+                    }),
+                    new TableCell({
+                        width: { size: 2500, type: WidthType.DXA },
+                        shading: { fill: "002A3F", type: ShadingType.CLEAR },
+                        borders: noBorders,
+                        margins: { top: 150, bottom: 150, left: 0, right: 200 },
+                        children: [
+                            new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: "QUOTE", bold: true, color: "FFFFFF", size: 36, font: "Arial" })] }),
+                            new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `#${o.id}`, color: "B4C8D7", size: 20, font: "Arial" })] })
+                        ]
+                    })
+                ]})]
+            });
 
-            y = headerH + 10;
+            // ── Accent line ──
+            const accentLine = new Paragraph({
+                border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: "ED4441", space: 1 } },
+                spacing: { after: 200 }, children: []
+            });
 
             // ── Date ──
-            doc.setFontSize(9);
-            doc.setTextColor(...gray);
-            const dateStr = o.date_created ? new Date(o.date_created).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
-            doc.text(`Date: ${dateStr}`, margin, y);
-            y += 10;
+            const datePara = new Paragraph({
+                spacing: { after: 200 },
+                children: [new TextRun({ text: `Date: ${dateStr}`, color: "64748B", size: 18, font: "Arial" })]
+            });
 
             // ── Client Info ──
-            doc.setFillColor(248, 250, 252);
-            doc.roundedRect(margin, y, contentW, 28, 3, 3, 'F');
-            y += 7;
-            doc.setFontSize(8);
-            doc.setTextColor(...gray);
-            doc.text('CLIENT', margin + 5, y);
-            y += 5;
-            const rawName = [o.billing?.last_name, o.billing?.first_name].filter(Boolean).join(' ') || `Quote #${o.id}`;
-            doc.setFontSize(11);
-            doc.setTextColor(...primary);
-            doc.setFont(undefined, 'bold');
-            doc.text(capitalizeName(rawName), margin + 5, y);
-            doc.setFont(undefined, 'normal');
-            y += 5;
-            doc.setFontSize(9);
-            doc.setTextColor(...gray);
-            const clientInfo = [o.billing?.email, o.billing?.phone].filter(Boolean).join('  |  ');
-            doc.text(clientInfo, margin + 5, y);
-            y += 5;
-            if (o.billing?.address_1) {
-                doc.text(o.billing.address_1, margin + 5, y);
-            }
-            y += 12;
+            const clientChildren = [
+                new Paragraph({ children: [new TextRun({ text: "CLIENT", bold: true, color: "64748B", size: 16, font: "Arial" })] }),
+                new Paragraph({ spacing: { before: 80 }, children: [new TextRun({ text: clientName, bold: true, color: "002A3F", size: 22, font: "Arial" })] }),
+            ];
+            if (clientContact) clientChildren.push(new Paragraph({ spacing: { before: 40 }, children: [new TextRun({ text: clientContact, color: "64748B", size: 18, font: "Arial" })] }));
+            if (o.billing?.address_1) clientChildren.push(new Paragraph({ spacing: { before: 40 }, children: [new TextRun({ text: o.billing.address_1, color: "64748B", size: 18, font: "Arial" })] }));
+
+            const clientTable = new Table({
+                width: { size: W, type: WidthType.DXA },
+                columnWidths: [W],
+                rows: [new TableRow({ children: [new TableCell({
+                    width: { size: W, type: WidthType.DXA },
+                    shading: { fill: "F8FAFC", type: ShadingType.CLEAR },
+                    borders: noBorders,
+                    margins: { top: 120, bottom: 120, left: 200, right: 200 },
+                    children: clientChildren
+                })] })]
+            });
 
             // ── Trip Details ──
-            doc.setFontSize(8);
-            doc.setTextColor(...gray);
-            doc.text('TRIP DETAILS', margin, y);
-            y += 5;
+            const colType = 1400, colRoute = 4460, colDate = 1750, colTime = 1750;
 
-            // Table header
-            doc.setFillColor(...primary);
-            doc.roundedRect(margin, y, contentW, 7, 1.5, 1.5, 'F');
-            doc.setFontSize(7.5);
-            doc.setTextColor(...white);
-            doc.text('TYPE', margin + 4, y + 5);
-            doc.text('ROUTE', margin + 30, y + 5);
-            doc.text('DATE', margin + 115, y + 5);
-            doc.text('TIME', margin + 145, y + 5);
-            y += 9;
+            const tripHeaderRow = new TableRow({ children: [
+                new TableCell({ width: { size: colType, type: WidthType.DXA }, shading: { fill: "002A3F", type: ShadingType.CLEAR }, borders: cellBorders, margins: { top: 80, bottom: 80, left: 120, right: 120 }, children: [new Paragraph({ children: [new TextRun({ text: "TYPE", bold: true, color: "FFFFFF", size: 15, font: "Arial" })] })] }),
+                new TableCell({ width: { size: colRoute, type: WidthType.DXA }, shading: { fill: "002A3F", type: ShadingType.CLEAR }, borders: cellBorders, margins: { top: 80, bottom: 80, left: 120, right: 120 }, children: [new Paragraph({ children: [new TextRun({ text: "ROUTE", bold: true, color: "FFFFFF", size: 15, font: "Arial" })] })] }),
+                new TableCell({ width: { size: colDate, type: WidthType.DXA }, shading: { fill: "002A3F", type: ShadingType.CLEAR }, borders: cellBorders, margins: { top: 80, bottom: 80, left: 120, right: 120 }, children: [new Paragraph({ children: [new TextRun({ text: "DATE", bold: true, color: "FFFFFF", size: 15, font: "Arial" })] })] }),
+                new TableCell({ width: { size: colTime, type: WidthType.DXA }, shading: { fill: "002A3F", type: ShadingType.CLEAR }, borders: cellBorders, margins: { top: 80, bottom: 80, left: 120, right: 120 }, children: [new Paragraph({ children: [new TextRun({ text: "TIME", bold: true, color: "FFFFFF", size: 15, font: "Arial" })] })] }),
+            ]});
 
-            // Table rows
-            currentOrderViajes.forEach((v, i) => {
-                const bgColor = i % 2 === 0 ? [255, 255, 255] : [248, 250, 252];
-                doc.setFillColor(...bgColor);
-                doc.rect(margin, y - 1, contentW, 7, 'F');
-
+            const tripDataRows = currentOrderViajes.map((v, i) => {
+                const bg = i % 2 === 0 ? "FFFFFF" : "F8FAFC";
                 const tipoLabel = v.tipo === 'llegada' ? 'Arrival' : v.tipo === 'salida' ? 'Departure' : 'Internal';
-                const ruta = pdfSafe(v.destino || v.hotel || '---');
+                const ruta = docSafe(v.destino || v.hotel || '---');
                 const dateV = v.fecha ? new Date(v.fecha + 'T12:00:00').toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) : '---';
                 const timeV = v.hora ? formatTime(v.hora) : '---';
 
-                doc.setFontSize(7.5);
-                doc.setTextColor(...primary);
-                doc.setFont(undefined, 'bold');
-                doc.text(tipoLabel, margin + 4, y + 4);
-                doc.setFont(undefined, 'normal');
-                doc.setTextColor(51, 65, 85);
-
-                // Truncate route if too long
-                const maxRutaW = 80;
-                let rutaText = ruta;
-                while (doc.getTextWidth(rutaText) > maxRutaW && rutaText.length > 3) {
-                    rutaText = rutaText.slice(0, -4) + '...';
-                }
-                doc.text(rutaText, margin + 30, y + 4);
-                doc.text(dateV, margin + 115, y + 4);
-                doc.text(timeV, margin + 145, y + 4);
-                y += 8;
+                return new TableRow({ children: [
+                    new TableCell({ width: { size: colType, type: WidthType.DXA }, shading: { fill: bg, type: ShadingType.CLEAR }, borders: cellBorders, margins: { top: 80, bottom: 80, left: 120, right: 120 }, children: [new Paragraph({ children: [new TextRun({ text: tipoLabel, bold: true, color: "002A3F", size: 15, font: "Arial" })] })] }),
+                    new TableCell({ width: { size: colRoute, type: WidthType.DXA }, shading: { fill: bg, type: ShadingType.CLEAR }, borders: cellBorders, margins: { top: 80, bottom: 80, left: 120, right: 120 }, children: [new Paragraph({ children: [new TextRun({ text: ruta, color: "334155", size: 15, font: "Arial" })] })] }),
+                    new TableCell({ width: { size: colDate, type: WidthType.DXA }, shading: { fill: bg, type: ShadingType.CLEAR }, borders: cellBorders, margins: { top: 80, bottom: 80, left: 120, right: 120 }, children: [new Paragraph({ children: [new TextRun({ text: dateV, color: "334155", size: 15, font: "Arial" })] })] }),
+                    new TableCell({ width: { size: colTime, type: WidthType.DXA }, shading: { fill: bg, type: ShadingType.CLEAR }, borders: cellBorders, margins: { top: 80, bottom: 80, left: 120, right: 120 }, children: [new Paragraph({ children: [new TextRun({ text: timeV, color: "334155", size: 15, font: "Arial" })] })] }),
+                ]});
             });
 
-            y += 8;
+            const tripTable = new Table({
+                width: { size: W, type: WidthType.DXA },
+                columnWidths: [colType, colRoute, colDate, colTime],
+                rows: [tripHeaderRow, ...tripDataRows]
+            });
 
             // ── Financial Summary ──
-            const finW = contentW;
-            const finX = margin;
+            const finColLabel = 7000, finColValue = 2360;
+            const finItems = [];
 
-            doc.setFillColor(248, 250, 252);
-            doc.roundedRect(finX, y, finW, 8, 2, 2, 'F');
-            doc.setFontSize(7.5);
-            doc.setTextColor(...gray);
-            doc.text('FINANCIAL SUMMARY', finX + 4, y + 5.5);
-            y += 11;
+            if (o.payment_method_title) finItems.push({ label: `Payment Method: ${o.payment_method_title}`, value: '', isMeta: true });
 
-            // Payment method
-            if (o.payment_method_title) {
-                doc.setFontSize(7);
-                doc.setTextColor(...gray);
-                doc.text(`Payment Method: ${o.payment_method_title}`, finX + 4, y);
-                y += 3;
-                doc.setDrawColor(...lightGray);
-                doc.setLineWidth(0.3);
-                doc.line(finX + 4, y, finX + finW - 4, y);
-                y += 5;
-            }
-
-            const addFinRow = (label, value, bold = false) => {
-                const maxLabelW = finW - 35;
-                doc.setFontSize(bold ? 10 : 8);
-                doc.setTextColor(...(bold ? primary : gray));
-                doc.setFont(undefined, 'bold');
-                // Truncate label if needed
-                let truncLabel = label;
-                while (doc.getTextWidth(truncLabel) > maxLabelW && truncLabel.length > 3) {
-                    truncLabel = truncLabel.slice(0, -4) + '...';
-                }
-                doc.text(truncLabel, finX + 4, y);
-                doc.setTextColor(...primary);
-                doc.text(value, finX + finW - 4, y, { align: 'right' });
-                doc.setFont(undefined, 'normal');
-                y += bold ? 7 : 5;
-            };
-
-            // Trips - usar baseSubtotal del modal para consistencia
-            const pdfBaseSubtotal = parseFloat(document.getElementById('financial-breakdown')?.getAttribute('data-base-subtotal') || 0);
-            const pdfLlegadas = currentOrderViajes.filter(v => v.tipo === 'llegada');
-            const pdfSalidas = currentOrderViajes.filter(v => v.tipo === 'salida');
-            const pdfInternos = currentOrderViajes.filter(v => v.tipo === 'interno');
-            const isRoundtrip = pdfLlegadas.length > 0 && pdfSalidas.length > 0;
+            const baseSubtotal = parseFloat(document.getElementById('financial-breakdown')?.getAttribute('data-base-subtotal') || 0);
+            const llegadas = currentOrderViajes.filter(v => v.tipo === 'llegada');
+            const salidas = currentOrderViajes.filter(v => v.tipo === 'salida');
+            const internos = currentOrderViajes.filter(v => v.tipo === 'interno');
+            const isRoundtrip = llegadas.length > 0 && salidas.length > 0;
 
             if (isRoundtrip) {
-                // Roundtrip: una sola línea con el baseSubtotal (precio combinado llegada+salida)
-                const rtRuta = pdfSafe(pdfLlegadas[0].destino || pdfLlegadas[0].hotel || 'Roundtrip');
-                if (pdfBaseSubtotal > 0) addFinRow(`Roundtrip - ${rtRuta}`, `$${pdfBaseSubtotal.toFixed(2)}`);
+                const rtRuta = docSafe(llegadas[0].destino || llegadas[0].hotel || 'Roundtrip');
+                if (baseSubtotal > 0) finItems.push({ label: `Roundtrip - ${rtRuta}`, value: `$${baseSubtotal.toFixed(2)}` });
             } else {
-                // Solo llegadas o solo salidas: dividir baseSubtotal entre los viajes
-                const nonInternos = [...pdfLlegadas, ...pdfSalidas];
-                const precioPorViaje = nonInternos.length > 0 ? pdfBaseSubtotal / nonInternos.length : 0;
+                const nonInternos = [...llegadas, ...salidas];
+                const precioPorViaje = nonInternos.length > 0 ? baseSubtotal / nonInternos.length : 0;
                 nonInternos.forEach(v => {
-                    if (precioPorViaje > 0) addFinRow(pdfSafe(v.destino || v.hotel || 'Transfer'), `$${precioPorViaje.toFixed(2)}`);
+                    if (precioPorViaje > 0) finItems.push({ label: docSafe(v.destino || v.hotel || 'Transfer'), value: `$${precioPorViaje.toFixed(2)}` });
                 });
             }
 
-            // Internos: precio desde los inputs editables
-            pdfInternos.forEach(v => {
+            internos.forEach(v => {
                 const inp = document.getElementById(`input-cot_viaje_${v.id}_subtotal`);
                 const precio = parseFloat(inp?.value) || 0;
-                if (precio > 0) addFinRow(pdfSafe(v.destino || v.hotel || 'Internal'), `$${precio.toFixed(2)}`);
+                if (precio > 0) finItems.push({ label: docSafe(v.destino || v.hotel || 'Internal'), value: `$${precio.toFixed(2)}` });
             });
 
-            // Subtotal
             const subtotalEl = document.getElementById('financial-subtotal');
-            addFinRow('Subtotal', subtotalEl?.textContent || '$0.00', true);
+            finItems.push({ label: 'Subtotal', value: subtotalEl?.textContent || '$0.00', bold: true });
 
-            // Fees
-            const feesRow = document.getElementById('financial-fees-row');
+            const feesRowEl = document.getElementById('financial-fees-row');
             const feesEl = document.getElementById('financial-fees');
-            if (feesRow && !feesRow.classList.contains('hidden')) {
-                addFinRow('Fees', feesEl?.textContent || '$0.00');
+            if (feesRowEl && !feesRowEl.classList.contains('hidden')) {
+                finItems.push({ label: 'Fees', value: feesEl?.textContent || '$0.00' });
             }
 
-            // Line before total
-            doc.setDrawColor(...lightGray);
-            doc.setLineWidth(0.3);
-            doc.line(finX + 4, y, finX + finW - 4, y);
-            y += 5;
-
-            // Total
             const totalEl = document.getElementById('financial-total');
-            doc.setFontSize(13);
-            doc.setFont(undefined, 'bold');
-            doc.setTextColor(...primary);
-            doc.text('TOTAL', finX + 4, y);
-            doc.text(totalEl?.textContent || '$0.00', finX + finW - 4, y, { align: 'right' });
+            finItems.push({ label: 'TOTAL', value: totalEl?.textContent || '$0.00', isTotal: true });
 
-            // ── Footer ──
-            const footerY = pageH - 15;
-            doc.setDrawColor(...lightGray);
-            doc.setLineWidth(0.3);
-            doc.line(margin, footerY - 5, pageW - margin, footerY - 5);
-            doc.setFontSize(7);
-            doc.setFont(undefined, 'normal');
-            doc.setTextColor(...gray);
-            doc.text('Liberia Airport Shuttle  |  liberiaairportshuttle.com', pageW / 2, footerY, { align: 'center' });
-            doc.text('This document is a quote receipt.', pageW / 2, footerY + 4, { align: 'center' });
+            const finRows = finItems.map(item => {
+                if (item.isMeta) {
+                    return new TableRow({ children: [new TableCell({
+                        width: { size: W, type: WidthType.DXA }, columnSpan: 2,
+                        borders: { top: noBorder, bottom: cellB, left: noBorder, right: noBorder },
+                        margins: { top: 60, bottom: 60, left: 120, right: 120 },
+                        children: [new Paragraph({ children: [new TextRun({ text: item.label, color: "64748B", size: 14, font: "Arial" })] })]
+                    })] });
+                }
+                if (item.isTotal) {
+                    const topBorder = { style: BorderStyle.SINGLE, size: 1, color: "E2E8F0" };
+                    return new TableRow({ children: [
+                        new TableCell({ width: { size: finColLabel, type: WidthType.DXA }, borders: { top: topBorder, bottom: noBorder, left: noBorder, right: noBorder }, margins: { top: 100, bottom: 60, left: 120, right: 120 }, children: [new Paragraph({ children: [new TextRun({ text: "TOTAL", bold: true, color: "002A3F", size: 26, font: "Arial" })] })] }),
+                        new TableCell({ width: { size: finColValue, type: WidthType.DXA }, borders: { top: topBorder, bottom: noBorder, left: noBorder, right: noBorder }, margins: { top: 100, bottom: 60, left: 120, right: 120 }, children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: item.value, bold: true, color: "002A3F", size: 26, font: "Arial" })] })] })
+                    ] });
+                }
+                return new TableRow({ children: [
+                    new TableCell({ width: { size: finColLabel, type: WidthType.DXA }, borders: noBorders, margins: { top: 40, bottom: 40, left: 120, right: 120 }, children: [new Paragraph({ children: [new TextRun({ text: item.label, bold: !!item.bold, color: item.bold ? "002A3F" : "64748B", size: item.bold ? 20 : 16, font: "Arial" })] })] }),
+                    new TableCell({ width: { size: finColValue, type: WidthType.DXA }, borders: noBorders, margins: { top: 40, bottom: 40, left: 120, right: 120 }, children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: item.value, bold: !!item.bold, color: "002A3F", size: item.bold ? 20 : 16, font: "Arial" })] })] })
+                ] });
+            });
+
+            const finTable = new Table({
+                width: { size: W, type: WidthType.DXA },
+                columnWidths: [finColLabel, finColValue],
+                rows: finRows
+            });
+
+            // ── Build Document ──
+            const doc = new Document({
+                sections: [{
+                    properties: {
+                        page: {
+                            size: { width: 12240, height: 15840 },
+                            margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 }
+                        }
+                    },
+                    children: [
+                        headerTable,
+                        accentLine,
+                        datePara,
+                        clientTable,
+                        new Paragraph({ spacing: { before: 300, after: 100 }, children: [new TextRun({ text: "TRIP DETAILS", bold: true, color: "64748B", size: 16, font: "Arial" })] }),
+                        tripTable,
+                        new Paragraph({ spacing: { before: 300, after: 100 }, children: [new TextRun({ text: "FINANCIAL SUMMARY", bold: true, color: "64748B", size: 16, font: "Arial" })] }),
+                        finTable,
+                        new Paragraph({
+                            spacing: { before: 400 }, alignment: AlignmentType.CENTER,
+                            border: { top: { style: BorderStyle.SINGLE, size: 1, color: "E2E8F0", space: 8 } },
+                            children: [new TextRun({ text: "Liberia Airport Shuttle  |  liberiaairportshuttle.com", color: "64748B", size: 14, font: "Arial" })]
+                        }),
+                        new Paragraph({
+                            alignment: AlignmentType.CENTER,
+                            children: [new TextRun({ text: "This document is a quote receipt.", color: "64748B", size: 14, font: "Arial" })]
+                        })
+                    ]
+                }]
+            });
 
             // ── Download ──
-            doc.save(`Quote_${o.id}.pdf`);
+            const blob = await Packer.toBlob(doc);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Quote_${o.id}.docx`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
 
         function toggleStatusEditQuick() {
@@ -1820,6 +1839,42 @@
                 console.error(e);
                 alert('Error al guardar: ' + e.message);
             } finally { btn.disabled = false; btn.innerHTML = originalBtnText; }
+        }
+
+        // ── Delete ──
+        let pendingDeleteOrderId = null;
+
+        function confirmDeleteOrder() {
+            pendingDeleteOrderId = currentOrderId;
+            if (!pendingDeleteOrderId) return;
+            document.getElementById('delete-confirm-message').textContent =
+                `Se eliminará permanentemente la cotización #${pendingDeleteOrderId} y sus viajes asociados.`;
+            document.getElementById('delete-confirm-modal').classList.remove('hidden');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('delete-confirm-modal').classList.add('hidden');
+            pendingDeleteOrderId = null;
+        }
+
+        async function executeDeleteOrder() {
+            const orderId = pendingDeleteOrderId;
+            if (!orderId) return;
+            closeDeleteModal();
+            try {
+                const response = await fetch(`${API_URL}?order_id=${orderId}`, { method: 'DELETE' });
+                if (!response.ok) {
+                    const error = await response.json();
+                    alert('Error al eliminar: ' + (error.error || 'Error desconocido'));
+                    return;
+                }
+                closeModal();
+                allOrders = allOrders.filter(o => o.id !== orderId);
+                renderTable();
+            } catch (err) {
+                console.error('Error eliminando cotización:', err);
+                alert('Error de conexión al eliminar la cotización.');
+            }
         }
 
         // ── Close ──

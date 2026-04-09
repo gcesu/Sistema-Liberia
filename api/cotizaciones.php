@@ -194,8 +194,27 @@ elseif ($method === 'DELETE') {
     }
 
     try {
+        $pdo->prepare("DELETE FROM viajes WHERE reserva_id = ?")->execute([$id]);
         $stmt = $pdo->prepare("DELETE FROM cotizaciones WHERE id = ?");
         $stmt->execute([$id]);
+
+        // Mover a trash en WooCommerce
+        $wooUrl = env('WOO_SITE_URL');
+        $ck = env('WOO_CONSUMER_KEY');
+        $cs = env('WOO_CONSUMER_SECRET');
+        if ($wooUrl && $ck && $cs) {
+            $ch = curl_init("$wooUrl/wp-json/wc/v3/orders/$id");
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_CUSTOMREQUEST => 'DELETE',
+                CURLOPT_HTTPAUTH => CURLAUTH_BASIC,
+                CURLOPT_USERPWD => "$ck:$cs",
+                CURLOPT_TIMEOUT => 30
+            ]);
+            curl_exec($ch);
+            curl_close($ch);
+        }
+
         echo json_encode(['success' => true]);
     } catch (PDOException $e) {
         http_response_code(500);

@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administrar Usuarios - Admin Shuttle</title>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&family=Oswald:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script>
+        (async function checkAuth() {
+            const token = sessionStorage.getItem('session_token');
+            if (!token) { window.location.href = '/login'; return; }
+            try {
+                const response = await fetch('api/check_session.php', { headers: { 'X-Session-Token': token } });
+                const data = await response.json();
+                if (!data.authenticated) { sessionStorage.removeItem('session_token'); window.location.href = '/login'; return; }
+                if (!data.is_admin) { window.location.href = '/reservas'; return; }
+            } catch (error) { window.location.href = '/login'; }
+        })();
+    </script>
+
+    <script src="menu.js" defer></script>
+
+    <style>
+        :root { --primary: #002a3f; --accent: #ed4441; --bg-light: #f1f5f9; }
+        body { font-family: 'Lato', sans-serif; background: var(--bg-light); color: #333; margin: 0; }
+        h1, h2, h3 { font-family: 'Oswald', sans-serif; text-transform: uppercase; }
+
+        .main-content { max-width: 960px; margin: 0 auto; padding: 24px; }
+
+        .card {
+            background: white; border: 1px solid #e2e8f0; border-radius: 12px;
+            padding: 24px; margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-family: 'Oswald', sans-serif; font-size: 16px; font-weight: 700;
+            color: var(--primary); text-transform: uppercase; letter-spacing: 1px;
+            margin: 0 0 16px 0;
+        }
+
+        .form-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+
+        .form-group { flex: 1; min-width: 180px; }
+        .form-group label {
+            display: block; font-size: 10px; font-weight: 800; text-transform: uppercase;
+            letter-spacing: 0.5px; color: #94a3b8; margin-bottom: 4px;
+        }
+        .form-group input {
+            width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px;
+            font-size: 14px; color: #334155; box-sizing: border-box; transition: border-color 0.2s;
+        }
+        .form-group input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,42,63,0.08); }
+
+        .btn {
+            padding: 10px 20px; border-radius: 8px; font-size: 12px; font-weight: 800;
+            text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; border: none; transition: all 0.2s;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { opacity: 0.9; }
+        .btn-danger { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
+        .btn-danger:hover { background: #dc2626; color: white; }
+
+        /* Users table */
+        .users-table { width: 100%; border-collapse: collapse; }
+        .users-table th {
+            background: #f8fafc; padding: 12px 16px; font-size: 11px; font-weight: 900;
+            text-transform: uppercase; color: #64748b; border-bottom: 2px solid #e2e8f0;
+            text-align: left; letter-spacing: 1px;
+        }
+        .users-table td { padding: 14px 16px; border-bottom: 1px solid #f1f5f9; font-size: 14px; vertical-align: middle; }
+        .users-table tr:hover { background: #f8fafc; }
+
+        .badge-admin {
+            font-size: 10px; font-weight: 900; padding: 3px 8px; border-radius: 4px;
+            text-transform: uppercase; background: #dcfce7; color: #166534;
+        }
+        .badge-user {
+            font-size: 10px; font-weight: 900; padding: 3px 8px; border-radius: 4px;
+            text-transform: uppercase; background: #e0f2fe; color: #0369a1;
+        }
+
+        .btn-sm {
+            padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700;
+            cursor: pointer; border: none; transition: all 0.15s;
+        }
+        .btn-permisos { background: #f1f5f9; color: #334155; }
+        .btn-permisos:hover { background: var(--primary); color: white; }
+        .btn-permisos.active { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
+
+        /* Permisos panel */
+        .permisos-panel {
+            background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;
+            padding: 20px; margin-top: 12px; animation: slideDown 0.2s ease;
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .permisos-grid { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
+
+        .permiso-item {
+            display: flex; align-items: center; gap: 8px; padding: 10px 16px;
+            background: white; border: 1px solid #e2e8f0; border-radius: 8px;
+            cursor: pointer; transition: all 0.15s; user-select: none;
+        }
+        .permiso-item:hover { border-color: var(--primary); }
+        .permiso-item.checked { background: #eff6ff; border-color: #3b82f6; }
+        .permiso-item input[type="checkbox"] { accent-color: var(--primary); width: 16px; height: 16px; cursor: pointer; }
+        .permiso-item label { font-size: 13px; font-weight: 700; color: #334155; cursor: pointer; }
+
+        /* Modal confirmacion eliminar */
+        .modal-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(0,42,63,0.4);
+            backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-box {
+            background: white; border-radius: 14px; padding: 30px; max-width: 380px; width: 90%;
+            text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+        .modal-box h3 { margin: 0 0 8px; color: var(--primary); font-size: 18px; }
+        .modal-box p { color: #64748b; font-size: 14px; margin: 0 0 20px; }
+        .modal-buttons { display: flex; gap: 10px; justify-content: center; }
+
+        .msg { padding: 12px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; margin-bottom: 16px; }
+        .msg-success { background: #dcfce7; color: #166534; }
+        .msg-error { background: #fee2e2; color: #dc2626; }
+    </style>
+</head>
+<body>
+    <admin-navbar></admin-navbar>
+
+    <div class="main-content">
+        <h1 style="font-size: 28px; color: var(--primary); margin: 0 0 24px;">Administrar Usuarios</h1>
+
+        <!-- Mensaje -->
+        <div id="msg-container"></div>
+
+        <!-- Crear usuario -->
+        <div class="card">
+            <h2 class="card-title">Crear Nuevo Usuario</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Usuario</label>
+                    <input type="text" id="input-usuario" placeholder="Nombre de usuario">
+                </div>
+                <div class="form-group">
+                    <label>Contrasena</label>
+                    <input type="password" id="input-contrasena" placeholder="Contrasena">
+                </div>
+                <button class="btn btn-primary" onclick="createUser()">Crear Usuario</button>
+            </div>
+        </div>
+
+        <!-- Lista de usuarios -->
+        <div class="card">
+            <h2 class="card-title">Usuarios Registrados</h2>
+            <div id="users-container">
+                <p style="color: #94a3b8;">Cargando...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal eliminar -->
+    <div class="modal-overlay" id="delete-modal">
+        <div class="modal-box">
+            <h3>Eliminar Usuario</h3>
+            <p id="delete-msg">Seguro que deseas eliminar este usuario?</p>
+            <div class="modal-buttons">
+                <button class="btn" style="background:#f1f5f9;color:#64748b;" onclick="closeDeleteModal()">Cancelar</button>
+                <button class="btn btn-danger" id="btn-confirm-delete" onclick="confirmDelete()">Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal cambiar contrasena -->
+    <div class="modal-overlay" id="password-modal">
+        <div class="modal-box" style="text-align:left;">
+            <h3 style="text-align:center;">Cambiar Contrasena</h3>
+            <div class="form-group" style="margin: 16px 0;">
+                <label>Nueva Contrasena</label>
+                <input type="password" id="input-new-password" placeholder="Nueva contrasena">
+            </div>
+            <div class="modal-buttons">
+                <button class="btn" style="background:#f1f5f9;color:#64748b;" onclick="closePasswordModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="savePassword()">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API = 'api/admin_usuarios_api.php';
+        let allUsers = [];
+        let deleteUserId = null;
+        let passwordUserId = null;
+        let openPermisosId = null;
+
+        const PAGES = [
+            { key: 'reservas', label: 'Reservas' },
+            { key: 'cotizaciones', label: 'Cotizaciones' },
+            { key: 'viajes', label: 'Viajes' },
+            { key: 'choferes', label: 'Choferes' },
+            { key: 'contabilidad', label: 'Contabilidad' }
+        ];
+
+        async function loadUsers() {
+            try {
+                const resp = await fetch(API);
+                if (!resp.ok) throw new Error('Error cargando usuarios');
+                allUsers = await resp.json();
+                renderUsers();
+            } catch (e) {
+                document.getElementById('users-container').innerHTML = '<p style="color:#dc2626;">Error cargando usuarios</p>';
+            }
+        }
+
+        function renderUsers() {
+            const container = document.getElementById('users-container');
+            if (allUsers.length === 0) {
+                container.innerHTML = '<p style="color:#94a3b8;">No hay usuarios registrados.</p>';
+                return;
+            }
+
+            let html = `<table class="users-table">
+                <thead><tr>
+                    <th>ID</th><th>Usuario</th><th>Rol</th><th>Permisos</th><th>Acciones</th>
+                </tr></thead><tbody>`;
+
+            allUsers.forEach(u => {
+                const rolBadge = u.is_admin
+                    ? '<span class="badge-admin">Admin</span>'
+                    : '<span class="badge-user">Usuario</span>';
+
+                const permisosCount = u.permisos
+                    ? Object.values(u.permisos).filter(v => v).length
+                    : PAGES.length;
+
+                const permisosLabel = u.is_admin
+                    ? 'Acceso total'
+                    : `${permisosCount}/${PAGES.length} ventanas`;
+
+                html += `<tr>
+                    <td><strong style="color:var(--primary);">${u.id}</strong></td>
+                    <td><strong>${u.usuario}</strong></td>
+                    <td>${rolBadge}</td>
+                    <td>
+                        ${u.is_admin ? `<span style="color:#64748b;font-size:13px;">${permisosLabel}</span>` :
+                        `<button class="btn-sm btn-permisos ${openPermisosId === u.id ? 'active' : ''}" onclick="togglePermisos(${u.id})">${permisosLabel}</button>`}
+                    </td>
+                    <td style="display:flex;gap:6px;">
+                        <button class="btn-sm" style="background:#f1f5f9;color:#334155;" onclick="openPasswordModal(${u.id})">Cambiar clave</button>
+                        ${!u.is_admin ? `<button class="btn-sm btn-danger" style="padding:6px 10px;" onclick="openDeleteModal(${u.id}, '${u.usuario}')">Eliminar</button>` : ''}
+                    </td>
+                </tr>`;
+
+                // Panel de permisos expandido
+                if (openPermisosId === u.id && !u.is_admin) {
+                    const perms = u.permisos || {};
+                    html += `<tr><td colspan="5" style="padding:0 16px 16px;">
+                        <div class="permisos-panel">
+                            <div style="font-size:11px;font-weight:800;text-transform:uppercase;color:#64748b;letter-spacing:0.5px;">
+                                Acceso a Ventanas para <strong style="color:var(--primary);">${u.usuario}</strong>
+                            </div>
+                            <div class="permisos-grid">
+                                ${PAGES.map(p => {
+                                    const checked = perms[p.key] !== false && (perms[p.key] || !u.permisos);
+                                    return `<label class="permiso-item ${checked ? 'checked' : ''}" onclick="toggleCheck(this)">
+                                        <input type="checkbox" data-user="${u.id}" data-page="${p.key}" ${checked ? 'checked' : ''} onchange="savePermisos(${u.id})">
+                                        <label>${p.label}</label>
+                                    </label>`;
+                                }).join('')}
+                            </div>
+                        </div>
+                    </td></tr>`;
+                }
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        function toggleCheck(el) {
+            el.classList.toggle('checked', el.querySelector('input').checked);
+        }
+
+        function togglePermisos(userId) {
+            openPermisosId = openPermisosId === userId ? null : userId;
+            renderUsers();
+        }
+
+        async function savePermisos(userId) {
+            const checkboxes = document.querySelectorAll(`input[data-user="${userId}"]`);
+            const permisos = {};
+            checkboxes.forEach(cb => {
+                permisos[cb.dataset.page] = cb.checked;
+            });
+
+            try {
+                const resp = await fetch(`${API}?id=${userId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ permisos })
+                });
+                if (!resp.ok) throw new Error();
+
+                // Actualizar datos locales
+                const user = allUsers.find(u => u.id === userId);
+                if (user) user.permisos = permisos;
+                showMsg('Permisos actualizados', 'success');
+
+                // Re-render para actualizar el contador
+                setTimeout(() => renderUsers(), 300);
+            } catch (e) {
+                showMsg('Error guardando permisos', 'error');
+            }
+        }
+
+        async function createUser() {
+            const usuario = document.getElementById('input-usuario').value.trim();
+            const contrasena = document.getElementById('input-contrasena').value;
+
+            if (!usuario || !contrasena) { showMsg('Usuario y contrasena son requeridos', 'error'); return; }
+
+            try {
+                const resp = await fetch(API, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ usuario, contrasena })
+                });
+                const data = await resp.json();
+                if (!resp.ok) throw new Error(data.error || 'Error creando usuario');
+
+                document.getElementById('input-usuario').value = '';
+                document.getElementById('input-contrasena').value = '';
+                showMsg(`Usuario "${usuario}" creado correctamente`, 'success');
+                loadUsers();
+            } catch (e) {
+                showMsg(e.message, 'error');
+            }
+        }
+
+        // Delete modal
+        function openDeleteModal(id, nombre) {
+            deleteUserId = id;
+            document.getElementById('delete-msg').textContent = `Seguro que deseas eliminar al usuario "${nombre}"?`;
+            document.getElementById('delete-modal').classList.add('active');
+        }
+        function closeDeleteModal() {
+            document.getElementById('delete-modal').classList.remove('active');
+            deleteUserId = null;
+        }
+        async function confirmDelete() {
+            if (!deleteUserId) return;
+            try {
+                const resp = await fetch(`${API}?id=${deleteUserId}`, { method: 'DELETE' });
+                if (!resp.ok) { const d = await resp.json(); throw new Error(d.error); }
+                showMsg('Usuario eliminado', 'success');
+                closeDeleteModal();
+                loadUsers();
+            } catch (e) {
+                showMsg(e.message, 'error');
+                closeDeleteModal();
+            }
+        }
+
+        // Password modal
+        function openPasswordModal(id) {
+            passwordUserId = id;
+            document.getElementById('input-new-password').value = '';
+            document.getElementById('password-modal').classList.add('active');
+            setTimeout(() => document.getElementById('input-new-password').focus(), 100);
+        }
+        function closePasswordModal() {
+            document.getElementById('password-modal').classList.remove('active');
+            passwordUserId = null;
+        }
+        async function savePassword() {
+            const contrasena = document.getElementById('input-new-password').value;
+            if (!contrasena) { showMsg('La contrasena no puede estar vacia', 'error'); return; }
+            try {
+                const resp = await fetch(`${API}?id=${passwordUserId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contrasena })
+                });
+                if (!resp.ok) throw new Error('Error actualizando');
+                showMsg('Contrasena actualizada', 'success');
+                closePasswordModal();
+            } catch (e) {
+                showMsg(e.message, 'error');
+            }
+        }
+
+        function showMsg(text, type) {
+            const container = document.getElementById('msg-container');
+            container.innerHTML = `<div class="msg msg-${type}">${text}</div>`;
+            setTimeout(() => container.innerHTML = '', 4000);
+        }
+
+        // Cerrar modales con Escape
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') { closeDeleteModal(); closePasswordModal(); }
+        });
+        document.getElementById('delete-modal').addEventListener('click', e => { if (e.target.id === 'delete-modal') closeDeleteModal(); });
+        document.getElementById('password-modal').addEventListener('click', e => { if (e.target.id === 'password-modal') closePasswordModal(); });
+
+        // Init
+        loadUsers();
+    </script>
+</body>
+</html>

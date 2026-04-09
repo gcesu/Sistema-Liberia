@@ -58,17 +58,24 @@ if ($method === 'GET') {
         }
 
         // Obtener viajes del chofer en el rango de fechas
-        // Excluir reservas canceladas
+        // Excluir reservas canceladas (JOIN con reservas Y cotizaciones)
         $sql = "
             SELECT v.id, v.reserva_id, v.item_index, v.tipo, v.fecha, v.hora, v.pax,
                    v.hotel, v.destino, v.precio_neto, v.pagado,
-                   r.cliente_nombre, r.metodo_pago, r.raw_data, r.status as reserva_status
+                   v.subtotal as viaje_subtotal,
+                   v.nota_contabilidad,
+                   COALESCE(r.cliente_nombre, c.cliente_nombre) as cliente_nombre,
+                   COALESCE(r.metodo_pago, c.metodo_pago) as metodo_pago,
+                   r.raw_data as raw_data,
+                   COALESCE(r.status, c.status) as reserva_status,
+                   r.es_cotizacion
             FROM viajes v
             LEFT JOIN reservas r ON v.reserva_id = r.id
+            LEFT JOIN cotizaciones c ON v.reserva_id = c.id
             WHERE v.chofer = ?
               AND v.fecha >= ?
               AND v.fecha <= ?
-              AND r.status NOT IN ('cancelled', 'refunded', 'failed')
+              AND COALESCE(r.status, c.status_viaje, 'pending') NOT IN ('cancelled', 'refunded', 'failed')
             ORDER BY v.fecha ASC, v.hora ASC
         ";
 
@@ -96,8 +103,13 @@ if ($method === 'GET') {
             $subtotal = 0;
             $destino = $viaje['destino'] ?: $viaje['hotel'] ?: 'Transfer';
 
-            // Resolver subtotal desde raw_data
-            if (!empty($viaje['raw_data'])) {
+            // Prioridad 1: Si el viaje tiene subtotal propio guardado (ej: internos editados en cotizaciones)
+            $viajeSubtotal = floatval($viaje['viaje_subtotal'] ?? 0);
+            if ($viajeSubtotal > 0) {
+                $subtotal = $viajeSubtotal;
+            }
+            // Prioridad 2: Resolver subtotal desde raw_data line_items (reservas normales)
+            elseif (!empty($viaje['raw_data'])) {
                 $rawOrder = json_decode($viaje['raw_data'], true);
                 if ($rawOrder && isset($rawOrder['line_items'])) {
                     $originalItemIndex = $viaje['item_index'] >= 1000
@@ -161,7 +173,8 @@ if ($method === 'GET') {
                 'subtotal' => round($subtotal, 2),
                 'precio_neto' => round($precioNeto, 2),
                 'comision' => round($comision, 2),
-                'pagado' => (int) ($viaje['pagado'] ?? 0)
+                'pagado' => (int) ($viaje['pagado'] ?? 0),
+                'nota_contabilidad' => $viaje['nota_contabilidad'] ?? ''
             ];
         }
 

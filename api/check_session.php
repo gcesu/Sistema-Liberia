@@ -19,10 +19,18 @@ if (isset($_SESSION['user_id']) && isset($_SESSION['usuario']) && isset($_SESSIO
         exit;
     }
 
+    // Obtener permisos y rol del usuario
+    require_once '../config/db.php';
+    $stmtPerms = $pdo->prepare("SELECT is_admin, permisos FROM usuarios WHERE id = ?");
+    $stmtPerms->execute([$_SESSION['user_id']]);
+    $userRow = $stmtPerms->fetch(PDO::FETCH_ASSOC);
+
     echo json_encode([
         'authenticated' => true,
         'user_id' => $_SESSION['user_id'],
-        'usuario' => $_SESSION['usuario']
+        'usuario' => $_SESSION['usuario'],
+        'is_admin' => (int) ($userRow['is_admin'] ?? 0),
+        'permisos' => $userRow['permisos'] ? json_decode($userRow['permisos'], true) : null
     ]);
 } else {
     echo json_encode([
