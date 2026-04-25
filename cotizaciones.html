@@ -797,6 +797,11 @@
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                     Descargar Word
                 </button>
+                    <button onclick="sendConfirmationEmail()"
+                    class="px-6 py-2 bg-blue-600 text-white rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-blue-700 transition-all shadow-md flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                    Enviar Confirmación
+                </button>
                 </div>
                 <div class="flex gap-3">
                     <button onclick="saveChanges()" id="btn-save"
@@ -1387,6 +1392,137 @@
         function docSafe(text) {
             return (text || '').replace(/→/g, '->').replace(/➡️/g, '->').replace(/»/g, '->');
         }
+
+        // ─── Enviar correo de confirmación (mailto con texto plano) ─────────────
+        // Abre el cliente de correo predeterminado con destinatario, asunto y
+        // cuerpo ya completos. El usuario solo le da Enviar.
+        function sendConfirmationEmail() {
+            const o = allOrders.find(x => x.id === currentOrderId);
+            if (!o) return;
+            const email = (o.billing?.email || '').toLowerCase().trim();
+            if (!email) {
+                alert('Esta cotización no tiene email del cliente registrado.');
+                return;
+            }
+
+            const rawName = [o.billing?.last_name, o.billing?.first_name].filter(Boolean).join(' ') || '';
+            const fullName = capitalizeName(rawName);
+            const firstName = (fullName.split(' ')[0] || 'there').trim() || 'there';
+
+            const dateCreated = o.date_created
+                ? new Date(o.date_created).toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' })
+                : '';
+
+            const fmtDate = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '';
+            const fmtTime = t => {
+                if (!t) return '';
+                const m = String(t).match(/^(\d{1,2}):(\d{2})/);
+                return m ? `${String(parseInt(m[1])).padStart(2, '0')}:${m[2]}` : t;
+            };
+            const fmtMoney = n => {
+                const v = parseFloat(n) || 0;
+                return v === Math.floor(v) ? `$${v}` : `$${v.toFixed(2)}`;
+            };
+
+            const viajes = currentOrderViajes || [];
+            let subtotal = 0;
+            const tripBlocks = viajes.map(v => {
+                const pax = v.pax || 1;
+                const passengers = pax === 1 ? '1 passenger' : `${pax} passengers`;
+                const price = parseFloat(v.subtotal || 0);
+                subtotal += price;
+
+                let lines = [];
+                if (v.tipo === 'llegada') {
+                    const hotel = v.destino || 'Hotel';
+                    lines.push(`${hotel}`);
+                    lines.push(`Passengers: ${passengers}`);
+                    lines.push(`- Type of Trip: One way to hotel`);
+                    if (v.fecha) lines.push(`- Arrival Date: ${fmtDate(v.fecha)}`);
+                    if (v.hora)  lines.push(`- Arrival Time: ${fmtTime(v.hora)}`);
+                    if (v.vuelo) lines.push(`- Arrival Flight Number: ${v.vuelo}`);
+                } else if (v.tipo === 'salida') {
+                    const hotel = v.destino || 'Hotel';
+                    lines.push(`${hotel}`);
+                    lines.push(`Passengers: ${passengers}`);
+                    lines.push(`- Type of Trip: One way to airport`);
+                    if (v.fecha) lines.push(`- Departure Date: ${fmtDate(v.fecha)}`);
+                    if (v.hora)  lines.push(`- Pick-up Time at Hotel: ${fmtTime(v.hora)}`);
+                    if (v.vuelo) lines.push(`- Departure Flight Number: ${v.vuelo}`);
+                } else { // interno
+                    const route = v.destino || '';
+                    const parts = route.split(/\s*(?:→|->|—|–)\s*/);
+                    const pickup = (parts[0] || '').trim();
+                    const dropoff = (parts[1] || '').trim();
+                    lines.push(`One Way Shuttle`);
+                    lines.push(`- Passengers: ${pax}`);
+                    if (pickup)  lines.push(`- Pick-up Location: ${pickup}`);
+                    if (dropoff) lines.push(`- Drop-off Location: ${dropoff}`);
+                    if (v.fecha) lines.push(`- Pick-up Date: ${fmtDate(v.fecha).replace(/\//g, '-')}`);
+                    if (v.hora)  lines.push(`- Pick-up Time: ${fmtTime(v.hora)}`);
+                }
+                lines.push(`Price: ${fmtMoney(price)}`);
+                return lines.join('\n');
+            }).join('\n\n');
+
+            const total = parseFloat(o.total) > 0 ? parseFloat(o.total) : subtotal;
+            const paymentMethod = o.payment_method_title || 'Pending';
+            const note = (o.customer_note || '').trim();
+
+            const subject = 'Your Liberia Airport Shuttle reservation is now complete';
+
+            const body =
+`Hi ${firstName},
+
+Thanks for choosing LiberiaAirportShuttle.com! Your reservation has been completed.
+
+Where do I find my driver?
+Your driver will be outside of customs area holding a sign with your name on it. If having trouble finding the driver, please contact us and head to the outside of the Imperial/Britt café (in between Arrivals and Departures) to meet him there.
+
+Pick-up time at the airport
+Your pickup at the airport is based on the arrival time of your flight (s); however, the process of immigration, baggage claim and customs takes time, so your driver will be waiting for you.
+
+Flight tracking
+We monitor your flight in real time through flightradar24.com, so we will be aware of any changes in your flight (delay, diversion, cancellation, etc.).
+
+Return to LIR Airport
+A reminder will be sent to your email the day before your departure date.
+
+Gratuity
+It is customary to tip between 15% and 20% of the transportation rate.
+
+Payment is made to your driver in USD or Costa Rican Colones upon completion of each service.
+
+═══════════════════════════════════════
+Order ${formatCotId(o.id)} (${dateCreated})
+═══════════════════════════════════════
+
+${tripBlocks}
+
+───────────────────────────────────────
+Subtotal: ${fmtMoney(subtotal)}
+Payment method: ${paymentMethod}
+Total: ${fmtMoney(total)}${note ? `\nNote: ${note}` : ''}
+───────────────────────────────────────
+
+Contact info:
+Phone: ${o.billing?.phone || ''}
+Email: ${email}
+
+Thank you for booking with us!
+
+LiberiaAirportShuttle.com
+booking@liberiaairportshuttle.com
+Phone: +506 8913-1480
+WhatsApp: +506 8913-1480
+Telegram: +506 8913-1480
+
+Liberia Airport Shuttle | Costa Rica Transfers`;
+
+            const mailto = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            window.location.href = mailto;
+        }
+
 
         async function generateWord() {
             const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,

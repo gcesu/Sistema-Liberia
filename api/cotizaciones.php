@@ -326,16 +326,7 @@ elseif ($method === 'PUT') {
         }
 
         // 2. Estado de cotización (se sincroniza entre cotizaciones.status, cotizaciones.status_viaje y reservas.status)
-        $shouldSendCompletedEmail = false;
         if (isset($input['status_viaje'])) {
-            // Detectar transición a "completed" para disparar el correo de confirmación
-            $prevStmt = $pdo->prepare("SELECT status_viaje FROM cotizaciones WHERE id = ?");
-            $prevStmt->execute([$id]);
-            $prevStatus = $prevStmt->fetchColumn();
-            if ($input['status_viaje'] === 'completed' && $prevStatus !== 'completed') {
-                $shouldSendCompletedEmail = true;
-            }
-
             $fieldsToUpdate[] = "status_viaje = ?";
             $params[] = $input['status_viaje'];
 
@@ -385,22 +376,6 @@ elseif ($method === 'PUT') {
         $updatedRow = $stmt->fetch(PDO::FETCH_ASSOC);
 
         echo json_encode(transformarCotizacionParaFrontend($updatedRow));
-
-        // Disparar correo de confirmación si la cotización pasó a "completed".
-        // Se hace después de devolver la respuesta para no bloquear al cliente.
-        if (!empty($shouldSendCompletedEmail)) {
-            // Cerrar la conexión con el cliente (FastCGI/PHP-FPM) para que la espera
-            // del SMTP no afecte la respuesta del PUT.
-            if (function_exists('fastcgi_finish_request')) {
-                fastcgi_finish_request();
-            }
-            try {
-                require_once __DIR__ . '/lib/email_sender.php';
-                sendQuoteCompletedEmail($pdo, $id);
-            } catch (Throwable $e) {
-                error_log("Error enviando correo de cotización $id completed: " . $e->getMessage());
-            }
-        }
 
     } catch (PDOException $e) {
         http_response_code(500);
