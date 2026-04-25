@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install:*)",
+      "Bash(python -m pip install reportlab)",
+      "Bash(where python3:*)",
+      "Bash(where py:*)",
+      "Bash(ls /c/Python*/python.exe)",
+      "Read(//c/Users/Gabriel/AppData/Local/Programs/**)",
+      "Read(//c/Users/Gabriel/**)",
+      "Bash(npm install:*)",
+      "Bash(node generate_pdf.js)"
+    ]
+  }
+}

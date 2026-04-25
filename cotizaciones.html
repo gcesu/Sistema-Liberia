@@ -863,6 +863,9 @@
         function formatTime(t) { if (!t) return '--:--'; const m = String(t).match(/^(\d{1,2}):(\d{2})/); if (!m) return String(t); let h = parseInt(m[1]); const min = m[2], ampm = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12; return `${h}:${min} ${ampm}`; }
         function translateStatus(s) { return { pending: 'Pendiente', processing: 'En Proceso', 'on-hold': 'En Espera', completed: 'Completada', cancelled: 'Cancelada', failed: 'Fallida' }[s] || s; }
         function statusClass(s) { return { completed: 'status-completed', processing: 'status-processing', pending: 'status-pending', cancelled: 'status-cancelled', 'on-hold': 'status-on-hold', failed: 'status-failed' }[s] || 'status-pending'; }
+        // Las cotizaciones nuevas usan IDs >= 10,000,000 (offset para no chocar con IDs de WooCommerce).
+        // En pantalla se muestran como "C-1", "C-2", etc. restando el offset.
+        function formatCotId(id) { const n = Number(id); if (n >= 10000000) return `C-${n - 9999999}`; return `C-${n}`; }
 
         function getMeta(arr, key) { if (!Array.isArray(arr)) return null; const m = arr.find(x => x.key === key); return m ? (m.value ?? null) : null; }
         function normalizeForInput(val, type) { if (!val) return ''; if (type === 'date') return val.split('T')[0].split(' ')[0]; if (type === 'time') { const match = val.match(/(\d{1,2}):(\d{2})/); if (match) { let h = parseInt(match[1]); if (val.toLowerCase().includes('pm') && h < 12) h += 12; if (val.toLowerCase().includes('am') && h === 12) h = 0; return `${h.toString().padStart(2, '0')}:${match[2]}`; } } return val; }
@@ -954,7 +957,7 @@
             pageData.forEach(o => {
                 const viajes = o.viajes || [];
                 const sv = o.status;
-                const rawName = [o.billing?.last_name, o.billing?.first_name].filter(Boolean).join(' ') || `Cotización #${o.id}`;
+                const rawName = [o.billing?.last_name, o.billing?.first_name].filter(Boolean).join(' ') || `Cotización ${formatCotId(o.id)}`;
                 const name = capitalizeName(rawName);
                 const tripBadges = viajes.map(v => {
                     const cls = v.tipo === 'llegada' ? 'badge-llegada' : v.tipo === 'salida' ? 'badge-salida' : 'badge-interno';
@@ -963,7 +966,7 @@
                 }).join(' ');
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td data-label="ID" class="pl-6"><div class="font-bold text-[#002a3f]">#${o.id}</div></td>
+                    <td data-label="ID" class="pl-6"><div class="font-bold text-[#002a3f]">${formatCotId(o.id)}</div></td>
                     <td data-label="Cliente"><div class="flex items-center"><div class="client-avatar">${getInitials(name)}</div><div><div class="font-bold text-[#002a3f]">${name}</div><div class="text-xs text-gray-400">${o.billing?.email || ''}</div></div></div></td>
                     <td data-label="Viajes"><div class="flex flex-wrap gap-1">${tripBadges || '<span class="text-gray-400 text-xs">Sin viajes</span>'}</div></td>
                     <td data-label="Fecha"><div class="flex flex-col justify-center"><span class="font-bold text-[#002a3f]">${formatDateShort(o.date_created)}</span></div></td>
@@ -1003,14 +1006,14 @@
             document.getElementById('order-modal').classList.add('open');
             document.getElementById('btn-save').classList.add('hidden');
 
-            document.getElementById('modal-title').textContent = `Cotización #${o.id}`;
+            document.getElementById('modal-title').textContent = `Cotización ${formatCotId(o.id)}`;
             const sv = o.status;
             const pill = document.getElementById('modal-status-pill');
             pill.className = `status-pill status-pill-clickable ${statusClass(sv)}`; pill.innerHTML = `<span class="status-dot"></span> ${translateStatus(sv)}`;
             document.getElementById('status-display-container').classList.remove('hidden');
             document.getElementById('status-edit-container').classList.add('hidden');
 
-            const rawName = [o.billing?.last_name, o.billing?.first_name].filter(Boolean).join(' ') || `Cotización #${o.id}`;
+            const rawName = [o.billing?.last_name, o.billing?.first_name].filter(Boolean).join(' ') || `Cotización ${formatCotId(o.id)}`;
             const name = capitalizeName(rawName);
             const email = (o.billing?.email || '').toLowerCase();
             const phone = o.billing?.phone || '';
@@ -1258,7 +1261,7 @@
             if (!viaje) return;
             const email = (order.billing?.email || '').toLowerCase();
             // Simple mailto for now
-            const subject = `Cotización #${orderId} - Recordatorio`;
+            const subject = `Cotización ${formatCotId(orderId)} - Recordatorio`;
             window.open(`mailto:${email}?subject=${encodeURIComponent(subject)}`);
         }
 
@@ -1301,49 +1304,24 @@
         function renderFinancial(o, rawOrder) {
             const container = document.getElementById('financial-breakdown'); container.innerHTML = '';
 
-            // Guardar datos base para recálculo dinámico
-            // baseSubtotal = precio de viajes NO internos (roundtrip/llegada/salida)
-            // Los viajes internos se suman aparte desde los inputs editables
-            const lis = rawOrder?.line_items || [];
-            const internoViajes = (o.viajes || []).filter(v => v.tipo === 'interno');
-            const nonInternoViajes = (o.viajes || []).filter(v => v.tipo !== 'interno');
-            let baseSubtotal = 0;
-
-            if (lis.length > 1) {
-                // Múltiples line_items = datos reales de WooCommerce
-                // Mapear viajes no-internos a sus line_items por item_index
-                nonInternoViajes.forEach(v => {
-                    const idx = parseInt(v.item_index);
-                    const liIdx = idx >= 1000 ? idx - 1000 : idx;
-                    const li = lis[liIdx];
-                    if (li) baseSubtotal += parseFloat(li.subtotal || 0);
-                });
-            }
-
-            if (baseSubtotal === 0) {
-                // Dummy/single line_item o sin match: usar el mayor entre subtotal y total
-                // (subtotal puede incluir internos ya guardados, total puede ser el original de WooCommerce)
-                const orderBase = Math.max(parseFloat(o.subtotal || 0), parseFloat(o.total || 0));
-                let knownInternos = 0;
-                internoViajes.forEach(v => { knownInternos += parseFloat(v.subtotal || 0); });
-                baseSubtotal = Math.max(0, orderBase - knownInternos);
-            }
-            container.setAttribute('data-base-subtotal', baseSubtotal);
+            container.setAttribute('data-base-subtotal', '0');
             container.setAttribute('data-payment-method', o.payment_method_title || '');
             container.setAttribute('data-has-original-fees', (rawOrder?.fee_lines || []).length > 0 ? '1' : '0');
 
             // Método de pago
             if (o.payment_method_title) container.innerHTML += `<div class="text-[10px] uppercase font-black text-gray-400 mb-4 border-b pb-2">Método: ${o.payment_method_title}</div>`;
 
-            // 1. Viajes internos (inputs editables - se guarda como subtotal del viaje)
-            const internos = currentOrderViajes.filter(v => v.tipo === 'interno');
-            internos.forEach(v => {
+            // Todos los viajes tienen input editable de precio
+            const tipoLabel = { llegada: 'Arrival', salida: 'Departure', interno: 'Internal' };
+            currentOrderViajes.forEach(v => {
                 const subtotalVal = v.subtotal || '';
                 const inputId = `input-cot_viaje_${v.id}_subtotal`;
-                const ruta = v.destino || v.hotel || 'Viaje Interno';
+                const label = tipoLabel[v.tipo] || v.tipo;
+                const ruta = v.destino || v.hotel || label;
+                const display = ruta !== label ? `${label} — ${ruta}` : label;
                 container.innerHTML += `
                     <div class="flex justify-between items-center text-sm">
-                        <span class="font-bold uppercase opacity-50 text-[10px] tracking-widest">${ruta}</span>
+                        <span class="font-bold uppercase opacity-50 text-[10px] tracking-widest">${display}</span>
                         <div class="flex items-center gap-1 w-36">
                             <span class="font-bold text-base text-[#002a3f]">$</span>
                             <input type="number" step="0.01" id="${inputId}"
@@ -1372,18 +1350,15 @@
             const container = document.getElementById('financial-breakdown');
             if (!container) return;
 
-            const baseSubtotal = parseFloat(container.getAttribute('data-base-subtotal') || 0);
             const paymentMethod = container.getAttribute('data-payment-method') || '';
             const hasOriginalFees = container.getAttribute('data-has-original-fees') === '1';
 
-            // Sumar precios de viajes internos
-            let internosSum = 0;
-            currentOrderViajes.filter(v => v.tipo === 'interno').forEach(v => {
+            // Sumar precios de todos los viajes
+            let subtotal = 0;
+            currentOrderViajes.forEach(v => {
                 const inp = document.getElementById(`input-cot_viaje_${v.id}_subtotal`);
-                if (inp) internosSum += parseFloat(inp.value) || 0;
+                if (inp) subtotal += parseFloat(inp.value) || 0;
             });
-
-            const subtotal = baseSubtotal + internosSum;
 
             // Calcular fees (5% redondeado al entero más cercano, como WooCommerce)
             let fees = 0;
@@ -1447,7 +1422,7 @@
             } catch (e) { }
 
             // -- Data --
-            const rawName = [o.billing?.last_name, o.billing?.first_name].filter(Boolean).join(' ') || `Quote #${o.id}`;
+            const rawName = [o.billing?.last_name, o.billing?.first_name].filter(Boolean).join(' ') || `Quote ${formatCotId(o.id)}`;
             const clientName = capitalizeName(rawName);
             const dateStr = o.date_created ? new Date(o.date_created).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
             const clientContact = [o.billing?.email, o.billing?.phone].filter(Boolean).join('  |  ');
@@ -1471,7 +1446,7 @@
                         margins: { top: 150, bottom: 150, left: 0, right: 200 },
                         children: [
                             new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: "QUOTE", bold: true, color: "FFFFFF", size: 36, font: "Arial" })] }),
-                            new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `#${o.id}`, color: "B4C8D7", size: 20, font: "Arial" })] })
+                            new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: formatCotId(o.id), color: "B4C8D7", size: 20, font: "Arial" })] })
                         ]
                     })
                 ]})]
@@ -1546,27 +1521,14 @@
 
             if (o.payment_method_title) finItems.push({ label: `Payment Method: ${o.payment_method_title}`, value: '', isMeta: true });
 
-            const baseSubtotal = parseFloat(document.getElementById('financial-breakdown')?.getAttribute('data-base-subtotal') || 0);
-            const llegadas = currentOrderViajes.filter(v => v.tipo === 'llegada');
-            const salidas = currentOrderViajes.filter(v => v.tipo === 'salida');
-            const internos = currentOrderViajes.filter(v => v.tipo === 'interno');
-            const isRoundtrip = llegadas.length > 0 && salidas.length > 0;
-
-            if (isRoundtrip) {
-                const rtRuta = docSafe(llegadas[0].destino || llegadas[0].hotel || 'Roundtrip');
-                if (baseSubtotal > 0) finItems.push({ label: `Roundtrip - ${rtRuta}`, value: `$${baseSubtotal.toFixed(2)}` });
-            } else {
-                const nonInternos = [...llegadas, ...salidas];
-                const precioPorViaje = nonInternos.length > 0 ? baseSubtotal / nonInternos.length : 0;
-                nonInternos.forEach(v => {
-                    if (precioPorViaje > 0) finItems.push({ label: docSafe(v.destino || v.hotel || 'Transfer'), value: `$${precioPorViaje.toFixed(2)}` });
-                });
-            }
-
-            internos.forEach(v => {
+            const tipoLabelDoc = { llegada: 'Arrival', salida: 'Departure', interno: 'Internal' };
+            currentOrderViajes.forEach(v => {
                 const inp = document.getElementById(`input-cot_viaje_${v.id}_subtotal`);
                 const precio = parseFloat(inp?.value) || 0;
-                if (precio > 0) finItems.push({ label: docSafe(v.destino || v.hotel || 'Internal'), value: `$${precio.toFixed(2)}` });
+                const label = tipoLabelDoc[v.tipo] || v.tipo;
+                const ruta = v.destino || v.hotel || label;
+                const display = ruta !== label ? `${label} — ${docSafe(ruta)}` : label;
+                if (precio > 0) finItems.push({ label: display, value: `$${precio.toFixed(2)}` });
             });
 
             const subtotalEl = document.getElementById('financial-subtotal');
@@ -1645,7 +1607,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `Quote_${o.id}.docx`;
+            a.download = `Quote_${formatCotId(o.id)}.docx`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -1848,7 +1810,7 @@
             pendingDeleteOrderId = currentOrderId;
             if (!pendingDeleteOrderId) return;
             document.getElementById('delete-confirm-message').textContent =
-                `Se eliminará permanentemente la cotización #${pendingDeleteOrderId} y sus viajes asociados.`;
+                `Se eliminará permanentemente la cotización ${formatCotId(pendingDeleteOrderId)} y sus viajes asociados.`;
             document.getElementById('delete-confirm-modal').classList.remove('hidden');
         }
 

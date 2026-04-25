@@ -1761,7 +1761,7 @@
 
             try {
                 while (keepFetching) {
-                    const response = await fetch(`${API_PROXY}?per_page=100&page=${page}&after=${START_DATE_FILTER}&orderby=date&order=desc`);
+                    const response = await fetch(`${API_PROXY}?per_page=100&page=${page}&orderby=date&order=desc`);
 
                     if (!response.ok) throw new Error("Error API");
                     if (runId !== indexingRunId) break;
@@ -1829,10 +1829,11 @@
                 filtered = filtered.filter(o => {
                     const name = resolveName(o).toLowerCase();
                     const id = o.id.toString();
+                    const formattedId = formatOrderId(o.id).toLowerCase();
                     const hotel = (o.line_items?.[0]?.name || '').toLowerCase();
                     // Buscar también en destino de viajes
                     const destinos = (o.viajes || []).map(v => (v.destino || '').toLowerCase()).join(' ');
-                    return name.includes(searchText) || id.includes(searchText) || hotel.includes(searchText) || destinos.includes(searchText);
+                    return name.includes(searchText) || id.includes(searchText) || formattedId.includes(searchText) || hotel.includes(searchText) || destinos.includes(searchText);
                 });
             }
 
@@ -1971,7 +1972,7 @@
 
                 container.innerHTML += `
                     <tr>
-                        <td data-label="ID" class="pl-6 font-bold text-gray-400">#${order.id}</td>
+                        <td data-label="ID" class="pl-6 font-bold text-gray-400">${formatOrderId(order.id)}</td>
                         <td data-label="Cliente">
                             <div class="flex items-center">
                                 <div class="client-avatar">${initials}</div>
@@ -2010,7 +2011,7 @@
             editingSections = { passenger: false, arrival: false, departure: false };
             document.body.style.overflow = 'hidden';
 
-            document.getElementById('modal-title').innerText = `Reserva #${o.id}`;
+            document.getElementById('modal-title').innerText = `Reserva ${formatOrderId(o.id)}`;
             document.getElementById('btn-save').classList.add('hidden');
 
             const fullName = resolveName(o);
@@ -2939,7 +2940,10 @@
         }
 
         function resolveAddress(o) { return (o.shipping?.address_1 || o.billing?.address_1 || "") + (o.shipping?.city ? ', ' + o.shipping.city : ''); }
-        function resolveName(o) { const n = `${o.billing?.first_name || ''} ${o.billing?.last_name || ''}`.trim(); return n.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ') || `Reserva #${o.id}`; }
+        // Cotizaciones nuevas usan IDs >= 10,000,000 (offset para no chocar con WooCommerce).
+        // Se muestran como "C-1", "C-2", etc. Reservas normales se muestran como "#123".
+        function formatOrderId(id) { const n = Number(id); if (n >= 10000000) return `C-${n - 9999999}`; return `#${n}`; }
+        function resolveName(o) { const n = `${o.billing?.first_name || ''} ${o.billing?.last_name || ''}`.trim(); return n.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ') || `Reserva ${formatOrderId(o.id)}`; }
         function translateStatus(s) { const map = { 'pending': 'Pendiente', 'processing': 'Procesando', 'on-hold': 'Espera', 'completed': 'Completado', 'cancelled': 'Cancelado', 'failed': 'Fallido' }; return map[s] || s; }
 
         function translateTripType(o, raw) {

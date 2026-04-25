@@ -505,19 +505,27 @@ class AdminNavbar extends HTMLElement {
         }
     }
 
+    // Cotizaciones nuevas usan IDs >= 10,000,000 (offset para no chocar con WooCommerce).
+    // Se muestran como "C-1", "C-2", etc. Reservas normales se muestran como "#123".
+    formatOrderId(id) {
+        const n = Number(id);
+        if (n >= 10000000) return `C-${n - 9999999}`;
+        return `#${n}`;
+    }
+
     showToast(type, count, items) {
         const toast = this.querySelector(`#notif-toast-${type}`);
         const msg = this.querySelector(`#notif-msg-${type}`);
 
         if (type === 'reservas') {
             if (count === 1 && items[0]) {
-                msg.textContent = `${items[0].cliente_nombre} - #${items[0].id}`;
+                msg.textContent = `${items[0].cliente_nombre} - ${this.formatOrderId(items[0].id)}`;
             } else {
                 msg.textContent = `Hay ${count} nueva${count > 1 ? 's' : ''} reserva${count > 1 ? 's' : ''} disponible${count > 1 ? 's' : ''}`;
             }
         } else {
             if (count === 1 && items[0]) {
-                msg.textContent = `${items[0].cliente_nombre} - #${items[0].id}`;
+                msg.textContent = `${items[0].cliente_nombre} - ${this.formatOrderId(items[0].id)}`;
             } else {
                 msg.textContent = `Hay ${count} nueva${count > 1 ? 's' : ''} cotización${count > 1 ? 'es' : ''} disponible${count > 1 ? 's' : ''}`;
             }

@@ -4,6 +4,11 @@
  * Uso: api/sync.php
  */
 
+// Si se incluye desde sync_by_id.php, solo exponer funciones
+if (defined('SYNC_BY_ID')) {
+    goto sync_helpers;
+}
+
 session_start();
 require_once '../config/db.php';
 require_once '../config/env.php';
@@ -84,6 +89,7 @@ echo json_encode([
 // =========================================================================
 // HELPERS
 // =========================================================================
+sync_helpers:
 
 /**
  * Detecta si un line_item es un viaje interno (One Way Shuttle / Hotel-Hotel)
@@ -137,8 +143,16 @@ function saveOrderToDB($pdo, $order)
         if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', $dateStr, $matches)) {
             return $matches[3] . '-' . str_pad($matches[1], 2, '0', STR_PAD_LEFT) . '-' . str_pad($matches[2], 2, '0', STR_PAD_LEFT);
         }
+        if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/', $dateStr, $matches)) {
+            $year = '20' . $matches[3];
+            return $year . '-' . str_pad($matches[1], 2, '0', STR_PAD_LEFT) . '-' . str_pad($matches[2], 2, '0', STR_PAD_LEFT);
+        }
         if (preg_match('/^(\d{1,2})-(\d{1,2})-(\d{4})$/', $dateStr, $matches)) {
             return $matches[3] . '-' . str_pad($matches[1], 2, '0', STR_PAD_LEFT) . '-' . str_pad($matches[2], 2, '0', STR_PAD_LEFT);
+        }
+        if (preg_match('/^(\d{1,2})-(\d{1,2})-(\d{2})$/', $dateStr, $matches)) {
+            $year = '20' . $matches[3];
+            return $year . '-' . str_pad($matches[1], 2, '0', STR_PAD_LEFT) . '-' . str_pad($matches[2], 2, '0', STR_PAD_LEFT);
         }
         if (preg_match('/^\d{4}-\d{2}-\d{2}/', $dateStr)) {
             return substr($dateStr, 0, 10);
@@ -478,7 +492,7 @@ function saveOrderToDB($pdo, $order)
                     'hora' => $arrivalTime,
                     'vuelo' => $arrivalFlight,
                     'pax' => $pax,
-                    'hotel' => $hotelName,
+                    'hotel' => null,
                 ]);
                 $savedTrips[] = ['item_index' => $itemIndex, 'tipo' => 'llegada'];
             }
@@ -497,7 +511,7 @@ function saveOrderToDB($pdo, $order)
                     'hora' => $departureTime,
                     'vuelo' => $departureFlight,
                     'pax' => $pax,
-                    'hotel' => $hotelName,
+                    'hotel' => null,
                 ]);
                 $savedTrips[] = ['item_index' => $tripItemIndex, 'tipo' => 'salida'];
             }

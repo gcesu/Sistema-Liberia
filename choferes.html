@@ -1158,6 +1158,14 @@
             ).join(" ");
         }
 
+        // Cotizaciones nuevas usan IDs >= 10,000,000 (offset para no chocar con WooCommerce).
+        // Se muestran como "C-1", "C-2", etc. Reservas normales se muestran como "#123".
+        function formatOrderId(id) {
+            const n = Number(id);
+            if (n >= 10000000) return `C-${n - 9999999}`;
+            return `#${n}`;
+        }
+
         function truncateText(text, maxLength = 75) {
             if (!text) return '';
             if (text.length <= maxLength) return text;
@@ -1297,7 +1305,7 @@
 
             try {
                 while (keepFetching) {
-                    const response = await fetch(`${API_PROXY}?per_page=100&page=${page}&after=${START_DATE_FILTER}&orderby=date&order=desc&include_completed_cot=1`);
+                    const response = await fetch(`${API_PROXY}?per_page=100&page=${page}&orderby=date&order=desc&include_completed_cot=1`);
                     if (!response.ok) throw new Error("Error API");
 
                     if (page === 1) {
@@ -1350,14 +1358,19 @@
                             const originalItemIndex = viaje.item_index >= 1000 ? viaje.item_index - 1000 : viaje.item_index;
                             const destName = order.line_items?.[originalItemIndex]?.name || "Hotel no especificado";
 
-                            // Buscar el subtotal del line_item correspondiente
+                            // Buscar el precio del viaje.
+                            // 1º Prioridad: viaje.subtotal (cotizaciones con precio editable por viaje).
+                            // 2º Fallback: line_items de WooCommerce (dividido entre 2 si es roundtrip).
                             let tripPrice = 0;
-                            if (order.line_items && order.line_items[originalItemIndex]) {
+                            const viajeSubtotal = parseFloat(viaje.subtotal || 0);
+                            if (viajeSubtotal > 0) {
+                                tripPrice = viajeSubtotal;
+                            } else if (order.line_items && order.line_items[originalItemIndex]) {
                                 tripPrice = parseFloat(order.line_items[originalItemIndex].subtotal || 0);
-                            }
-                            // Si es roundtrip, dividir el precio entre 2
-                            if (viaje.item_index >= 1000 || order.viajes.some(v => v.item_index === viaje.item_index + 1000)) {
-                                tripPrice = tripPrice / 2;
+                                // Si es roundtrip, dividir el precio entre 2
+                                if (viaje.item_index >= 1000 || order.viajes.some(v => v.item_index === viaje.item_index + 1000)) {
+                                    tripPrice = tripPrice / 2;
+                                }
                             }
 
                             batchTrips.push({
@@ -1656,7 +1669,7 @@
                 }
             }
             if (searchText) {
-                filtered = filtered.filter(t => t.client.toLowerCase().includes(searchText) || t.route.toLowerCase().includes(searchText) || t.id.toString().includes(searchText));
+                filtered = filtered.filter(t => t.client.toLowerCase().includes(searchText) || t.route.toLowerCase().includes(searchText) || t.id.toString().includes(searchText) || formatOrderId(t.id).toLowerCase().includes(searchText));
             }
 
             // Orden fijo: del viaje más cercano al más antiguo
@@ -1769,7 +1782,7 @@
 
             document.body.style.overflow = 'hidden';
 
-            document.getElementById('trip-modal-title').innerText = `Viaje #${trip.id}`;
+            document.getElementById('trip-modal-title').innerText = `Viaje ${formatOrderId(trip.id)}`;
 
             const fullName = capitalizeName(trip.client);
             const email = (trip.email || '').toLowerCase();
@@ -1914,8 +1927,10 @@
                 return;
             }
 
-            // ── Viajes internos: lógica independiente (no aplican fees, roundtrip ni divisiones) ──
-            if (trip && trip.type === 'interno') {
+            // ── Viajes internos o cotizaciones con precio por viaje: lógica independiente ──
+            // (no aplican fees, roundtrip ni divisiones — cada viaje tiene su propio precio)
+            const tripHasCustomSubtotal = trip && parseFloat(trip.viaje_subtotal || 0) > 0;
+            if (trip && (trip.type === 'interno' || tripHasCustomSubtotal)) {
                 const internoSubtotal = parseFloat(trip.viaje_subtotal) || parseFloat(trip.precio_neto) || 0;
 
                 if (order.payment_method_title) {

@@ -213,8 +213,16 @@ function saveOrderToDB($pdo, $order)
         if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', $dateStr, $matches)) {
             return $matches[3] . '-' . str_pad($matches[1], 2, '0', STR_PAD_LEFT) . '-' . str_pad($matches[2], 2, '0', STR_PAD_LEFT);
         }
+        if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/', $dateStr, $matches)) {
+            $year = '20' . $matches[3];
+            return $year . '-' . str_pad($matches[1], 2, '0', STR_PAD_LEFT) . '-' . str_pad($matches[2], 2, '0', STR_PAD_LEFT);
+        }
         if (preg_match('/^(\d{1,2})-(\d{1,2})-(\d{4})$/', $dateStr, $matches)) {
             return $matches[3] . '-' . str_pad($matches[1], 2, '0', STR_PAD_LEFT) . '-' . str_pad($matches[2], 2, '0', STR_PAD_LEFT);
+        }
+        if (preg_match('/^(\d{1,2})-(\d{1,2})-(\d{2})$/', $dateStr, $matches)) {
+            $year = '20' . $matches[3];
+            return $year . '-' . str_pad($matches[1], 2, '0', STR_PAD_LEFT) . '-' . str_pad($matches[2], 2, '0', STR_PAD_LEFT);
         }
         if (preg_match('/^\d{4}-\d{2}-\d{2}/', $dateStr)) {
             return substr($dateStr, 0, 10);

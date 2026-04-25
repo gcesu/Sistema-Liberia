@@ -1739,6 +1739,14 @@
       ).join(" ");
     }
 
+    // Cotizaciones nuevas usan IDs >= 10,000,000 (offset para no chocar con WooCommerce).
+    // Se muestran como "C-1", "C-2", etc. Reservas normales se muestran como "#123".
+    function formatOrderId(id) {
+      const n = Number(id);
+      if (n >= 10000000) return `C-${n - 9999999}`;
+      return `#${n}`;
+    }
+
     window.refreshData = function (page = 1) {
       // Reiniciar estado y forzar una nueva corrida de indexación aunque haya una en curso
       allTrips = [];
@@ -1975,7 +1983,7 @@
       try {
         while (keepFetching) {
           const response = await fetch(
-            `${API_PROXY}?per_page=100&page=${page}&after=${START_DATE_FILTER}&orderby=date&order=desc&include_completed_cot=1`,
+            `${API_PROXY}?per_page=100&page=${page}&orderby=date&order=desc&include_completed_cot=1`,
           );
 
           if (!response.ok) throw new Error("Error API");
@@ -2363,7 +2371,11 @@
 
       // Calcular el monto por viaje usando la misma lógica que el resumen financiero
       let ratePerTrip = '$___';
-      if (order.total) {
+      const tripViajeSubtotal = parseFloat(trip.viaje_subtotal || 0);
+      if (tripViajeSubtotal > 0) {
+        // Cotizaciones con precio por viaje — usar el valor directamente (sin división)
+        ratePerTrip = `$${tripViajeSubtotal % 1 === 0 ? tripViajeSubtotal.toFixed(0) : tripViajeSubtotal.toFixed(2)}`;
+      } else if (order.total) {
         let tripSubtotal = null;
         if (trip.item_index !== undefined && order.line_items) {
           const originalIdx = trip.item_index >= 1000 ? trip.item_index - 1000 : trip.item_index;
@@ -2416,7 +2428,11 @@
       const totalViajes = order.viajes?.length || order.line_items?.length || 1;
       let ratePerTrip = '$___';
 
-      if (order.total) {
+      const tripViajeSubtotalEmail = parseFloat(trip.viaje_subtotal || 0);
+      if (tripViajeSubtotalEmail > 0) {
+        // Cotizaciones con precio por viaje — usar el valor directamente (sin división)
+        ratePerTrip = `$${tripViajeSubtotalEmail % 1 === 0 ? tripViajeSubtotalEmail.toFixed(0) : tripViajeSubtotalEmail.toFixed(2)}`;
+      } else if (order.total) {
         let tripSubtotal = null;
         if (trip.item_index !== undefined && order.line_items) {
           const originalIdx = trip.item_index >= 1000 ? trip.item_index - 1000 : trip.item_index;
@@ -2591,7 +2607,8 @@
           (t) =>
             t.client.toLowerCase().includes(searchText) ||
             t.route.toLowerCase().includes(searchText) ||
-            t.id.toString().includes(searchText),
+            t.id.toString().includes(searchText) ||
+            formatOrderId(t.id).toLowerCase().includes(searchText),
         );
       }
 
@@ -2614,7 +2631,7 @@
 
           const tr = document.createElement("tr");
           tr.innerHTML = `
-                        <td data-label="ID" class="pl-6 font-bold text-gray-400">#${trip.id}</td>
+                        <td data-label="ID" class="pl-6 font-bold text-gray-400">${formatOrderId(trip.id)}</td>
                         <td data-label="Cliente">
                             <div class="flex items-center">
                                 <div class="client-avatar">${initials}</div>
@@ -2679,7 +2696,7 @@
       document.body.style.overflow = "hidden";
 
       document.getElementById("trip-modal-title").innerText =
-        `Viaje #${trip.id}`;
+        `Viaje ${formatOrderId(trip.id)}`;
       document.getElementById("trip-btn-save").classList.add("hidden");
 
       const statusEl = document.getElementById("trip-det-status-pill");
@@ -3013,8 +3030,10 @@
       const container = document.getElementById('trip-payment-breakdown');
       container.innerHTML = '';
 
-      // ── Viajes internos: lógica independiente (no aplican fees, roundtrip ni divisiones) ──
-      if (trip && trip.type === 'interno') {
+      // ── Viajes internos o cotizaciones con precio por viaje: lógica independiente ──
+      // (no aplican fees, roundtrip ni divisiones — cada viaje tiene su propio precio)
+      const tripHasCustomSubtotal = trip && parseFloat(trip.viaje_subtotal || 0) > 0;
+      if (trip && (trip.type === 'interno' || tripHasCustomSubtotal)) {
         const internoSubtotal = parseFloat(trip.viaje_subtotal) || parseFloat(trip.precio_neto) || 0;
 
         if (order.payment_method_title) {

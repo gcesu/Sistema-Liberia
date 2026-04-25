@@ -15,21 +15,222 @@ header('Cache-Control: no-cache, no-store, must-revalidate');
 header('Pragma: no-cache');
 header('Expires: 0');
 
-// Verificar autenticación (igual que Reservas)
-if (!isset($_SESSION['user_id'])) {
+// CORS para permitir peticiones desde el sitio WordPress
+header('Access-Control-Allow-Origin: https://liberiaairportshuttle.com');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, X-Session-Token');
+
+// Preflight OPTIONS
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
+
+$method = $_SERVER['REQUEST_METHOD'];
+
+// POST es público (formulario de cotización desde WordPress)
+// GET, PUT, DELETE requieren autenticación
+if ($method !== 'POST' && !isset($_SESSION['user_id'])) {
     http_response_code(401);
     echo json_encode(['error' => 'No autorizado']);
     exit;
 }
 
-$method = $_SERVER['REQUEST_METHOD'];
+// =============================================================================
+// POST: Crear Cotización desde formulario público (WordPress)
+// =============================================================================
+if ($method === 'POST') {
+    $input = json_decode(file_get_contents('php://input'), true);
+
+    if (!$input) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Invalid request body']);
+        exit;
+    }
+
+    $client = $input['client'] ?? [];
+    $trips  = $input['trips'] ?? [];
+    $notes  = $input['notes'] ?? '';
+
+    // Validación mínima
+    if (empty($client['name']) || empty($client['email']) || empty($client['phone']) || empty($trips)) {
+        http_response_code(422);
+        echo json_encode(['error' => 'Missing required fields']);
+        exit;
+    }
+
+    try {
+        // Tomar datos del primer viaje como referencia principal de la cotización
+        $firstTrip   = $trips[0];
+        $tripType    = $firstTrip['type'] ?? 'arrival';
+        $origen      = '';
+        $destino     = '';
+        $fechaViaje  = null;
+        $horaViaje   = null;
+
+        if ($tripType === 'arrival') {
+            $origen     = 'Airport LIR';
+            $destino    = $firstTrip['arrival_hotel'] ?? '';
+            $fechaViaje = $firstTrip['arrival_date'] ?? null;
+            $horaViaje  = $firstTrip['arrival_time'] ?? null;
+        } elseif ($tripType === 'departure') {
+            $origen     = $firstTrip['departure_hotel'] ?? '';
+            $destino    = 'Airport LIR';
+            $fechaViaje = $firstTrip['departure_date'] ?? null;
+            $horaViaje  = $firstTrip['departure_time'] ?? null;
+        } elseif ($tripType === 'roundtrip') {
+            $origen     = 'Airport LIR';
+            $destino    = $firstTrip['rt_hotel'] ?? '';
+            $fechaViaje = $firstTrip['rt_arrival_date'] ?? null;
+            $horaViaje  = $firstTrip['rt_arrival_time'] ?? null;
+        } elseif ($tripType === 'internal') {
+            $origen     = $firstTrip['internal_pickup'] ?? '';
+            $destino    = $firstTrip['internal_dropoff'] ?? '';
+            $fechaViaje = $firstTrip['internal_date'] ?? null;
+            $horaViaje  = $firstTrip['internal_time'] ?? null;
+        }
+
+        $pm = $client['payment_method'] ?? '';
+        if ($pm === 'cash') $metodo_pago = 'Cash';
+        elseif ($pm === 'credit_card') $metodo_pago = 'Credit Card';
+        elseif ($pm === 'paypal') $metodo_pago = 'PayPal';
+        else $metodo_pago = $pm;
+
+        // Generar ID manualmente (la columna no es AUTO_INCREMENT).
+        // Se usa un rango >= 10,000,000 para evitar conflictos con IDs de WooCommerce.
+        // El frontend muestra estos IDs como "C-N" restando el offset (10000000 -> "C-1").
+        $maxStmt = $pdo->query("
+            SELECT GREATEST(
+                COALESCE((SELECT MAX(id) FROM cotizaciones), 0),
+                COALESCE((SELECT MAX(id) FROM reservas), 0),
+                9999999
+            ) AS max_id
+        ");
+        $cotizacionId = intval($maxStmt->fetchColumn()) + 1;
+
+        // 1. Insertar en cotizaciones
+        $stmt = $pdo->prepare("
+            INSERT INTO cotizaciones (
+                id, status, status_viaje, date_created,
+                cliente_nombre, cliente_email, cliente_telefono, cliente_pais,
+                pasajeros, origen, hotel_nombre, fecha_viaje, hora_viaje,
+                metodo_pago, subtotal, total, raw_data,
+                nota_cliente, privacy_show_email, privacy_show_phone, privacy_show_financiero
+            ) VALUES (
+                ?, 'pending', 'pending', NOW(),
+                ?, ?, ?, ?,
+                ?, ?, ?, ?, ?,
+                ?, 0, 0, ?,
+                ?, '0', '0', '1'
+            )
+        ");
+        $stmt->execute([
+            $cotizacionId,
+            $client['name'],
+            $client['email'],
+            $client['phone'],
+            $client['country'] ?? '',
+            intval($client['passengers']) ?: 1,
+            $origen,
+            $destino,
+            $fechaViaje,
+            $horaViaje,
+            $metodo_pago,
+            json_encode($input),
+            $notes,
+        ]);
+
+        // 2. Insertar copia en reservas (es_cotizacion = 1)
+        $stmtRes = $pdo->prepare("
+            INSERT INTO reservas (
+                id, status, date_created,
+                cliente_nombre, cliente_email, cliente_telefono, cliente_pais,
+                pasajeros, hotel_nombre, metodo_pago,
+                subtotal, total, raw_data, nota_cliente, es_cotizacion
+            ) VALUES (
+                ?, 'pending', NOW(),
+                ?, ?, ?, ?,
+                ?, ?, ?,
+                0, 0, ?, ?, 1
+            )
+        ");
+        $stmtRes->execute([
+            $cotizacionId,
+            $client['name'],
+            $client['email'],
+            $client['phone'],
+            $client['country'] ?? '',
+            intval($client['passengers']) ?: 1,
+            $destino,
+            $metodo_pago,
+            json_encode($input),
+            $notes,
+        ]);
+
+        // 3. Insertar viajes individuales
+        $itemIndex = 0;
+        foreach ($trips as $trip) {
+            $tipo = $trip['type'] ?? 'arrival';
+
+            if ($tipo === 'arrival') {
+                insertViaje($pdo, $cotizacionId, $itemIndex++, 'llegada',
+                    $trip['arrival_date'] ?? null,
+                    $trip['arrival_time'] ?? null,
+                    $trip['arrival_flight'] ?? null,
+                    intval($client['passengers']) ?: 1,
+                    $trip['arrival_hotel'] ?? null
+                );
+            } elseif ($tipo === 'departure') {
+                insertViaje($pdo, $cotizacionId, $itemIndex++, 'salida',
+                    $trip['departure_date'] ?? null,
+                    $trip['departure_time'] ?? null,
+                    $trip['departure_flight'] ?? null,
+                    intval($client['passengers']) ?: 1,
+                    $trip['departure_hotel'] ?? null
+                );
+            } elseif ($tipo === 'roundtrip') {
+                insertViaje($pdo, $cotizacionId, $itemIndex++, 'llegada',
+                    $trip['rt_arrival_date'] ?? null,
+                    $trip['rt_arrival_time'] ?? null,
+                    $trip['rt_arrival_flight'] ?? null,
+                    intval($client['passengers']) ?: 1,
+                    $trip['rt_hotel'] ?? null
+                );
+                insertViaje($pdo, $cotizacionId, $itemIndex++, 'salida',
+                    $trip['rt_departure_date'] ?? null,
+                    $trip['rt_departure_time'] ?? null,
+                    $trip['rt_departure_flight'] ?? null,
+                    intval($client['passengers']) ?: 1,
+                    $trip['rt_hotel'] ?? null
+                );
+            } elseif ($tipo === 'internal') {
+                $ruta = ($trip['internal_pickup'] ?? '') . ' → ' . ($trip['internal_dropoff'] ?? '');
+                insertViaje($pdo, $cotizacionId, $itemIndex++, 'interno',
+                    $trip['internal_date'] ?? null,
+                    $trip['internal_time'] ?? null,
+                    null,
+                    intval($client['passengers']) ?: 1,
+                    $ruta
+                );
+            }
+        }
+
+        echo json_encode(['success' => true, 'id' => $cotizacionId]);
+
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+    exit;
+}
 
 // =============================================================================
 // GET: Obtener Cotizaciones
 // =============================================================================
 if ($method === 'GET') {
     // Parámetros de filtro
-    $id = isset($_GET['order_id']) ? intval($_GET['order_id']) : null;
+    $hasId = isset($_GET['order_id']);
+    $id = $hasId ? intval($_GET['order_id']) : null;
     $status = isset($_GET['status']) ? $_GET['status'] : null;
     $search = isset($_GET['search']) ? $_GET['search'] : null;
 
@@ -39,7 +240,7 @@ if ($method === 'GET') {
     $offset = ($page - 1) * $limit;
 
     try {
-        if ($id) {
+        if ($hasId) {
             // Obtener una sola cotización
             $stmt = $pdo->prepare("SELECT * FROM cotizaciones WHERE id = ?");
             $stmt->execute([$id]);
@@ -103,14 +304,14 @@ if ($method === 'GET') {
 // =============================================================================
 elseif ($method === 'PUT') {
     // Leer el ID desde query param o body
-    $id = isset($_GET['order_id']) ? intval($_GET['order_id']) : null;
     $input = json_decode(file_get_contents('php://input'), true);
 
-    if (!$id) {
+    if (!isset($_GET['order_id'])) {
         http_response_code(400);
         echo json_encode(['error' => 'Falta el ID de la cotización']);
         exit;
     }
+    $id = intval($_GET['order_id']);
 
     try {
         // Campos permitidos para actualizar
@@ -124,9 +325,22 @@ elseif ($method === 'PUT') {
             $params[] = $input['status'];
         }
 
-        // 2. Estado de cotización (se guarda en cotizaciones Y en reservas)
+        // 2. Estado de cotización (se sincroniza entre cotizaciones.status, cotizaciones.status_viaje y reservas.status)
+        $shouldSendCompletedEmail = false;
         if (isset($input['status_viaje'])) {
+            // Detectar transición a "completed" para disparar el correo de confirmación
+            $prevStmt = $pdo->prepare("SELECT status_viaje FROM cotizaciones WHERE id = ?");
+            $prevStmt->execute([$id]);
+            $prevStatus = $prevStmt->fetchColumn();
+            if ($input['status_viaje'] === 'completed' && $prevStatus !== 'completed') {
+                $shouldSendCompletedEmail = true;
+            }
+
             $fieldsToUpdate[] = "status_viaje = ?";
+            $params[] = $input['status_viaje'];
+
+            // Mantener cotizaciones.status sincronizado para que la lista muestre el estado correcto
+            $fieldsToUpdate[] = "status = ?";
             $params[] = $input['status_viaje'];
 
             // Sincronizar estado en tabla reservas
@@ -172,8 +386,21 @@ elseif ($method === 'PUT') {
 
         echo json_encode(transformarCotizacionParaFrontend($updatedRow));
 
-        // Opcional: Sincronizar cambios hacia WooCommerce (si aplica)
-        // syncToWooCommerce($id, $input);
+        // Disparar correo de confirmación si la cotización pasó a "completed".
+        // Se hace después de devolver la respuesta para no bloquear al cliente.
+        if (!empty($shouldSendCompletedEmail)) {
+            // Cerrar la conexión con el cliente (FastCGI/PHP-FPM) para que la espera
+            // del SMTP no afecte la respuesta del PUT.
+            if (function_exists('fastcgi_finish_request')) {
+                fastcgi_finish_request();
+            }
+            try {
+                require_once __DIR__ . '/lib/email_sender.php';
+                sendQuoteCompletedEmail($pdo, $id);
+            } catch (Throwable $e) {
+                error_log("Error enviando correo de cotización $id completed: " . $e->getMessage());
+            }
+        }
 
     } catch (PDOException $e) {
         http_response_code(500);
@@ -186,12 +413,12 @@ elseif ($method === 'PUT') {
 // DELETE: Borrar Cotización
 // =============================================================================
 elseif ($method === 'DELETE') {
-    $id = isset($_GET['order_id']) ? intval($_GET['order_id']) : null;
-    if (!$id) {
+    if (!isset($_GET['order_id'])) {
         http_response_code(400);
         echo json_encode(['error' => 'Falta ID']);
         exit;
     }
+    $id = intval($_GET['order_id']);
 
     try {
         $pdo->prepare("DELETE FROM viajes WHERE reserva_id = ?")->execute([$id]);
@@ -230,6 +457,15 @@ elseif ($method === 'DELETE') {
 // =============================================================================
 // FUNCIONES AUXILIARES
 // =============================================================================
+
+function insertViaje($pdo, $reservaId, $itemIndex, $tipo, $fecha, $hora, $vuelo, $pax, $destino)
+{
+    $stmt = $pdo->prepare("
+        INSERT INTO viajes (reserva_id, item_index, tipo, fecha, hora, vuelo, pax, destino)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ");
+    $stmt->execute([$reservaId, $itemIndex, $tipo, $fecha, $hora, $vuelo, $pax, $destino]);
+}
 
 function transformarCotizacionParaFrontend($r)
 {
