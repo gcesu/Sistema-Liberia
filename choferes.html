@@ -833,6 +833,14 @@
                 flex-direction: column !important;
             }
         }
+
+        /* Grid del modal Administrar Choferes — minmax(0,…) garantiza que
+           ninguna columna desborde el ancho del contenedor */
+        .grid-chofer:not(.hidden) {
+            display: grid;
+            grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.3fr) minmax(0, 1.4fr) minmax(0, 1.5fr);
+            align-items: center;
+        }
     </style>
 </head>
 
@@ -2164,7 +2172,7 @@
     <!-- ══════════════════════════════════════════════════ -->
     <div id="modal-admin-choferes" class="fixed inset-0 hidden flex items-center justify-center p-6"
         style="background:rgba(0,0,0,0.5); z-index:9999">
-        <div class="bg-white rounded-2xl shadow-2xl flex flex-col" style="width:90vw; max-width:900px; height:85vh">
+        <div class="bg-white rounded-2xl shadow-2xl flex flex-col" style="width:96vw; max-width:1100px; height:85vh">
 
             <!-- Header -->
             <div class="flex items-center justify-between px-6 py-3 border-b bg-[#002a3f] text-white rounded-t-2xl shrink-0">
@@ -2189,29 +2197,22 @@
                     </button>
                 </div>
                 <p id="admin-chofer-error" class="text-red-500 text-xs mt-1.5 hidden"></p>
-                <p class="text-[10px] text-gray-400 mt-1.5">Link param → <span class="font-mono">/choferes.html?chofer=<b>[param]</b></span></p>
             </div>
 
             <!-- Tabla (ocupa el resto del espacio) -->
-            <div class="flex-1 overflow-y-auto px-6 py-3">
+            <div class="flex-1 overflow-y-auto overflow-x-hidden min-w-0 px-6 py-3">
                 <div id="admin-choferes-loading" class="text-center py-8 text-gray-400 text-sm">Cargando...</div>
-                <table id="admin-choferes-table" class="w-full hidden text-xs" style="table-layout:fixed">
-                    <colgroup>
-                        <col style="width:28%">
-                        <col style="width:19%">
-                        <col style="width:35%">
-                        <col style="width:18%">
-                    </colgroup>
-                    <thead class="sticky top-0 bg-white">
-                        <tr class="text-[10px] uppercase tracking-widest text-gray-400 border-b">
-                            <th class="text-left py-2 pr-2">Nombre</th>
-                            <th class="text-left py-2 pr-2">Teléfono</th>
-                            <th class="text-left py-2 pr-2">Link Param</th>
-                            <th class="text-right py-2">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="admin-choferes-tbody"></tbody>
-                </table>
+                <div id="admin-choferes-table" class="hidden text-xs">
+                    <!-- Encabezado -->
+                    <div class="grid-chofer text-[10px] uppercase tracking-widest text-gray-400 border-b">
+                        <div class="text-left py-2 pr-2">Nombre</div>
+                        <div class="text-left py-2 pr-2">Teléfono</div>
+                        <div class="text-left py-2 pr-2">Link Chofer</div>
+                        <div class="text-right py-2">Acciones</div>
+                    </div>
+                    <!-- Filas -->
+                    <div id="admin-choferes-tbody"></div>
+                </div>
             </div>
 
             <!-- Footer -->
@@ -2287,52 +2288,46 @@
                     ? `<span class="font-mono text-[11px] text-blue-600">${c.link_param}</span>`
                     : '<span class="text-gray-300 italic text-xs">Sin link</span>';
                 return `
-                <tr id="chofer-row-${c.id}" class="border-b hover:bg-gray-50">
-                    <td class="py-2 pr-2 font-semibold text-[#002a3f] truncate">${escHtml(c.nombre)}</td>
-                    <td class="py-2 pr-2 text-gray-500 truncate">${escHtml(c.telefono || '—')}</td>
-                    <td class="py-2 pr-2">
-                        <div class="flex items-center gap-1">
-                            ${linkDisplay}
-                            ${c.link_param ? `<button onclick="copyChoferLink('${escHtml(c.link_param)}')"
-                                class="shrink-0 text-gray-400 hover:text-[#002a3f] border border-gray-200 rounded px-1.5 py-0.5 hover:bg-gray-100 text-[10px]">
-                                Copiar
-                            </button>` : ''}
-                        </div>
-                    </td>
-                    <td class="py-2 text-right">
-                        <div class="flex justify-end gap-1">
-                            <button onclick="startEditChofer(${c.id})"
-                                class="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded transition-all">
-                                Editar
-                            </button>
-                            <button onclick="deleteChofer(${c.id}, '${escHtml(c.nombre)}')"
-                                class="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded transition-all">
-                                Eliminar
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-                <tr id="chofer-edit-row-${c.id}" class="hidden bg-blue-50/50">
-                    <td colspan="4" class="px-2 py-2">
-                        <div class="flex flex-wrap gap-1.5 items-center">
-                            <input type="text" id="edit-nombre-${c.id}" value="${escHtml(c.nombre)}" placeholder="Nombre *"
-                                class="flex-1 min-w-[120px] px-2 py-1.5 text-xs border border-blue-200 rounded-lg focus:outline-none focus:border-[#002a3f]">
-                            <input type="text" id="edit-telefono-${c.id}" value="${escHtml(c.telefono || '')}" placeholder="Teléfono"
-                                class="w-28 px-2 py-1.5 text-xs border border-blue-200 rounded-lg focus:outline-none focus:border-[#002a3f]">
-                            <input type="text" id="edit-link-${c.id}" value="${escHtml(c.link_param || '')}" placeholder="Link param"
-                                class="w-28 px-2 py-1.5 text-xs border border-blue-200 rounded-lg focus:outline-none focus:border-[#002a3f] font-mono">
-                            <button onclick="saveEditChofer(${c.id})"
-                                class="px-3 py-1.5 bg-[#002a3f] hover:bg-[#003d5c] text-white text-xs font-bold uppercase rounded-lg transition-all">
-                                Guardar
-                            </button>
-                            <button onclick="cancelEditChofer(${c.id})"
-                                class="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold uppercase rounded-lg transition-all">
-                                Cancelar
-                            </button>
-                        </div>
-                        <p id="edit-error-${c.id}" class="text-red-500 text-[10px] mt-1 hidden"></p>
-                    </td>
-                </tr>`;
+                <div id="chofer-row-${c.id}" class="grid-chofer border-b hover:bg-gray-50">
+                    <div class="py-2 pr-2 font-semibold text-[#002a3f] truncate">${escHtml(c.nombre)}</div>
+                    <div class="py-2 pr-2 text-gray-500 truncate">${escHtml(c.telefono || '—')}</div>
+                    <div class="py-2 pr-2 flex items-center gap-1 min-w-0">
+                        <span class="truncate min-w-0">${linkDisplay}</span>
+                        ${c.link_param ? `<button onclick="copyChoferLink(this, '${escHtml(c.link_param)}')"
+                            class="shrink-0 text-gray-400 hover:text-[#002a3f] border border-gray-200 rounded px-1.5 py-0.5 hover:bg-gray-100 text-[10px]">
+                            Copiar
+                        </button>` : ''}
+                    </div>
+                    <div class="py-2 flex justify-end gap-1 whitespace-nowrap">
+                        <button onclick="startEditChofer(${c.id})"
+                            class="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded transition-all">
+                            Editar
+                        </button>
+                        <button onclick="deleteChofer(${c.id}, '${escHtml(c.nombre)}')"
+                            class="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded transition-all">
+                            Eliminar
+                        </button>
+                    </div>
+                </div>
+                <div id="chofer-edit-row-${c.id}" class="hidden bg-blue-50/50 border-b px-2 py-2">
+                    <div class="flex flex-wrap gap-1.5 items-center">
+                        <input type="text" id="edit-nombre-${c.id}" value="${escHtml(c.nombre)}" placeholder="Nombre *"
+                            class="flex-1 min-w-[120px] px-2 py-1.5 text-xs border border-blue-200 rounded-lg focus:outline-none focus:border-[#002a3f]">
+                        <input type="text" id="edit-telefono-${c.id}" value="${escHtml(c.telefono || '')}" placeholder="Teléfono"
+                            class="w-28 px-2 py-1.5 text-xs border border-blue-200 rounded-lg focus:outline-none focus:border-[#002a3f]">
+                        <input type="text" id="edit-link-${c.id}" value="${escHtml(c.link_param || '')}" placeholder="Link param"
+                            class="w-28 px-2 py-1.5 text-xs border border-blue-200 rounded-lg focus:outline-none focus:border-[#002a3f] font-mono">
+                        <button onclick="saveEditChofer(${c.id})"
+                            class="px-3 py-1.5 bg-[#002a3f] hover:bg-[#003d5c] text-white text-xs font-bold uppercase rounded-lg transition-all">
+                            Guardar
+                        </button>
+                        <button onclick="cancelEditChofer(${c.id})"
+                            class="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold uppercase rounded-lg transition-all">
+                            Cancelar
+                        </button>
+                    </div>
+                    <p id="edit-error-${c.id}" class="text-red-500 text-[10px] mt-1 hidden"></p>
+                </div>`;
             }).join('');
         }
 
@@ -2416,15 +2411,35 @@
             }
         }
 
-        function copyChoferLink(link_param) {
+        function copyChoferLink(btn, link_param) {
             const url = getChoferLink(link_param);
-            navigator.clipboard.writeText(url).then(() => {
-                // Feedback visual momentáneo
-                event.target.textContent = '✓ Copiado';
-                setTimeout(() => { event.target.textContent = 'Copiar'; }, 1500);
-            }).catch(() => {
-                prompt('Copia este link:', url);
-            });
+
+            const showCopied = () => {
+                btn.textContent = '✓ Copiado';
+                btn.classList.add('text-green-600', 'border-green-300');
+                setTimeout(() => {
+                    btn.textContent = 'Copiar';
+                    btn.classList.remove('text-green-600', 'border-green-300');
+                }, 1500);
+            };
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(showCopied).catch(() => fallbackCopy(url, showCopied));
+            } else {
+                fallbackCopy(url, showCopied);
+            }
+        }
+
+        function fallbackCopy(text, onDone) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand('copy'); } catch (e) {}
+            document.body.removeChild(ta);
+            if (onDone) onDone();
         }
 
         function showAdminError(el, msg) {
