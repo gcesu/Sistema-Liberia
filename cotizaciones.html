@@ -1259,6 +1259,16 @@
                     choferOptions += `<option value="${c}" ${selected}>${c}</option>`;
                 });
 
+                // Subchofer options (legacy fallback si el nombre no está en la lista)
+                const currentSubchofer = v.subchofer || '';
+                let subchoferOptions = '<option value="">No asignado</option>';
+                if (currentSubchofer && !CHOFERES.includes(currentSubchofer))
+                    subchoferOptions += `<option value="${currentSubchofer}" selected>${currentSubchofer}</option>`;
+                CHOFERES.forEach(c => {
+                    const selected = (currentSubchofer === c) ? 'selected' : '';
+                    subchoferOptions += `<option value="${c}" ${selected}>${c}</option>`;
+                });
+
                 const card = document.createElement('div');
                 card.className = 'operation-card';
                 card.innerHTML = `
@@ -1283,7 +1293,7 @@
                                     </div>
                                     <div>
                                         <p class="meta-field-label">👥 Subchofer</p>
-                                        <input type="text" id="input-${prefix}_subchofer" oninput="checkForChanges()" class="input-editable bg-white" placeholder="Nombre del subchofer" value="${v.subchofer || ''}">
+                                        <select id="input-${prefix}_subchofer" onchange="checkForChanges()" class="input-editable bg-white">${subchoferOptions}</select>
                                     </div>
                                 </div>
                                 <div>
@@ -1304,8 +1314,9 @@
                     </div>`;
                 container.appendChild(card);
 
-                // Init searchable select for chofer
+                // Init searchable select for chofer y subchofer
                 initSearchableSelect(`input-${prefix}_chofer`);
+                initSearchableSelect(`input-${prefix}_subchofer`);
                 // Auto-resize textareas
                 requestAnimationFrame(() => {
                     autoResizeTextarea(document.getElementById(`input-${prefix}_nota_choferes`));
@@ -1353,10 +1364,10 @@
         function sendDriverContact(orderId, viajeId) {
             const viaje = currentOrderViajes.find(v => v.id === viajeId);
             if (!viaje) return;
-            const choferName = viaje.chofer || document.getElementById(`input-cot_viaje_${viajeId}_chofer`)?.value || '';
-            if (!choferName) { alert('No hay chofer asignado a este viaje.'); return; }
+            const choferName = viaje.subchofer || document.getElementById(`input-cot_viaje_${viajeId}_subchofer`)?.value || '';
+            if (!choferName) { alert('No hay subchofer asignado a este viaje.'); return; }
             const phone = CHOFERES_PHONE[choferName];
-            if (!phone) { alert(`No se encontró teléfono para el chofer "${choferName}".`); return; }
+            if (!phone) { alert(`No se encontró teléfono para el subchofer "${choferName}".`); return; }
             const order = allOrders.find(o => o.id === orderId);
             if (!order) return;
             const cleanPhone = phone.replace(/[\s\-]/g, '');
@@ -1397,7 +1408,7 @@
 
             // Método de pago — editable (el cliente no lo selecciona en el formulario)
             const currentMethod = o.payment_method_title || '';
-            const methodOptions = ['', 'Cash', 'Credit Card', 'PayPal'];
+            const methodOptions = ['', 'Cash', 'Credit Card', 'PayPal', 'Paypal?'];
             // Si el método actual no está en la lista (legacy de WooCommerce), incluirlo
             if (currentMethod && !methodOptions.includes(currentMethod)) {
                 methodOptions.push(currentMethod);

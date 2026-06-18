@@ -850,6 +850,10 @@
         <div class="mt-6 md:mt-8 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <h2 class="text-2xl md:text-3xl font-bold text-[#002a3f] title-font">Cronograma de Choferes <span
                     class="text-sm font-normal text-gray-400">v1.2</span></h2>
+            <button id="btn-admin-choferes" onclick="openAdminChoferes()"
+                class="px-4 py-2 bg-[#002a3f] hover:bg-[#003d5c] text-white text-xs font-bold uppercase tracking-wider rounded-lg transition-all shadow-sm flex items-center gap-2">
+                ⚙️ Administrar Choferes
+            </button>
         </div>
 
         <!-- Header especial para vista de chofer -->
@@ -1172,6 +1176,7 @@
         let allTrips = [];
         let datePicker;
         let isIndexing = false;
+        let CHOFER_MAP = {}; // link_param → nombre (dinámico desde BD)
 
         function getInitials(name) {
             if (!name) return "##";
@@ -1209,69 +1214,75 @@
 
         // Mapear parámetros URL a nombres reales de choferes
         function mapUrlParamToDriverName(param) {
-            const driverMap = {
-                'Pedro': 'Pedro',
-                'Fermin': 'Fermín',
-                'ManuelA': 'Manuel Alvarado',
-                'Alban': 'Albán',
-                'Chayo': 'Chayo',
-                'AlexF': 'Alex Fila',
-                'AlexM': 'Alex Montero',
-                'DanielG': 'Daniel (Guardia)',
-                'Marcos': 'Marcos (primo Fermín)',
-                'JoseC': 'Jose (Cartagena)',
-                'Rafa': 'Rafa',
-                'Kenneth': 'Kenneth (Belén)',
-                'Martin': 'Martín (La Cruz)',
-                'Gabriela': 'Gabriela',
-                'Tatiana': 'Tatiana (La Cruz)',
-                'Roger': 'Roger',
-                'JoseP': 'Jose (Pelón)',
-                'Esteban': 'Esteban',
-                'Julio': 'Julio',
-                'Don Manuel': 'Don Manuel',
-                'Rigoberto': 'Rigoberto'
-            };
-            return driverMap[param] || param;
+            return CHOFER_MAP[param] || param;
         }
 
-        window.onload = () => {
-            // Leer parámetros de URL
+        async function loadChoferMap() {
+            // Endpoint público — sin auth, usado cuando el chofer accede a su link
+            try {
+                const res = await fetch('api/chofer_map.php');
+                if (res.ok) CHOFER_MAP = await res.json();
+            } catch (e) { /* fallback: usa el param como nombre directo */ }
+        }
+
+        async function loadChoferes() {
+            // Con auth — usado en vista admin; también actualiza filtros
+            try {
+                const res = await fetch('api/choferes.php');
+                if (!res.ok) return;
+                const data = await res.json();
+                data.forEach(c => { if (c.link_param) CHOFER_MAP[c.link_param] = c.nombre; });
+                const names = data.map(c => c.nombre);
+                ['filter-driver', 'filter-subchofer'].forEach(filterId => {
+                    const sel = document.getElementById(filterId);
+                    if (!sel) return;
+                    const noAsignado = filterId === 'filter-subchofer'
+                        ? '<option value="no_asignado">Sin subchofer</option>'
+                        : '<option value="no_asignado">No asignado</option>';
+                    sel.innerHTML = `<option value="all">Todos</option>` +
+                        names.map(n => `<option value="${n}">${n}</option>`).join('') +
+                        noAsignado;
+                });
+            } catch (e) { /* mantiene opciones hardcoded si falla */ }
+        }
+
+        window.onload = async () => {
             const urlParams = new URLSearchParams(window.location.search);
             const choferParam = urlParams.get('chofer');
 
-            // Si hay chofer en URL, ocultar elementos y establecer filtro
             if (choferParam) {
+                // Vista pública del chofer — cargar mapa sin auth
+                await loadChoferMap();
+
                 const navbar = document.querySelector('admin-navbar');
                 const filterContainer = document.querySelector('.filter-container');
                 const title = document.querySelector('h2');
                 const main = document.querySelector('main');
                 const driverHeader = document.getElementById('driver-header');
+                const btnAdmin = document.getElementById('btn-admin-choferes');
 
                 if (navbar) navbar.style.display = 'none';
                 if (filterContainer) filterContainer.style.display = 'none';
                 if (title) title.parentElement.style.display = 'none';
                 if (main) main.style.paddingTop = '20px';
+                if (btnAdmin) btnAdmin.style.display = 'none';
 
-                // Convertir parámetro URL al nombre real del chofer
                 const realDriverName = mapUrlParamToDriverName(choferParam);
-                choferPublicoNombre = realDriverName; // permite bypass de auth en la API
+                choferPublicoNombre = realDriverName;
 
-                // Mostrar header del chofer con su nombre
                 if (driverHeader) {
                     driverHeader.classList.remove('hidden');
                     const displayName = realDriverName.replace(/\s*\(.*\)/, '');
                     document.getElementById('driver-schedule-title').innerText = `CRONOGRAMA DE ${displayName.toUpperCase()}`;
                 }
 
-                // Inicializar date picker para chofer
                 initDriverDatePicker();
 
-                // Establecer el valor del filtro de chofer
                 const driverSelect = document.getElementById('filter-driver');
-                if (driverSelect) {
-                    driverSelect.value = realDriverName;
-                }
+                if (driverSelect) driverSelect.value = realDriverName;
+            } else {
+                // Vista admin — cargar choferes con auth y popular filtros dinámicamente
+                await loadChoferes();
             }
 
             initDatePicker();
@@ -1730,6 +1741,12 @@
             if (driverFilter !== 'all') {
                 if (driverFilter === 'no_asignado') {
                     filtered = filtered.filter(t => !t.driver || t.driver.trim() === '' || t.driver === 'No asignado');
+                } else if (choferPublicoNombre) {
+                    // Vista pública: mostrar donde es chofer principal O subchofer
+                    filtered = filtered.filter(t =>
+                        (t.driver && t.driver.trim() === driverFilter) ||
+                        (t.subchofer && t.subchofer.trim() === driverFilter)
+                    );
                 } else {
                     filtered = filtered.filter(t => t.driver && t.driver.trim() === driverFilter);
                 }
@@ -2140,6 +2157,305 @@
             if (diff > 0) return `En ${diff} días`;
             return `Hace ${Math.abs(diff)} días`;
         }
+    </script>
+
+    <!-- ══════════════════════════════════════════════════ -->
+    <!-- MODAL ADMINISTRAR CHOFERES                         -->
+    <!-- ══════════════════════════════════════════════════ -->
+    <div id="modal-admin-choferes" class="fixed inset-0 hidden flex items-center justify-center p-6"
+        style="background:rgba(0,0,0,0.5); z-index:9999">
+        <div class="bg-white rounded-2xl shadow-2xl flex flex-col" style="width:90vw; max-width:900px; height:85vh">
+
+            <!-- Header -->
+            <div class="flex items-center justify-between px-6 py-3 border-b bg-[#002a3f] text-white rounded-t-2xl shrink-0">
+                <h3 class="text-sm font-black uppercase tracking-widest">⚙️ Administrar Choferes</h3>
+                <button onclick="closeAdminChoferes()" class="text-white/60 hover:text-white text-2xl font-bold leading-none">&times;</button>
+            </div>
+
+            <!-- Agregar nuevo chofer -->
+            <div class="px-6 py-3 border-b bg-gray-50 shrink-0">
+                <p class="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Agregar Nuevo Chofer</p>
+                <div class="flex flex-wrap gap-2">
+                    <input type="text" id="new-chofer-nombre" placeholder="Nombre *"
+                        oninput="autoLinkParam()"
+                        class="flex-1 min-w-[130px] px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#002a3f]">
+                    <input type="text" id="new-chofer-telefono" placeholder="Teléfono"
+                        class="w-36 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#002a3f]">
+                    <input type="text" id="new-chofer-link" placeholder="Link param (auto)"
+                        class="w-40 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#002a3f] font-mono">
+                    <button onclick="addNewChofer()"
+                        class="px-4 py-1.5 bg-[#002a3f] hover:bg-[#003d5c] text-white text-xs font-bold uppercase tracking-wider rounded-lg transition-all whitespace-nowrap">
+                        + Agregar
+                    </button>
+                </div>
+                <p id="admin-chofer-error" class="text-red-500 text-xs mt-1.5 hidden"></p>
+                <p class="text-[10px] text-gray-400 mt-1.5">Link param → <span class="font-mono">/choferes.html?chofer=<b>[param]</b></span></p>
+            </div>
+
+            <!-- Tabla (ocupa el resto del espacio) -->
+            <div class="flex-1 overflow-y-auto px-6 py-3">
+                <div id="admin-choferes-loading" class="text-center py-8 text-gray-400 text-sm">Cargando...</div>
+                <table id="admin-choferes-table" class="w-full hidden text-xs" style="table-layout:fixed">
+                    <colgroup>
+                        <col style="width:28%">
+                        <col style="width:19%">
+                        <col style="width:35%">
+                        <col style="width:18%">
+                    </colgroup>
+                    <thead class="sticky top-0 bg-white">
+                        <tr class="text-[10px] uppercase tracking-widest text-gray-400 border-b">
+                            <th class="text-left py-2 pr-2">Nombre</th>
+                            <th class="text-left py-2 pr-2">Teléfono</th>
+                            <th class="text-left py-2 pr-2">Link Param</th>
+                            <th class="text-right py-2">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-choferes-tbody"></tbody>
+                </table>
+            </div>
+
+            <!-- Footer -->
+            <div class="px-6 py-3 border-t flex justify-end shrink-0 rounded-b-2xl">
+                <button onclick="closeAdminChoferes()"
+                    class="px-4 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold uppercase tracking-wider rounded-lg transition-all">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ── Administrar Choferes ──────────────────────────────
+        let adminChoferesData = [];
+
+        function generateLinkParam(nombre) {
+            return nombre
+                .normalize('NFD').replace(/[̀-ͯ]/g, '')
+                .replace(/[^a-zA-Z0-9\s]/g, '')
+                .trim()
+                .split(/\s+/)
+                .filter(Boolean)
+                .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+                .join('');
+        }
+
+        function autoLinkParam() {
+            const nombre = document.getElementById('new-chofer-nombre').value;
+            const linkInput = document.getElementById('new-chofer-link');
+            linkInput.value = generateLinkParam(nombre);
+        }
+
+        function getChoferLink(link_param) {
+            if (!link_param) return '';
+            return `${window.location.origin}/choferes.html?chofer=${encodeURIComponent(link_param)}`;
+        }
+
+        async function openAdminChoferes() {
+            document.getElementById('modal-admin-choferes').classList.remove('hidden');
+            document.getElementById('admin-choferes-loading').classList.remove('hidden');
+            document.getElementById('admin-choferes-table').classList.add('hidden');
+            document.getElementById('admin-chofer-error').classList.add('hidden');
+            document.getElementById('new-chofer-nombre').value = '';
+            document.getElementById('new-chofer-telefono').value = '';
+            document.getElementById('new-chofer-link').value = '';
+            await refreshAdminChoferesList();
+        }
+
+        function closeAdminChoferes() {
+            document.getElementById('modal-admin-choferes').classList.add('hidden');
+        }
+
+        async function refreshAdminChoferesList() {
+            try {
+                const res = await fetch('api/choferes.php');
+                if (!res.ok) throw new Error('Error al cargar');
+                adminChoferesData = await res.json();
+                renderAdminChoferesList();
+            } catch (e) {
+                document.getElementById('admin-choferes-loading').textContent = 'Error al cargar choferes.';
+            }
+        }
+
+        function renderAdminChoferesList() {
+            const tbody = document.getElementById('admin-choferes-tbody');
+            document.getElementById('admin-choferes-loading').classList.add('hidden');
+            document.getElementById('admin-choferes-table').classList.remove('hidden');
+
+            tbody.innerHTML = adminChoferesData.map(c => {
+                const link = getChoferLink(c.link_param);
+                const linkDisplay = c.link_param
+                    ? `<span class="font-mono text-[11px] text-blue-600">${c.link_param}</span>`
+                    : '<span class="text-gray-300 italic text-xs">Sin link</span>';
+                return `
+                <tr id="chofer-row-${c.id}" class="border-b hover:bg-gray-50">
+                    <td class="py-2 pr-2 font-semibold text-[#002a3f] truncate">${escHtml(c.nombre)}</td>
+                    <td class="py-2 pr-2 text-gray-500 truncate">${escHtml(c.telefono || '—')}</td>
+                    <td class="py-2 pr-2">
+                        <div class="flex items-center gap-1">
+                            ${linkDisplay}
+                            ${c.link_param ? `<button onclick="copyChoferLink('${escHtml(c.link_param)}')"
+                                class="shrink-0 text-gray-400 hover:text-[#002a3f] border border-gray-200 rounded px-1.5 py-0.5 hover:bg-gray-100 text-[10px]">
+                                Copiar
+                            </button>` : ''}
+                        </div>
+                    </td>
+                    <td class="py-2 text-right">
+                        <div class="flex justify-end gap-1">
+                            <button onclick="startEditChofer(${c.id})"
+                                class="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded transition-all">
+                                Editar
+                            </button>
+                            <button onclick="deleteChofer(${c.id}, '${escHtml(c.nombre)}')"
+                                class="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded transition-all">
+                                Eliminar
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                <tr id="chofer-edit-row-${c.id}" class="hidden bg-blue-50/50">
+                    <td colspan="4" class="px-2 py-2">
+                        <div class="flex flex-wrap gap-1.5 items-center">
+                            <input type="text" id="edit-nombre-${c.id}" value="${escHtml(c.nombre)}" placeholder="Nombre *"
+                                class="flex-1 min-w-[120px] px-2 py-1.5 text-xs border border-blue-200 rounded-lg focus:outline-none focus:border-[#002a3f]">
+                            <input type="text" id="edit-telefono-${c.id}" value="${escHtml(c.telefono || '')}" placeholder="Teléfono"
+                                class="w-28 px-2 py-1.5 text-xs border border-blue-200 rounded-lg focus:outline-none focus:border-[#002a3f]">
+                            <input type="text" id="edit-link-${c.id}" value="${escHtml(c.link_param || '')}" placeholder="Link param"
+                                class="w-28 px-2 py-1.5 text-xs border border-blue-200 rounded-lg focus:outline-none focus:border-[#002a3f] font-mono">
+                            <button onclick="saveEditChofer(${c.id})"
+                                class="px-3 py-1.5 bg-[#002a3f] hover:bg-[#003d5c] text-white text-xs font-bold uppercase rounded-lg transition-all">
+                                Guardar
+                            </button>
+                            <button onclick="cancelEditChofer(${c.id})"
+                                class="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold uppercase rounded-lg transition-all">
+                                Cancelar
+                            </button>
+                        </div>
+                        <p id="edit-error-${c.id}" class="text-red-500 text-[10px] mt-1 hidden"></p>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        function escHtml(str) {
+            return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        function startEditChofer(id) {
+            document.getElementById(`chofer-row-${id}`).classList.add('hidden');
+            document.getElementById(`chofer-edit-row-${id}`).classList.remove('hidden');
+        }
+
+        function cancelEditChofer(id) {
+            document.getElementById(`chofer-edit-row-${id}`).classList.add('hidden');
+            document.getElementById(`chofer-row-${id}`).classList.remove('hidden');
+        }
+
+        async function addNewChofer() {
+            const nombre     = document.getElementById('new-chofer-nombre').value.trim();
+            const telefono   = document.getElementById('new-chofer-telefono').value.trim();
+            const link_param = document.getElementById('new-chofer-link').value.trim();
+            const errEl      = document.getElementById('admin-chofer-error');
+
+            if (!nombre) { showAdminError(errEl, 'El nombre es requerido.'); return; }
+
+            try {
+                const res = await fetch('api/choferes.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nombre, telefono, link_param })
+                });
+                const data = await res.json();
+                if (!res.ok) { showAdminError(errEl, data.error || 'Error al guardar.'); return; }
+
+                errEl.classList.add('hidden');
+                document.getElementById('new-chofer-nombre').value = '';
+                document.getElementById('new-chofer-telefono').value = '';
+                document.getElementById('new-chofer-link').value = '';
+                await refreshAdminChoferesList();
+                reloadChofereFilters();
+            } catch (e) {
+                showAdminError(errEl, 'Error de red al guardar.');
+            }
+        }
+
+        async function saveEditChofer(id) {
+            const nombre     = document.getElementById(`edit-nombre-${id}`).value.trim();
+            const telefono   = document.getElementById(`edit-telefono-${id}`).value.trim();
+            const link_param = document.getElementById(`edit-link-${id}`).value.trim();
+            const errEl      = document.getElementById(`edit-error-${id}`);
+
+            if (!nombre) { showAdminError(errEl, 'El nombre es requerido.'); return; }
+
+            try {
+                const res = await fetch(`api/choferes.php?id=${id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nombre, telefono, link_param })
+                });
+                const data = await res.json();
+                if (!res.ok) { showAdminError(errEl, data.error || 'Error al guardar.'); return; }
+
+                await refreshAdminChoferesList();
+                reloadChofereFilters();
+            } catch (e) {
+                showAdminError(errEl, 'Error de red al guardar.');
+            }
+        }
+
+        async function deleteChofer(id, nombre) {
+            if (!confirm(`¿Eliminar a "${nombre}"? Esta acción no se puede deshacer.`)) return;
+
+            try {
+                const res = await fetch(`api/choferes.php?id=${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (!res.ok) { alert(data.error || 'Error al eliminar.'); return; }
+                await refreshAdminChoferesList();
+                reloadChofereFilters();
+            } catch (e) {
+                alert('Error de red al eliminar.');
+            }
+        }
+
+        function copyChoferLink(link_param) {
+            const url = getChoferLink(link_param);
+            navigator.clipboard.writeText(url).then(() => {
+                // Feedback visual momentáneo
+                event.target.textContent = '✓ Copiado';
+                setTimeout(() => { event.target.textContent = 'Copiar'; }, 1500);
+            }).catch(() => {
+                prompt('Copia este link:', url);
+            });
+        }
+
+        function showAdminError(el, msg) {
+            el.textContent = msg;
+            el.classList.remove('hidden');
+        }
+
+        function reloadChofereFilters() {
+            // Recarga los selects de filtro de chofer y subchofer con datos actualizados
+            fetch('api/choferes.php').then(r => r.json()).then(data => {
+                const names = data.map(c => c.nombre);
+                ['filter-driver', 'filter-subchofer'].forEach(filterId => {
+                    const sel = document.getElementById(filterId);
+                    if (!sel) return;
+                    const currentVal = sel.value;
+                    const noAsignado = filterId === 'filter-subchofer'
+                        ? '<option value="no_asignado">Sin subchofer</option>'
+                        : '<option value="no_asignado">No asignado</option>';
+                    sel.innerHTML = `<option value="all">Todos</option>` +
+                        names.map(n => `<option value="${escHtml(n)}">${escHtml(n)}</option>`).join('') +
+                        noAsignado;
+                    sel.value = names.includes(currentVal) || currentVal === 'all' || currentVal === 'no_asignado'
+                        ? currentVal : 'all';
+                });
+            }).catch(() => {});
+        }
+
+        // Cierre del modal al hacer click fuera
+        document.getElementById('modal-admin-choferes').addEventListener('click', function(e) {
+            if (e.target === this) closeAdminChoferes();
+        });
     </script>
 </body>
 

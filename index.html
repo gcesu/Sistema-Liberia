@@ -1422,10 +1422,10 @@
             if (!order) return;
             const viaje = (order.viajes || []).find(v => v.id === viajeId);
             if (!viaje) return;
-            const choferName = viaje.chofer || '';
-            if (!choferName) { alert('No hay chofer asignado a este viaje.'); return; }
+            const choferName = viaje.subchofer || '';
+            if (!choferName) { alert('No hay subchofer asignado a este viaje.'); return; }
             const phone = CHOFERES_PHONE[choferName];
-            if (!phone) { alert(`No se encontró teléfono para el chofer "${choferName}".`); return; }
+            if (!phone) { alert(`No se encontró teléfono para el subchofer "${choferName}".`); return; }
             const cleanPhone = phone.replace(/[\s\-]/g, '');
             const displayName = cleanDriverName(choferName);
             const firstName = (order.billing?.first_name || '').trim();
@@ -1439,9 +1439,9 @@
             const order = allOrders.find(o => o.id === orderId);
             if (!order) return;
             const choferName = deepScanMeta(order, choferKey) || '';
-            if (!choferName) { alert('No hay chofer asignado a este viaje.'); return; }
+            if (!choferName) { alert('No hay subchofer asignado a este viaje.'); return; }
             const phone = CHOFERES_PHONE[choferName];
-            if (!phone) { alert(`No se encontró teléfono para el chofer "${choferName}".`); return; }
+            if (!phone) { alert(`No se encontró teléfono para el subchofer "${choferName}".`); return; }
             const cleanPhone = phone.replace(/[\s\-]/g, '');
             const displayName = cleanDriverName(choferName);
             const firstName = (order.billing?.first_name || '').trim();
@@ -2175,6 +2175,16 @@
                     choferOptions += `<option value="${c}" ${selected}>${c}</option>`;
                 });
 
+                // Opciones de subchofer (legacy fallback)
+                const currentSubchofer = viaje.subchofer || '';
+                let subchoferOptions = '<option value="">No asignado</option>';
+                if (currentSubchofer && !CHOFERES.includes(currentSubchofer))
+                    subchoferOptions += `<option value="${currentSubchofer}" selected>${currentSubchofer}</option>`;
+                CHOFERES.forEach(c => {
+                    const selected = (currentSubchofer === c) ? 'selected' : '';
+                    subchoferOptions += `<option value="${c}" ${selected}>${c}</option>`;
+                });
+
                 const fechaLabel = isArrival ? 'Fecha' : 'Fecha de Recogida';
                 const horaLabel = isArrival ? 'Hora' : 'Hora de Recogida';
 
@@ -2223,7 +2233,7 @@
                                     </div>
                                     <div>
                                         <p class="meta-field-label">👥 Subchofer</p>
-                                        <input type="text" id="input-${prefix}_subchofer" oninput="checkForChanges()" class="input-editable bg-white" placeholder="Nombre del subchofer" value="${viaje.subchofer || ''}">
+                                        <select id="input-${prefix}_subchofer" onchange="checkForChanges()" class="input-editable bg-white">${subchoferOptions}</select>
                                     </div>
                                 </div>
                                 <div>
@@ -2245,6 +2255,7 @@
                 `;
                 container.appendChild(card);
                 initSearchableSelect(`input-${prefix}_chofer`);
+                initSearchableSelect(`input-${prefix}_subchofer`);
                 autoResizeTextarea(document.getElementById(`input-${prefix}_nota_choferes`));
                 autoResizeTextarea(document.getElementById(`input-${prefix}_notas_internas`));
             });
@@ -2265,6 +2276,7 @@
                 ]);
                 container.appendChild(card);
                 initSearchableSelect('input-meta-chofer_llegada');
+                initSearchableSelect('input-meta-subchofer_llegada');
             }
 
             if (hasDeparture) {
@@ -2273,6 +2285,7 @@
                 ]);
                 container.appendChild(card);
                 initSearchableSelect('input-meta-chofer_salida');
+                initSearchableSelect('input-meta-subchofer_salida');
             }
 
             if (hasArrival && hasDeparture) {
@@ -2321,6 +2334,15 @@
                 choferOptions += `<option value="${c}" ${selected}>${c}</option>`;
             });
 
+            const currentSubchoferLegacy = deepScanMeta(o, subchoferKey) || '';
+            let subchoferOptionsLegacy = '<option value="">No asignado</option>';
+            if (currentSubchoferLegacy && !CHOFERES.includes(currentSubchoferLegacy))
+                subchoferOptionsLegacy += `<option value="${currentSubchoferLegacy}" selected>${currentSubchoferLegacy}</option>`;
+            CHOFERES.forEach(c => {
+                const selected = (currentSubchoferLegacy === c) ? 'selected' : '';
+                subchoferOptionsLegacy += `<option value="${c}" ${selected}>${c}</option>`;
+            });
+
             const card = document.createElement('div');
             card.className = 'operation-card';
             card.id = `col-${type}`;
@@ -2343,7 +2365,7 @@
                                 </div>
                                 <div>
                                     <p class="meta-field-label">👥 Subchofer</p>
-                                    <input type="text" id="input-meta-${subchoferKey}" oninput="checkForChanges()" class="input-editable bg-white" placeholder="Nombre del subchofer" value="${deepScanMeta(o, subchoferKey) || ''}">
+                                    <select id="input-meta-${subchoferKey}" onchange="checkForChanges()" class="input-editable bg-white">${subchoferOptionsLegacy}</select>
                                 </div>
                             </div>
                             <div>
@@ -2357,7 +2379,7 @@
                             <div class="flex flex-wrap gap-2 mt-3 pt-3 border-t border-dashed ${borderClass}">
                                 <button onclick="sendLegacyEmail(${o.id}, '${type}')" class="flex-1 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all shadow-sm flex items-center justify-center gap-1">Recordatorio Correo</button>
                                 <button onclick="sendLegacyWhatsApp(${o.id}, '${type}')" class="flex-1 px-3 py-2 bg-green-500 hover:bg-green-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all shadow-sm flex items-center justify-center gap-1">Recordatorio WhatsApp</button>
-                                <button onclick="sendDriverContactLegacyWhatsApp(${o.id}, '${choferKey}')" class="flex-1 px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all shadow-sm flex items-center justify-center gap-1">📞 Contacto Chofer</button>
+                                <button onclick="sendDriverContactLegacyWhatsApp(${o.id}, '${subchoferKey}')" class="flex-1 px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all shadow-sm flex items-center justify-center gap-1">📞 Contacto Chofer</button>
                             </div>
                         </div>
                     </div>
