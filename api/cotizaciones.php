@@ -7,6 +7,7 @@
 session_start();
 require_once '../config/db.php';
 require_once '../config/env.php';
+require_once '../config/session_helper.php';
 
 // Headers
 header('Content-Type: application/json');
@@ -27,6 +28,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 $method = $_SERVER['REQUEST_METHOD'];
+
+// Validar timeout de sesión por inactividad (solo si hay sesión activa)
+if (!validateAndRefreshSession()) {
+    http_response_code(401);
+    echo json_encode(['error' => 'Sesión expirada']);
+    exit;
+}
 
 // POST es público (formulario de cotización desde WordPress)
 // GET, PUT, DELETE requieren autenticación
@@ -61,25 +69,30 @@ if ($method === 'POST') {
 
     try {
         // Tomar datos del primer viaje como referencia principal de la cotización
-        $firstTrip   = $trips[0];
-        $tripType    = $firstTrip['type'] ?? 'arrival';
+        $firstTrip    = $trips[0];
+        // Pasajeros del primer viaje (nuevo formato: por viaje; fallback al nivel cliente para compatibilidad)
+        $firstTripPax = intval($firstTrip['passengers'] ?? $client['passengers'] ?? 1) ?: 1;
+        $tripType     = $firstTrip['type'] ?? 'arrival';
         $origen      = '';
         $destino     = '';
         $fechaViaje  = null;
         $horaViaje   = null;
 
+        // Default fallback si el form no envía el aeropuerto
+        $defaultAirport = 'Airport LIR';
+
         if ($tripType === 'arrival') {
-            $origen     = 'Airport LIR';
+            $origen     = $firstTrip['arrival_airport'] ?? $defaultAirport;
             $destino    = $firstTrip['arrival_hotel'] ?? '';
             $fechaViaje = $firstTrip['arrival_date'] ?? null;
             $horaViaje  = $firstTrip['arrival_time'] ?? null;
         } elseif ($tripType === 'departure') {
             $origen     = $firstTrip['departure_hotel'] ?? '';
-            $destino    = 'Airport LIR';
+            $destino    = $firstTrip['departure_airport'] ?? $defaultAirport;
             $fechaViaje = $firstTrip['departure_date'] ?? null;
             $horaViaje  = $firstTrip['departure_time'] ?? null;
         } elseif ($tripType === 'roundtrip') {
-            $origen     = 'Airport LIR';
+            $origen     = $firstTrip['rt_arrival_airport'] ?? $defaultAirport;
             $destino    = $firstTrip['rt_hotel'] ?? '';
             $fechaViaje = $firstTrip['rt_arrival_date'] ?? null;
             $horaViaje  = $firstTrip['rt_arrival_time'] ?? null;
@@ -130,7 +143,7 @@ if ($method === 'POST') {
             $client['email'],
             $client['phone'],
             $client['country'] ?? '',
-            intval($client['passengers']) ?: 1,
+            $firstTripPax,
             $origen,
             $destino,
             $fechaViaje,
@@ -160,7 +173,7 @@ if ($method === 'POST') {
             $client['email'],
             $client['phone'],
             $client['country'] ?? '',
-            intval($client['passengers']) ?: 1,
+            $firstTripPax,
             $destino,
             $metodo_pago,
             json_encode($input),
@@ -171,37 +184,43 @@ if ($method === 'POST') {
         $itemIndex = 0;
         foreach ($trips as $trip) {
             $tipo = $trip['type'] ?? 'arrival';
+            // Pasajeros por viaje (nuevo formato); fallback al nivel cliente para compatibilidad
+            $tripPax = intval($trip['passengers'] ?? $client['passengers'] ?? 1) ?: 1;
 
             if ($tipo === 'arrival') {
                 insertViaje($pdo, $cotizacionId, $itemIndex++, 'llegada',
                     $trip['arrival_date'] ?? null,
                     $trip['arrival_time'] ?? null,
                     $trip['arrival_flight'] ?? null,
-                    intval($client['passengers']) ?: 1,
-                    $trip['arrival_hotel'] ?? null
+                    $tripPax,
+                    $trip['arrival_hotel'] ?? null,
+                    $trip['arrival_airport'] ?? null
                 );
             } elseif ($tipo === 'departure') {
                 insertViaje($pdo, $cotizacionId, $itemIndex++, 'salida',
                     $trip['departure_date'] ?? null,
                     $trip['departure_time'] ?? null,
                     $trip['departure_flight'] ?? null,
-                    intval($client['passengers']) ?: 1,
-                    $trip['departure_hotel'] ?? null
+                    $tripPax,
+                    $trip['departure_hotel'] ?? null,
+                    $trip['departure_airport'] ?? null
                 );
             } elseif ($tipo === 'roundtrip') {
                 insertViaje($pdo, $cotizacionId, $itemIndex++, 'llegada',
                     $trip['rt_arrival_date'] ?? null,
                     $trip['rt_arrival_time'] ?? null,
                     $trip['rt_arrival_flight'] ?? null,
-                    intval($client['passengers']) ?: 1,
-                    $trip['rt_hotel'] ?? null
+                    $tripPax,
+                    $trip['rt_hotel'] ?? null,
+                    $trip['rt_arrival_airport'] ?? null
                 );
                 insertViaje($pdo, $cotizacionId, $itemIndex++, 'salida',
                     $trip['rt_departure_date'] ?? null,
                     $trip['rt_departure_time'] ?? null,
                     $trip['rt_departure_flight'] ?? null,
-                    intval($client['passengers']) ?: 1,
-                    $trip['rt_hotel'] ?? null
+                    $tripPax,
+                    $trip['rt_hotel'] ?? null,
+                    $trip['rt_departure_airport'] ?? null
                 );
             } elseif ($tipo === 'internal') {
                 $ruta = ($trip['internal_pickup'] ?? '') . ' → ' . ($trip['internal_dropoff'] ?? '');
@@ -209,8 +228,9 @@ if ($method === 'POST') {
                     $trip['internal_date'] ?? null,
                     $trip['internal_time'] ?? null,
                     null,
-                    intval($client['passengers']) ?: 1,
-                    $ruta
+                    $tripPax,
+                    $ruta,
+                    null
                 );
             }
         }
@@ -353,9 +373,42 @@ elseif ($method === 'PUT') {
         if (isset($input['payment_method_title'])) {
             $fieldsToUpdate[] = "metodo_pago = ?";
             $params[] = $input['payment_method_title'];
+
+            // Sincronizar con reservas
+            $stmtRes = $pdo->prepare("UPDATE reservas SET metodo_pago = ? WHERE id = ?");
+            $stmtRes->execute([$input['payment_method_title'], $id]);
         }
 
-        // 4. Privacidad (si el frontend mandara meta_data para esto)
+        // 4. Datos del Cliente (editables desde el modal de cotización)
+        $clientFields = [
+            'cliente_nombre'    => 'cliente_nombre',
+            'cliente_email'     => 'cliente_email',
+            'cliente_telefono'  => 'cliente_telefono',
+            'cliente_pais'      => 'cliente_pais',
+            'cliente_direccion' => 'cliente_direccion',
+        ];
+        $reservasClientUpdates = [];
+        foreach ($clientFields as $inputKey => $dbColumn) {
+            if (isset($input[$inputKey])) {
+                $fieldsToUpdate[] = "$dbColumn = ?";
+                $params[] = $input[$inputKey];
+                $reservasClientUpdates[$dbColumn] = $input[$inputKey];
+            }
+        }
+        // Sincronizar con tabla reservas (cotización vive en ambas tablas)
+        if (!empty($reservasClientUpdates)) {
+            $sets = [];
+            $vals = [];
+            foreach ($reservasClientUpdates as $col => $val) {
+                $sets[] = "$col = ?";
+                $vals[] = $val;
+            }
+            $vals[] = $id;
+            $sqlRes = "UPDATE reservas SET " . implode(", ", $sets) . " WHERE id = ?";
+            $pdo->prepare($sqlRes)->execute($vals);
+        }
+
+        // 5. Privacidad (si el frontend mandara meta_data para esto)
         // Por ahora lo simplificamos, pero puedes agregar lógica aquí si editas privacidad
 
         if (empty($fieldsToUpdate)) {
@@ -396,15 +449,24 @@ elseif ($method === 'DELETE') {
     $id = intval($_GET['order_id']);
 
     try {
+        // 1. Borrar viajes asociados
         $pdo->prepare("DELETE FROM viajes WHERE reserva_id = ?")->execute([$id]);
+
+        // 2. Borrar de la tabla cotizaciones
         $stmt = $pdo->prepare("DELETE FROM cotizaciones WHERE id = ?");
         $stmt->execute([$id]);
 
-        // Mover a trash en WooCommerce
+        // 3. Borrar también de reservas (las cotizaciones viven en ambas tablas con
+        //    es_cotizacion=1). Sin esto, viajes.html y choferes.html siguen viendo
+        //    la "reserva fantasma" y reconstruyen los trips desde raw_data legacy.
+        $pdo->prepare("DELETE FROM reservas WHERE id = ? AND es_cotizacion = 1")->execute([$id]);
+
+        // 4. Mover a trash en WooCommerce (solo para órdenes que realmente vienen de WC,
+        //    es decir IDs por debajo de nuestro offset de 10M)
         $wooUrl = env('WOO_SITE_URL');
         $ck = env('WOO_CONSUMER_KEY');
         $cs = env('WOO_CONSUMER_SECRET');
-        if ($wooUrl && $ck && $cs) {
+        if ($id < 10000000 && $wooUrl && $ck && $cs) {
             $ch = curl_init("$wooUrl/wp-json/wc/v3/orders/$id");
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
@@ -433,13 +495,13 @@ elseif ($method === 'DELETE') {
 // FUNCIONES AUXILIARES
 // =============================================================================
 
-function insertViaje($pdo, $reservaId, $itemIndex, $tipo, $fecha, $hora, $vuelo, $pax, $destino)
+function insertViaje($pdo, $reservaId, $itemIndex, $tipo, $fecha, $hora, $vuelo, $pax, $destino, $aeropuerto = null)
 {
     $stmt = $pdo->prepare("
-        INSERT INTO viajes (reserva_id, item_index, tipo, fecha, hora, vuelo, pax, destino)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO viajes (reserva_id, item_index, tipo, fecha, hora, vuelo, pax, destino, aeropuerto)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
-    $stmt->execute([$reservaId, $itemIndex, $tipo, $fecha, $hora, $vuelo, $pax, $destino]);
+    $stmt->execute([$reservaId, $itemIndex, $tipo, $fecha, $hora, $vuelo, $pax, $destino, $aeropuerto]);
 }
 
 function transformarCotizacionParaFrontend($r)
@@ -530,7 +592,11 @@ function transformarCotizacionParaFrontend($r)
         'hora_viaje' => $r['hora_viaje'],
         'pasajeros' => $r['pasajeros'],
         'status_viaje' => $r['status_viaje'],
-        'customer_note' => $r['nota_cliente'] ?: ($rawData['customer_note'] ?? '')
+        'customer_note' => $r['nota_cliente'] ?: ($rawData['customer_note'] ?? ''),
+
+        // Raw data del formulario original (para extraer info no migrada a columnas,
+        // como el aeropuerto en cotizaciones del nuevo formulario WordPress).
+        'raw_data' => $rawData
     ];
 }
 ?>

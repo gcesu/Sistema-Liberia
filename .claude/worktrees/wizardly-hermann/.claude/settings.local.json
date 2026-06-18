@@ -15,7 +15,9 @@
       "Read(//d/Trabajo/Sistema-Liberia/api/**)",
       "Bash(awk 'NR==1396,NR==1599' \"D:/Trabajo/Sistema-Liberia/cotizaciones.html\")",
       "Read(//tmp/**)",
-      "Bash(python3)"
+      "Bash(python3)",
+      "WebFetch(domain:quanticalabs.com)",
+      "Bash(grep -l 'session_start\\\\|\\\\$_SESSION' 'D:/Trabajo/Sistema-Liberia/api/*.php')"
     ]
   }
 }

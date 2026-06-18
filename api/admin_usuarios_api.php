@@ -6,9 +6,17 @@
 
 session_start();
 require_once '../config/db.php';
+require_once '../config/session_helper.php';
 
 header('Content-Type: application/json');
 header('Cache-Control: no-cache, no-store, must-revalidate');
+
+// Validar timeout de sesión por inactividad
+if (!validateAndRefreshSession()) {
+    http_response_code(401);
+    echo json_encode(['error' => 'Sesión expirada']);
+    exit;
+}
 
 // Verificar autenticación
 if (!isset($_SESSION['user_id'])) {

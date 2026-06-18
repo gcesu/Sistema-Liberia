@@ -7,6 +7,7 @@
 session_start();
 require_once '../config/db.php';
 require_once '../config/env.php';
+require_once '../config/session_helper.php';
 
 // Headers
 header('Content-Type: application/json');
@@ -14,6 +15,13 @@ header('X-Content-Type-Options: nosniff');
 header('Cache-Control: no-cache, no-store, must-revalidate');
 header('Pragma: no-cache');
 header('Expires: 0');
+
+// Validar timeout de sesión por inactividad
+if (!validateAndRefreshSession()) {
+    http_response_code(401);
+    echo json_encode(['error' => 'Sesión expirada']);
+    exit;
+}
 
 // Verificar autenticación
 if (!isset($_SESSION['user_id'])) {
@@ -147,6 +155,8 @@ if ($method === 'PUT') {
         'status',
         'pax',
         'hotel',
+        'destino',
+        'aeropuerto',
         'precio_neto',
         'subtotal',
         'nota_contabilidad'

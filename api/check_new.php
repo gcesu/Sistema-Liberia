@@ -6,11 +6,18 @@
 
 session_start();
 require_once '../config/db.php';
+require_once '../config/session_helper.php';
 
 header('Content-Type: application/json');
 header('Cache-Control: no-cache, no-store, must-revalidate');
 header('Pragma: no-cache');
 header('Expires: 0');
+
+if (!validateAndRefreshSession()) {
+    http_response_code(401);
+    echo json_encode(['error' => 'Sesión expirada']);
+    exit;
+}
 
 // Verificar autenticación con token
 $clientToken = $_SERVER['HTTP_X_SESSION_TOKEN'] ?? '';

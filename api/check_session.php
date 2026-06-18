@@ -1,10 +1,17 @@
 <?php
 session_start();
+require_once '../config/session_helper.php';
 
 header('Content-Type: application/json');
 header('Cache-Control: no-cache, no-store, must-revalidate');
 header('Pragma: no-cache');
 header('Expires: 0');
+
+// Validar timeout por inactividad (1 hora)
+if (!validateAndRefreshSession()) {
+    echo json_encode(['authenticated' => false, 'reason' => 'session_expired']);
+    exit;
+}
 
 // Obtener token del header
 $headers = getallheaders();

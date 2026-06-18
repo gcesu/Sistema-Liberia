@@ -29,6 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['usuario'] = $user['usuario'];
         $_SESSION['session_token'] = $token;
+        $_SESSION['last_activity'] = time();
 
         echo json_encode([
             'success' => true,

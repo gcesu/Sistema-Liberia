@@ -720,6 +720,8 @@
                     <div class="p-6 md:p-8">
                         <div class="flex justify-between items-center mb-6">
                             <h4 class="text-[11px] font-black text-gray-400 uppercase tracking-widest">Cliente</h4>
+                            <button id="btn-edit-client" onclick="toggleClientEdit()"
+                                class="btn-section-edit">Editar</button>
                         </div>
                         <div class="flex flex-col items-center mb-6">
                             <div
@@ -727,25 +729,36 @@
                                 👤</div>
                             <div id="modal-client-name"
                                 class="font-bold text-xl text-[#002a3f] text-center leading-tight"></div>
+                            <input type="text" id="input-client-name" oninput="checkForChanges()"
+                                class="hidden input-editable text-center mt-2" placeholder="Nombre completo">
                         </div>
                         <div class="space-y-4">
                             <div class="p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
                                 <p class="meta-field-label">📧 Correo</p>
                                 <div id="modal-email" class="meta-field-value break-all text-sm"></div>
+                                <input type="email" id="input-client-email" oninput="checkForChanges()"
+                                    class="hidden input-editable" placeholder="ejemplo@correo.com">
                                 <a id="modal-email-btn" href="#" class="btn-email">Enviar Correo</a>
                             </div>
                             <div class="p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
                                 <p class="meta-field-label">📞 Teléfono</p>
                                 <div id="modal-phone" class="meta-field-value text-sm"></div>
+                                <input type="text" id="input-client-phone" oninput="checkForChanges()"
+                                    class="hidden input-editable" placeholder="+000 0000 0000">
                                 <a id="modal-whatsapp-btn" href="#" target="_blank" class="btn-whatsapp">WhatsApp</a>
                             </div>
                             <div class="p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
                                 <p class="meta-field-label">🌍 País</p>
                                 <div id="modal-country" class="meta-field-value text-sm"></div>
+                                <input type="text" id="input-client-country" oninput="checkForChanges()"
+                                    class="hidden input-editable" placeholder="País (ej: US, CR)">
                             </div>
                             <div class="p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
                                 <p class="meta-field-label">📍 Dirección</p>
                                 <div id="modal-address" class="meta-field-value text-sm"></div>
+                                <textarea id="input-client-address" oninput="checkForChanges()" rows="2"
+                                    class="hidden input-editable resize-none"
+                                    placeholder="Dirección completa"></textarea>
                             </div>
                             <div id="modal-note-container"
                                 class="p-3 bg-amber-50 rounded-lg border border-amber-200 shadow-sm hidden">
@@ -768,10 +781,6 @@
                         <div class="info-pill bg-white shadow-sm">
                             <span class="text-gray-500 text-sm uppercase font-bold">Tipo:</span>
                             <span id="pill-tipo" class="font-black text-[#002a3f] uppercase text-lg"></span>
-                        </div>
-                        <div class="info-pill bg-white shadow-sm">
-                            <span class="text-gray-500 text-sm uppercase font-bold">Pax:</span>
-                            <span id="pill-pax" class="font-black text-[#002a3f] text-lg"></span>
                         </div>
                     </div>
 
@@ -853,6 +862,9 @@
         let originalStatusViaje = '';
         let currentOrderViajes = [];
         let originalViajeValues = {};
+        let originalClientValues = { name: '', email: '', phone: '', country: '', address: '', payment_method: '' };
+        let editingClientSection = false;
+        const CLIENT_EDIT_KEYS = ['name', 'email', 'phone', 'country', 'address'];
         let currentRawOrder = null;
 
         // Choferes
@@ -868,6 +880,13 @@
         function formatTime(t) { if (!t) return '--:--'; const m = String(t).match(/^(\d{1,2}):(\d{2})/); if (!m) return String(t); let h = parseInt(m[1]); const min = m[2], ampm = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12; return `${h}:${min} ${ampm}`; }
         function translateStatus(s) { return { pending: 'Pendiente', processing: 'En Proceso', 'on-hold': 'En Espera', completed: 'Completada', cancelled: 'Cancelada', failed: 'Fallida' }[s] || s; }
         function statusClass(s) { return { completed: 'status-completed', processing: 'status-processing', pending: 'status-pending', cancelled: 'status-cancelled', 'on-hold': 'status-on-hold', failed: 'status-failed' }[s] || 'status-pending'; }
+        // Formato del aeropuerto: "SJO" → "Aeropuerto SJO". Si ya tiene prefijo, no duplica.
+        function formatAirport(code) {
+            if (!code) return null;
+            const lower = String(code).toLowerCase();
+            if (lower.startsWith('aeropuerto') || lower.startsWith('airport')) return code;
+            return `Aeropuerto ${code}`;
+        }
         // Las cotizaciones nuevas usan IDs >= 10,000,000 (offset para no chocar con IDs de WooCommerce).
         // En pantalla se muestran como "C-1", "C-2", etc. restando el offset.
         function formatCotId(id) { const n = Number(id); if (n >= 10000000) return `C-${n - 9999999}`; return `C-${n}`; }
@@ -1033,6 +1052,31 @@
             document.getElementById('modal-email-btn').href = `mailto:${email}`;
             document.getElementById('modal-whatsapp-btn').href = PhoneUtils.buildWhatsappUrl(phone, country);
 
+            // Inicializar inputs editables del cliente
+            document.getElementById('input-client-name').value = name;
+            document.getElementById('input-client-email').value = email;
+            document.getElementById('input-client-phone').value = phone;
+            document.getElementById('input-client-country').value = country;
+            document.getElementById('input-client-address').value = address;
+            originalClientValues = {
+                name, email, phone, country, address,
+                payment_method: o.payment_method_title || ''
+            };
+            // Resetear modo edición del cliente
+            editingClientSection = false;
+            document.getElementById('btn-edit-client').innerText = 'Editar';
+            document.getElementById('btn-edit-client').classList.remove('editing');
+            CLIENT_EDIT_KEYS.forEach(k => {
+                const inp = document.getElementById(`input-client-${k}`);
+                const disp = (k === 'name') ? document.getElementById('modal-client-name')
+                            : (k === 'email') ? document.getElementById('modal-email')
+                            : (k === 'phone') ? document.getElementById('modal-phone')
+                            : (k === 'country') ? document.getElementById('modal-country')
+                            : document.getElementById('modal-address');
+                if (inp) inp.classList.add('hidden');
+                if (disp) disp.classList.remove('hidden');
+            });
+
             const note = o.customer_note || '';
             const noteC = document.getElementById('modal-note-container');
             if (note.trim()) { document.getElementById('modal-note').textContent = note; noteC.classList.remove('hidden'); }
@@ -1045,7 +1089,34 @@
             const viajesDB = o.viajes || [];
             const lineItemsRaw = rawOrder?.line_items || [];
 
+            // Helper: si viaje.aeropuerto es NULL, intenta extraer del raw_data del form.
+            // El form puede generar 1 o 2 viajes por trip (roundtrip = 2). Mapeamos por item_index.
+            const formTripsRaw = rawOrder?.trips || [];
+            const extractAirportFromForm = (viaje) => {
+                if (!Array.isArray(formTripsRaw) || formTripsRaw.length === 0) return null;
+                let viajeCounter = 0;
+                for (const trip of formTripsRaw) {
+                    const numViajes = trip?.type === 'roundtrip' ? 2 : 1;
+                    if (viaje.item_index >= viajeCounter && viaje.item_index < viajeCounter + numViajes) {
+                        const legIndex = viaje.item_index - viajeCounter;
+                        if (trip.type === 'arrival')   return trip.arrival_airport   || null;
+                        if (trip.type === 'departure') return trip.departure_airport || null;
+                        if (trip.type === 'roundtrip') return legIndex === 0
+                            ? (trip.rt_arrival_airport   || null)
+                            : (trip.rt_departure_airport || null);
+                        return null;
+                    }
+                    viajeCounter += numViajes;
+                }
+                return null;
+            };
+
             const viajes = viajesDB.map(v => {
+                // Si el aeropuerto no está en la columna, sacarlo del raw_data del form
+                if (!v.aeropuerto) {
+                    const fromRaw = extractAirportFromForm(v);
+                    if (fromRaw) v = { ...v, aeropuerto: fromRaw };
+                }
                 if (v.tipo !== 'interno') {
                     return { ...v, destino_display: v.destino || v.hotel || '' };
                 }
@@ -1066,8 +1137,8 @@
                         const val = m.value ?? m.display_value ?? '';
                         return (typeof val === 'string' ? val : String(val)).trim();
                     };
-                    const pickup = getVal(KEY_PICKUP_LOC) || dbPickup;
-                    const dropoff = getVal(KEY_DROPOFF_LOC) || dbDropoff;
+                    const pickup = dbPickup || getVal(KEY_PICKUP_LOC);
+                    const dropoff = dbDropoff || getVal(KEY_DROPOFF_LOC);
                     const fecha = getVal(KEY_PICKUP_DATE) || v.fecha;
                     const hora = getVal(KEY_PICKUP_TIME) || v.hora;
                     const pax = parseInt(getVal(KEY_PAX) || v.pax || '1');
@@ -1086,9 +1157,10 @@
             // ── Route banners ──
             const routeStack = document.getElementById('route-stack'); routeStack.innerHTML = '';
             sorted.forEach(v => {
-                let oi = '✈️', on = 'Aeropuerto LIR', di = '🏨', dn = 'Hotel';
-                if (v.tipo === 'llegada') { oi = '🛬'; on = 'Aeropuerto LIR'; di = '🏨'; dn = v.destino_display || v.destino || 'Hotel'; }
-                else if (v.tipo === 'salida') { oi = '🏨'; on = v.destino_display || v.destino || 'Hotel'; di = '🛫'; dn = 'Aeropuerto LIR'; }
+                const airportName = formatAirport(v.aeropuerto) || 'Aeropuerto LIR';
+                let oi = '✈️', on = airportName, di = '🏨', dn = 'Hotel';
+                if (v.tipo === 'llegada') { oi = '🛬'; on = airportName; di = '🏨'; dn = v.destino_display || v.destino || 'Hotel'; }
+                else if (v.tipo === 'salida') { oi = '🏨'; on = v.destino_display || v.destino || 'Hotel'; di = '🛫'; dn = airportName; }
                 else { oi = '🏨'; on = v.pickup || 'Hotel Origen'; di = '🏨'; dn = v.dropoff || 'Hotel Destino'; }
                 const card = document.createElement('div'); card.className = 'route-visualizer';
                 card.innerHTML = `<div class="route-point"><span style="font-size:2rem">${oi}</span><span class="route-point-label">Origen</span><span class="route-point-name">${on}</span></div><div style="font-size:1.75rem">➡️</div><div class="route-point"><span style="font-size:2rem">${di}</span><span class="route-point-label">Destino</span><span class="route-point-name">${dn}</span></div>`;
@@ -1102,8 +1174,6 @@
             const total = sorted.length;
             let tipoLabel = total === 1 ? (nL ? 'Solo Llegada' : nS ? 'Solo Salida' : 'Viaje Interno') : (nL && nS && !nI ? 'Ida y Vuelta' : `${total} Viajes`);
             document.getElementById('pill-tipo').textContent = tipoLabel;
-            document.getElementById('pill-pax').textContent = sorted.reduce((mx, v) => Math.max(mx, v.pax || 1), 1);
-
             // ── Viaje cards (matching reservas style) ──
             renderViajeCards(sorted, o);
 
@@ -1197,6 +1267,7 @@
                             <span class="${dotClass}"></span>${cardLabel}
                             ${sub ? `<span class="text-gray-400 font-normal text-xs">${sub}</span>` : ''}
                         </div>
+                        <span class="text-xs font-bold text-gray-500 bg-white border border-gray-200 px-2 py-1 rounded-full ml-auto mr-3">👥 ${v.pax || 1} pax</span>
                         <button onclick="toggleViajeEdit('${prefix}')" id="btn-edit-${prefix}" class="btn-section-edit">Editar</button>
                     </div>
                     <div class="operation-card-body space-y-5">
@@ -1306,6 +1377,17 @@
             return FEE_PAYMENT_METHODS.some(f => m.includes(f));
         }
 
+        // Cuando cambia el método de pago: actualiza el data-attr y recalcula totales
+        function onPaymentMethodChange() {
+            const sel = document.getElementById('input-payment-method');
+            const container = document.getElementById('financial-breakdown');
+            if (sel && container) {
+                container.setAttribute('data-payment-method', sel.value || '');
+            }
+            updateFinancialTotal();
+            checkForChanges();
+        }
+
         function renderFinancial(o, rawOrder) {
             const container = document.getElementById('financial-breakdown'); container.innerHTML = '';
 
@@ -1313,8 +1395,24 @@
             container.setAttribute('data-payment-method', o.payment_method_title || '');
             container.setAttribute('data-has-original-fees', (rawOrder?.fee_lines || []).length > 0 ? '1' : '0');
 
-            // Método de pago
-            if (o.payment_method_title) container.innerHTML += `<div class="text-[10px] uppercase font-black text-gray-400 mb-4 border-b pb-2">Método: ${o.payment_method_title}</div>`;
+            // Método de pago — editable (el cliente no lo selecciona en el formulario)
+            const currentMethod = o.payment_method_title || '';
+            const methodOptions = ['', 'Cash', 'Credit Card', 'PayPal'];
+            // Si el método actual no está en la lista (legacy de WooCommerce), incluirlo
+            if (currentMethod && !methodOptions.includes(currentMethod)) {
+                methodOptions.push(currentMethod);
+            }
+            const optionsHtml = methodOptions.map(opt =>
+                `<option value="${opt}"${opt === currentMethod ? ' selected' : ''}>${opt || '— Sin definir —'}</option>`
+            ).join('');
+            container.innerHTML += `
+                <div class="flex justify-between items-center text-[10px] uppercase font-black text-gray-400 mb-4 border-b pb-2 gap-2">
+                    <span>Método de pago</span>
+                    <select id="input-payment-method" onchange="onPaymentMethodChange()"
+                        class="text-[11px] font-bold text-[#002a3f] bg-white border border-gray-200 rounded px-2 py-1 outline-none focus:border-[#ed4441]">
+                        ${optionsHtml}
+                    </select>
+                </div>`;
 
             // Todos los viajes tienen input editable de precio
             const tipoLabel = { llegada: 'Arrival', salida: 'Departure', interno: 'Internal' };
@@ -1393,18 +1491,14 @@
             return (text || '').replace(/→/g, '->').replace(/➡️/g, '->').replace(/»/g, '->');
         }
 
-        // ─── Enviar correo de confirmación (mailto con texto plano) ─────────────
-        // Abre el cliente de correo predeterminado con destinatario, asunto y
-        // cuerpo ya completos. El usuario solo le da Enviar.
-        function sendConfirmationEmail() {
-            const o = allOrders.find(x => x.id === currentOrderId);
-            if (!o) return;
-            const email = (o.billing?.email || '').toLowerCase().trim();
-            if (!email) {
-                alert('Esta cotización no tiene email del cliente registrado.');
-                return;
-            }
+        // ─── Enviar correo de confirmación con plantilla HTML estilo WooCommerce ────
+        // Genera el HTML completo del correo, lo copia al portapapeles como rich
+        // text y abre el cliente de correo predeterminado (mailto:) con destinatario
+        // y asunto pre-llenados. El usuario solo hace Ctrl+V en el cuerpo y envía.
+        // Compatible con Outlook, Apple Mail, Thunderbird, Gmail web, Spark, etc.
 
+        function buildConfirmationEmailHTML(o, viajes) {
+            const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
             const rawName = [o.billing?.last_name, o.billing?.first_name].filter(Boolean).join(' ') || '';
             const fullName = capitalizeName(rawName);
             const firstName = (fullName.split(' ')[0] || 'there').trim() || 'there';
@@ -1424,103 +1518,210 @@
                 return v === Math.floor(v) ? `$${v}` : `$${v.toFixed(2)}`;
             };
 
-            const viajes = currentOrderViajes || [];
+            // Filas de la tabla (una por viaje)
             let subtotal = 0;
-            const tripBlocks = viajes.map(v => {
+            const rows = viajes.map(v => {
                 const pax = v.pax || 1;
                 const passengers = pax === 1 ? '1 passenger' : `${pax} passengers`;
                 const price = parseFloat(v.subtotal || 0);
                 subtotal += price;
 
-                let lines = [];
+                let title = '';
+                let items = [];
+
                 if (v.tipo === 'llegada') {
-                    const hotel = v.destino || 'Hotel';
-                    lines.push(`${hotel}`);
-                    lines.push(`Passengers: ${passengers}`);
-                    lines.push(`- Type of Trip: One way to hotel`);
-                    if (v.fecha) lines.push(`- Arrival Date: ${fmtDate(v.fecha)}`);
-                    if (v.hora)  lines.push(`- Arrival Time: ${fmtTime(v.hora)}`);
-                    if (v.vuelo) lines.push(`- Arrival Flight Number: ${v.vuelo}`);
+                    title = v.destino || 'Hotel';
+                    items.push(['Passengers', passengers]);
+                    items.push(['- Type of Trip', 'One way to hotel']);
+                    if (v.fecha) items.push(['- Arrival Date', fmtDate(v.fecha)]);
+                    if (v.hora)  items.push(['- Arrival Time', fmtTime(v.hora)]);
+                    if (v.vuelo) items.push(['- Arrival Flight Number', v.vuelo]);
                 } else if (v.tipo === 'salida') {
-                    const hotel = v.destino || 'Hotel';
-                    lines.push(`${hotel}`);
-                    lines.push(`Passengers: ${passengers}`);
-                    lines.push(`- Type of Trip: One way to airport`);
-                    if (v.fecha) lines.push(`- Departure Date: ${fmtDate(v.fecha)}`);
-                    if (v.hora)  lines.push(`- Pick-up Time at Hotel: ${fmtTime(v.hora)}`);
-                    if (v.vuelo) lines.push(`- Departure Flight Number: ${v.vuelo}`);
+                    title = v.destino || 'Hotel';
+                    items.push(['Passengers', passengers]);
+                    items.push(['- Type of Trip', 'One way to airport']);
+                    if (v.fecha) items.push(['- Departure Date', fmtDate(v.fecha)]);
+                    if (v.hora)  items.push(['- Pick-up Time at Hotel', fmtTime(v.hora)]);
+                    if (v.vuelo) items.push(['- Departure Flight Number', v.vuelo]);
                 } else { // interno
+                    title = 'One Way Shuttle';
                     const route = v.destino || '';
                     const parts = route.split(/\s*(?:→|->|—|–)\s*/);
                     const pickup = (parts[0] || '').trim();
                     const dropoff = (parts[1] || '').trim();
-                    lines.push(`One Way Shuttle`);
-                    lines.push(`- Passengers: ${pax}`);
-                    if (pickup)  lines.push(`- Pick-up Location: ${pickup}`);
-                    if (dropoff) lines.push(`- Drop-off Location: ${dropoff}`);
-                    if (v.fecha) lines.push(`- Pick-up Date: ${fmtDate(v.fecha).replace(/\//g, '-')}`);
-                    if (v.hora)  lines.push(`- Pick-up Time: ${fmtTime(v.hora)}`);
+                    items.push(['- Passengers', String(pax)]);
+                    if (pickup)  items.push(['- Pick-up Location', pickup]);
+                    if (dropoff) items.push(['- Drop-off Location', dropoff]);
+                    if (v.fecha) items.push(['- Pick-up Date', fmtDate(v.fecha).replace(/\//g, '-')]);
+                    if (v.hora)  items.push(['- Pick-up Time', fmtTime(v.hora)]);
                 }
-                lines.push(`Price: ${fmtMoney(price)}`);
-                return lines.join('\n');
-            }).join('\n\n');
 
-            const total = parseFloat(o.total) > 0 ? parseFloat(o.total) : subtotal;
+                const meta = items.map(([l, val]) =>
+                    `<li style="margin:0;padding:0;"><strong style="float:left;margin-right:.25em;clear:both;">${esc(l)}:</strong> <p style="margin:0;display:inline;">${esc(val)}</p></li>`
+                ).join('');
+
+                return `
+                    <tr style="font-size:16px;">
+                        <td style="color:#747474;border:1px solid #e5e5e5;font-family:'Helvetica Neue',Helvetica,Roboto,Arial,sans-serif;padding:12px;text-align:left;vertical-align:middle;word-wrap:break-word;">
+                            ${esc(title)}<ul style="font-size:small;margin:0;padding:0;list-style:none;">${meta}</ul>
+                        </td>
+                        <td style="color:#747474;border:1px solid #e5e5e5;width:0;display:block;overflow:hidden;padding:0;" align="left">1</td>
+                        <td style="color:#747474;border:1px solid #e5e5e5;font-family:'Helvetica Neue',Helvetica,Roboto,Arial,sans-serif;padding:12px;text-align:left;vertical-align:middle;">${esc(fmtMoney(price))}</td>
+                    </tr>`;
+            }).join('');
+
+            const totalShown = parseFloat(o.total) > 0 ? parseFloat(o.total) : subtotal;
             const paymentMethod = o.payment_method_title || 'Pending';
             const note = (o.customer_note || '').trim();
 
+            const noteRow = note ? `
+                <tr>
+                    <th colspan="2" style="color:#747474;border:1px solid #e5e5e5;font-family:'Helvetica Neue',Helvetica,Roboto,Arial,sans-serif;padding:12px;text-align:left;">Note:</th>
+                    <td style="color:#747474;border:1px solid #e5e5e5;font-family:'Helvetica Neue',Helvetica,Roboto,Arial,sans-serif;padding:12px;text-align:left;">${esc(note)}</td>
+                </tr>` : '';
+
+            return `<div style="background-color:#f7f7f7;padding:40px 0;font-family:'Helvetica Neue',Helvetica,Roboto,Arial,sans-serif;">
+<table border="0" cellpadding="0" cellspacing="0" width="600" style="margin:0 auto;background-color:#fff;border:1px solid #dedede;border-radius:3px;box-shadow:0 1px 4px 1px rgba(0,0,0,.1);">
+    <tr>
+        <td style="background-color:#003366;padding:36px 48px;text-align:center;font-family:Arial,Helvetica,sans-serif;">
+            <div style="margin:0;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-weight:normal;font-size:30px;line-height:40px;text-align:center;text-transform:none;letter-spacing:normal;">
+                <font color="#ffffff" face="Arial, Helvetica, sans-serif" size="6"><span style="color:#ffffff;font-size:30px;line-height:40px;font-family:Arial,Helvetica,sans-serif;text-transform:none;letter-spacing:normal;font-weight:normal;">Hi ${esc(firstName)}, thanks for choosing LiberiaAirportShuttle.com!</span></font>
+            </div>
+        </td>
+    </tr>
+    <tr>
+        <td style="padding:20px 48px;color:#747474;font-size:14px;line-height:24px;">
+            <p style="margin:0 0 16px;">Your reservation has been completed.</p>
+            <p style="margin:0 0 16px;"><b>Where do I find my driver?</b><br>Your driver will be <u>outside of customs area</u> holding a sign with your name on it.<br><u>If</u> having trouble finding the driver, please contact us and head to the outside of the Imperial/Britt café (in between Arrivals and Departures) to meet him there.</p>
+            <p style="margin:0 0 16px;"><b>Pick-up time at the airport</b><br>Your pickup at the airport is based on the arrival time of your flight (s); however, the process of immigration, baggage claim and customs takes time, so your driver will be waiting for you.</p>
+            <p style="margin:0 0 16px;"><b>Flight tracking</b><br>We monitor your flight in real time through <a href="https://www.flightradar24.com/data/airports/lir" style="color:#4a2a4d;text-decoration:underline;">flightradar24.com</a>, so we will be aware of any changes in your flight (delay, diversion, cancellation, etc.).</p>
+            <p style="margin:0 0 16px;"><b>Return to LIR Airport</b><br>A reminder will be sent to your email the day before your departure date.</p>
+            <p style="margin:0 0 16px;"><b>Gratuity</b><br>It is customary to tip between 15% and 20% of the transportation rate.</p>
+            <p style="margin:0 0 16px;">Payment is made to your driver in USD or Costa Rican Colones upon completion of each service.</p>
+
+            <h2 style="margin:25px 0;font-size:16px;line-height:26px;font-weight:500;color:#4a2a4d;text-align:center;">Order ${esc(formatCotId(o.id))} (${esc(dateCreated)})</h2>
+
+            <table cellspacing="0" cellpadding="6" width="100%" border="1" style="color:#747474;border:1px solid #e5e5e5;border-collapse:collapse;background-color:#fff;width:100%;margin-bottom:40px;">
+                <thead>
+                    <tr>
+                        <th style="color:#747474;border:1px solid #e5e5e5;padding:12px;text-align:left;">Product</th>
+                        <th style="color:#747474;border:1px solid #e5e5e5;width:0;display:block;overflow:hidden;padding:0;">Quantity</th>
+                        <th style="color:#747474;border:1px solid #e5e5e5;padding:12px;text-align:left;">Price</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+                <tfoot>
+                    <tr>
+                        <th colspan="2" style="color:#747474;border:1px solid #e5e5e5;padding:12px;text-align:left;">Subtotal:</th>
+                        <td style="color:#747474;border:1px solid #e5e5e5;padding:12px;text-align:left;">${esc(fmtMoney(subtotal))}</td>
+                    </tr>
+                    <tr>
+                        <th colspan="2" style="color:#747474;border:1px solid #e5e5e5;padding:12px;text-align:left;">Payment method:</th>
+                        <td style="color:#747474;border:1px solid #e5e5e5;padding:12px;text-align:left;">${esc(paymentMethod)}</td>
+                    </tr>
+                    <tr>
+                        <th colspan="2" style="color:#747474;border:1px solid #e5e5e5;padding:12px;text-align:left;">Total:</th>
+                        <td style="color:#747474;border:1px solid #e5e5e5;padding:12px;text-align:left;">${esc(fmtMoney(totalShown))}</td>
+                    </tr>
+                    ${noteRow}
+                </tfoot>
+            </table>
+
+            <p style="margin:0 0 16px;"><strong>Contact info:</strong></p>
+            ${o.billing?.phone ? `<p style="margin:0 0 16px;"><strong>Phone:</strong> ${esc(o.billing.phone)}</p>` : ''}
+            ${o.billing?.email ? `<p style="margin:0 0 16px;"><strong>Email:</strong> ${esc(o.billing.email)}</p>` : ''}
+
+            <p style="margin:0 0 16px;text-align:center;">Thank you for booking with us!</p>
+            <p style="margin:0 0 16px;text-align:center;">
+                <a href="https://liberiaairportshuttle.com/" style="color:#4a2a4d;text-decoration:underline;">LiberiaAirportShuttle.com</a><br>
+                <a href="mailto:booking@liberiaairportshuttle.com" style="color:#4a2a4d;text-decoration:underline;">booking@liberiaairportshuttle.com</a><br>
+                Phone: <a href="tel:+50689131480" style="color:#4a2a4d;text-decoration:underline;">+506 8913-1480</a><br>
+                WhatsApp: <a href="http://wa.me/50689131480" style="color:#4a2a4d;text-decoration:underline;">+506 8913-1480</a><br>
+                Telegram: <a href="http://t.me/liberiaairport" style="color:#4a2a4d;text-decoration:underline;">+506 8913-1480</a>
+            </p>
+        </td>
+    </tr>
+    <tr>
+        <td style="padding:20px 48px 31px 48px;text-align:center;color:#9e9e9e;font-size:12px;">
+            <p style="color:#9e9e9e;margin:0;">Liberia Airport Shuttle | Costa Rica Transfers</p>
+        </td>
+    </tr>
+</table>
+</div>`;
+        }
+
+        async function sendConfirmationEmail() {
+            const o = allOrders.find(x => x.id === currentOrderId);
+            if (!o) return;
+            const email = (o.billing?.email || '').toLowerCase().trim();
+            if (!email) {
+                alert('Esta cotización no tiene email del cliente registrado.');
+                return;
+            }
+
+            const html = buildConfirmationEmailHTML(o, currentOrderViajes || []);
             const subject = 'Your Liberia Airport Shuttle reservation is now complete';
 
-            const body =
-`Hi ${firstName},
+            // Estrategia: renderizar el HTML en un div oculto, dejar que el navegador
+            // calcule estilos, y copiar desde el DOM renderizado vía execCommand.
+            // Esto produce un clipboard más rico que pegar HTML "crudo" — los editores
+            // de compose (Gmail/Outlook) preservan más estilos cuando vienen del DOM.
+            const renderDiv = document.createElement('div');
+            renderDiv.innerHTML = html;
+            renderDiv.contentEditable = 'true';
+            renderDiv.style.position = 'fixed';
+            renderDiv.style.left = '0';
+            renderDiv.style.top = '0';
+            renderDiv.style.width = '700px';
+            renderDiv.style.opacity = '0.01';
+            renderDiv.style.pointerEvents = 'none';
+            renderDiv.style.zIndex = '-1';
+            document.body.appendChild(renderDiv);
 
-Thanks for choosing LiberiaAirportShuttle.com! Your reservation has been completed.
+            // Esperar 2 frames para que el navegador renderice y compute estilos
+            await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
-Where do I find my driver?
-Your driver will be outside of customs area holding a sign with your name on it. If having trouble finding the driver, please contact us and head to the outside of the Imperial/Britt café (in between Arrivals and Departures) to meet him there.
+            let copiedOk = false;
+            try {
+                const range = document.createRange();
+                range.selectNodeContents(renderDiv);
+                const sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(range);
+                copiedOk = document.execCommand('copy');
+                sel.removeAllRanges();
+            } catch (err) {
+                console.error('Error copiando del DOM:', err);
+            } finally {
+                document.body.removeChild(renderDiv);
+            }
 
-Pick-up time at the airport
-Your pickup at the airport is based on the arrival time of your flight (s); however, the process of immigration, baggage claim and customs takes time, so your driver will be waiting for you.
+            // Si execCommand falló, intentar con la API moderna como fallback
+            if (!copiedOk && navigator.clipboard && window.ClipboardItem) {
+                try {
+                    const plain = html.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+                    const blobHtml = new Blob([html], { type: 'text/html' });
+                    const blobText = new Blob([plain], { type: 'text/plain' });
+                    await navigator.clipboard.write([
+                        new ClipboardItem({ 'text/html': blobHtml, 'text/plain': blobText })
+                    ]);
+                    copiedOk = true;
+                } catch (err) {
+                    console.error('Error con clipboard API:', err);
+                }
+            }
 
-Flight tracking
-We monitor your flight in real time through flightradar24.com, so we will be aware of any changes in your flight (delay, diversion, cancellation, etc.).
+            if (!copiedOk) {
+                alert('No se pudo copiar el correo al portapapeles. Tu navegador puede no soportar esta función.');
+                return;
+            }
 
-Return to LIR Airport
-A reminder will be sent to your email the day before your departure date.
+            // Abrir el cliente de correo predeterminado del sistema (Outlook, Apple
+            // Mail, Thunderbird, Spark, etc.) con destinatario + asunto pre-llenados.
+            const mailtoUrl = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}`;
+            window.location.href = mailtoUrl;
 
-Gratuity
-It is customary to tip between 15% and 20% of the transportation rate.
-
-Payment is made to your driver in USD or Costa Rican Colones upon completion of each service.
-
-═══════════════════════════════════════
-Order ${formatCotId(o.id)} (${dateCreated})
-═══════════════════════════════════════
-
-${tripBlocks}
-
-───────────────────────────────────────
-Subtotal: ${fmtMoney(subtotal)}
-Payment method: ${paymentMethod}
-Total: ${fmtMoney(total)}${note ? `\nNote: ${note}` : ''}
-───────────────────────────────────────
-
-Contact info:
-Phone: ${o.billing?.phone || ''}
-Email: ${email}
-
-Thank you for booking with us!
-
-LiberiaAirportShuttle.com
-booking@liberiaairportshuttle.com
-Phone: +506 8913-1480
-WhatsApp: +506 8913-1480
-Telegram: +506 8913-1480
-
-Liberia Airport Shuttle | Costa Rica Transfers`;
-
-            const mailto = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-            window.location.href = mailto;
+            alert('✅ Correo copiado al portapapeles.\n\nSe abrió tu cliente de correo con el destinatario y asunto.\nHaz Ctrl+V (o Cmd+V) en el cuerpo del mensaje para pegar el contenido formateado.');
         }
 
 
@@ -1633,7 +1834,12 @@ Liberia Airport Shuttle | Costa Rica Transfers`;
             const tripDataRows = currentOrderViajes.map((v, i) => {
                 const bg = i % 2 === 0 ? "FFFFFF" : "F8FAFC";
                 const tipoLabel = v.tipo === 'llegada' ? 'Arrival' : v.tipo === 'salida' ? 'Departure' : 'Internal';
-                const ruta = docSafe(v.destino || v.hotel || '---');
+                const airportName = formatAirport(v.aeropuerto) || 'Airport LIR';
+                const hotelName = v.destino || v.hotel || '---';
+                let ruta;
+                if (v.tipo === 'llegada')      ruta = docSafe(`${airportName} -> ${hotelName}`);
+                else if (v.tipo === 'salida')  ruta = docSafe(`${hotelName} -> ${airportName}`);
+                else                            ruta = docSafe(hotelName);
                 const dateV = v.fecha ? new Date(v.fecha + 'T12:00:00').toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) : '---';
                 const timeV = v.hora ? formatTime(v.hora) : '---';
 
@@ -1760,6 +1966,20 @@ Liberia Airport Shuttle | Costa Rica Transfers`;
         function checkForChanges() {
             let changed = document.getElementById('input-status-viaje').value !== originalStatusViaje;
 
+            // Cliente
+            if (!changed) {
+                for (const k of CLIENT_EDIT_KEYS) {
+                    const inp = document.getElementById(`input-client-${k}`);
+                    if (inp && inp.value.trim() !== (originalClientValues[k] || '')) { changed = true; break; }
+                }
+            }
+
+            // Método de pago
+            if (!changed) {
+                const pmInput = document.getElementById('input-payment-method');
+                if (pmInput && pmInput.value !== (originalClientValues.payment_method || '')) changed = true;
+            }
+
             if (!changed) {
                 for (const v of currentOrderViajes) {
                     const prefix = `cot_viaje_${v.id}`;
@@ -1779,6 +1999,33 @@ Liberia Airport Shuttle | Costa Rica Transfers`;
             }
 
             document.getElementById('btn-save').classList.toggle('hidden', !changed);
+        }
+
+        // ── Toggle edición del bloque Cliente ──
+        function toggleClientEdit() {
+            editingClientSection = !editingClientSection;
+            const btn = document.getElementById('btn-edit-client');
+            btn.innerText = editingClientSection ? 'Cancelar' : 'Editar';
+            btn.classList.toggle('editing', editingClientSection);
+
+            const map = {
+                name:    'modal-client-name',
+                email:   'modal-email',
+                phone:   'modal-phone',
+                country: 'modal-country',
+                address: 'modal-address',
+            };
+            CLIENT_EDIT_KEYS.forEach(k => {
+                const disp = document.getElementById(map[k]);
+                const inp = document.getElementById(`input-client-${k}`);
+                if (disp) disp.classList.toggle('hidden', editingClientSection);
+                if (inp) {
+                    inp.classList.toggle('hidden', !editingClientSection);
+                    // Si se cancela la edición, restaurar valor original
+                    if (!editingClientSection) inp.value = originalClientValues[k] || '';
+                }
+            });
+            checkForChanges();
         }
 
         // ── Save ──
@@ -1803,6 +2050,78 @@ Liberia Airport Shuttle | Costa Rica Transfers`;
                     originalStatusViaje = newStatus;
                 }
 
+                // 1b. Save client info changes (sólo lo que cambió)
+                const clientPayload = {};
+                const apiMap = {
+                    name:    'cliente_nombre',
+                    email:   'cliente_email',
+                    phone:   'cliente_telefono',
+                    country: 'cliente_pais',
+                    address: 'cliente_direccion',
+                };
+                CLIENT_EDIT_KEYS.forEach(k => {
+                    const inp = document.getElementById(`input-client-${k}`);
+                    if (inp) {
+                        const newVal = inp.value.trim();
+                        if (newVal !== (originalClientValues[k] || '')) {
+                            clientPayload[apiMap[k]] = newVal;
+                        }
+                    }
+                });
+                // Método de pago
+                const pmInput = document.getElementById('input-payment-method');
+                if (pmInput && pmInput.value !== (originalClientValues.payment_method || '')) {
+                    clientPayload.payment_method_title = pmInput.value;
+                }
+
+                if (Object.keys(clientPayload).length > 0) {
+                    const resCli = await fetch(`${API_URL}?order_id=${currentOrderId}`, {
+                        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(clientPayload)
+                    });
+                    if (!resCli.ok) throw new Error('Error saving client info');
+
+                    // Actualizar valores en memoria + originales
+                    const idx = allOrders.findIndex(o => o.id === currentOrderId);
+                    CLIENT_EDIT_KEYS.forEach(k => {
+                        const inp = document.getElementById(`input-client-${k}`);
+                        if (inp) {
+                            const newVal = inp.value.trim();
+                            originalClientValues[k] = newVal;
+                            // Sync a allOrders.billing
+                            if (idx !== -1) {
+                                if (!allOrders[idx].billing) allOrders[idx].billing = {};
+                                if (k === 'name') {
+                                    allOrders[idx].billing.last_name = newVal;
+                                    allOrders[idx].billing.first_name = '';
+                                } else if (k === 'email')   allOrders[idx].billing.email = newVal;
+                                else if (k === 'phone')     allOrders[idx].billing.phone = newVal;
+                                else if (k === 'country')   allOrders[idx].billing.country = newVal;
+                                else if (k === 'address')   allOrders[idx].billing.address_1 = newVal;
+                            }
+                        }
+                    });
+                    if (pmInput) {
+                        originalClientValues.payment_method = pmInput.value;
+                        if (idx !== -1) allOrders[idx].payment_method_title = pmInput.value;
+                    }
+
+                    // Actualizar displays del sidebar
+                    document.getElementById('modal-client-name').textContent =
+                        capitalizeName(originalClientValues.name || '') || '---';
+                    document.getElementById('modal-email').textContent = originalClientValues.email || '---';
+                    document.getElementById('modal-phone').textContent = originalClientValues.phone || '---';
+                    document.getElementById('modal-country').textContent =
+                        COUNTRY_MAP[(originalClientValues.country || '').toUpperCase()] || originalClientValues.country || '---';
+                    document.getElementById('modal-address').textContent = originalClientValues.address || '---';
+                    document.getElementById('modal-email-btn').href = `mailto:${originalClientValues.email}`;
+                    document.getElementById('modal-whatsapp-btn').href =
+                        PhoneUtils.buildWhatsappUrl(originalClientValues.phone, originalClientValues.country);
+
+                    // Cerrar modo edición del cliente si estaba abierto
+                    if (editingClientSection) toggleClientEdit();
+                }
+
                 // 2. Save viaje changes
                 for (const v of currentOrderViajes) {
                     const prefix = `cot_viaje_${v.id}`;
@@ -1815,6 +2134,21 @@ Liberia Airport Shuttle | Costa Rica Transfers`;
                             const original = originalViajeValues[`${prefix}_${fieldKey}`] || '';
                             if (inp.value !== original && inp.value !== normalizeForInput(original, fieldKey === 'fecha' ? 'date' : (fieldKey === 'hora' ? 'time' : 'text'))) {
                                 viajePayload[apiKey] = inp.value;
+                                viajeChanged = true;
+                            }
+                        }
+                    }
+                    // Para internos: pickup/dropoff se guardan combinados en la columna destino ("pickup → dropoff")
+                    if (v.tipo === 'interno') {
+                        const pickupInp = document.getElementById(`input-${prefix}_pickup`);
+                        const dropoffInp = document.getElementById(`input-${prefix}_dropoff`);
+                        if (pickupInp && dropoffInp) {
+                            const newPickup = pickupInp.value.trim();
+                            const newDropoff = dropoffInp.value.trim();
+                            const oldPickup = originalViajeValues[`${prefix}_pickup`] || '';
+                            const oldDropoff = originalViajeValues[`${prefix}_dropoff`] || '';
+                            if (newPickup !== oldPickup || newDropoff !== oldDropoff) {
+                                viajePayload.destino = `${newPickup} → ${newDropoff}`;
                                 viajeChanged = true;
                             }
                         }
@@ -1841,6 +2175,18 @@ Liberia Airport Shuttle | Costa Rica Transfers`;
                         // Also sync precio_neto if it was cleared
                         if (viajePayload.precio_neto !== undefined) {
                             v.precio_neto = viajePayload.precio_neto;
+                        }
+                        // Para internos: sync pickup/dropoff en memoria y reconstruir destino
+                        if (v.tipo === 'interno') {
+                            const pickupInp = document.getElementById(`input-${prefix}_pickup`);
+                            const dropoffInp = document.getElementById(`input-${prefix}_dropoff`);
+                            if (pickupInp && dropoffInp) {
+                                v.pickup = pickupInp.value.trim();
+                                v.dropoff = dropoffInp.value.trim();
+                                v.destino = `${v.pickup} → ${v.dropoff}`;
+                                originalViajeValues[`${prefix}_pickup`] = v.pickup;
+                                originalViajeValues[`${prefix}_dropoff`] = v.dropoff;
+                            }
                         }
                         // Sync to allOrders viajes array
                         const orderIdx = allOrders.findIndex(o => o.id === currentOrderId);
@@ -1915,9 +2261,10 @@ Liberia Airport Shuttle | Costa Rica Transfers`;
                 if (routeStack) {
                     routeStack.innerHTML = '';
                     currentOrderViajes.forEach(v => {
-                        let oi = '✈️', on = 'Aeropuerto LIR', di = '🏨', dn = 'Hotel';
-                        if (v.tipo === 'llegada') { oi = '🛬'; on = 'Aeropuerto LIR'; di = '🏨'; dn = v.destino_display || v.destino || 'Hotel'; }
-                        else if (v.tipo === 'salida') { oi = '🏨'; on = v.destino_display || v.destino || 'Hotel'; di = '🛫'; dn = 'Aeropuerto LIR'; }
+                        const airportName = formatAirport(v.aeropuerto) || 'Aeropuerto LIR';
+                        let oi = '✈️', on = airportName, di = '🏨', dn = 'Hotel';
+                        if (v.tipo === 'llegada') { oi = '🛬'; on = airportName; di = '🏨'; dn = v.destino_display || v.destino || 'Hotel'; }
+                        else if (v.tipo === 'salida') { oi = '🏨'; on = v.destino_display || v.destino || 'Hotel'; di = '🛫'; dn = airportName; }
                         else { oi = '🏨'; on = v.pickup || 'Hotel Origen'; di = '🏨'; dn = v.dropoff || 'Hotel Destino'; }
                         const card = document.createElement('div'); card.className = 'route-visualizer';
                         card.innerHTML = `<div class="route-point"><span style="font-size:2rem">${oi}</span><span class="route-point-label">Origen</span><span class="route-point-name">${on}</span></div><div style="font-size:1.75rem">➡️</div><div class="route-point"><span style="font-size:2rem">${di}</span><span class="route-point-label">Destino</span><span class="route-point-name">${dn}</span></div>`;

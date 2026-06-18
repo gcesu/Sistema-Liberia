@@ -2049,6 +2049,31 @@
 
         // NUEVO: Usar array de viajes de la API si está disponible
         if (order.viajes && order.viajes.length > 0) {
+          // Parsear raw_data una sola vez por order (para fallback de aeropuerto)
+          let formTripsRaw = [];
+          try {
+            const rd = typeof order.raw_data === 'string' ? JSON.parse(order.raw_data) : order.raw_data;
+            formTripsRaw = rd?.trips || [];
+          } catch { }
+          const extractAirportFromForm = (viaje) => {
+            if (!Array.isArray(formTripsRaw) || formTripsRaw.length === 0) return null;
+            let counter = 0;
+            for (const trip of formTripsRaw) {
+              const numViajes = trip?.type === 'roundtrip' ? 2 : 1;
+              if (viaje.item_index >= counter && viaje.item_index < counter + numViajes) {
+                const legIndex = viaje.item_index - counter;
+                if (trip.type === 'arrival')   return trip.arrival_airport   || null;
+                if (trip.type === 'departure') return trip.departure_airport || null;
+                if (trip.type === 'roundtrip') return legIndex === 0
+                  ? (trip.rt_arrival_airport   || null)
+                  : (trip.rt_departure_airport || null);
+                return null;
+              }
+              counter += numViajes;
+            }
+            return null;
+          };
+
           order.viajes.forEach((viaje) => {
             const parsedDate = parseFlexibleDate(viaje.fecha);
             if (parsedDate) {
@@ -2063,6 +2088,9 @@
               const itemIdx = viaje.item_index >= 1000 ? viaje.item_index - 1000 : viaje.item_index;
               const destName = order.line_items?.[itemIdx]?.name || "Hotel no especificado";
 
+              // Aeropuerto: prefiero viaje.aeropuerto; si NULL, extraigo del raw_data del form
+              const airport = formatAirport(viaje.aeropuerto || extractAirportFromForm(viaje)) || 'Aeropuerto LIR';
+
               batchTrips.push({
                 id: order.id,
                 viaje_id: viaje.id,
@@ -2074,12 +2102,13 @@
                 dateStr: formatDateStandard(parsedDate),
                 time: formatTime12H(viaje.hora),
                 route: isArrival
-                  ? `Aeropuerto LIR ➝ ${destName}`
-                  : (viaje.tipo === 'interno' ? (() => { const rs = viaje.destino || viaje.hotel || ''; const rp = rs.split(/\s*(?:[\u2190-\u21FF\u27F0-\u27FF\u2900-\u297F\u2794\u279C\u279D\u279E]|->)\s*/); return rp.length >= 2 ? `${rp[0].trim()} ➝ ${rp[1].trim()}` : (destName || 'Viaje Interno'); })() : `${destName} ➝ Aeropuerto LIR`),
+                  ? `${airport} ➝ ${destName}`
+                  : (viaje.tipo === 'interno' ? (() => { const rs = viaje.destino || viaje.hotel || ''; const rp = rs.split(/\s*(?:[\u2190-\u21FF\u27F0-\u27FF\u2900-\u297F\u2794\u279C\u279D\u279E]|->)\s*/); return rp.length >= 2 ? `${rp[0].trim()} ➝ ${rp[1].trim()}` : (destName || 'Viaje Interno'); })() : `${destName} ➝ ${airport}`),
                 flight: viaje.vuelo || "--",
                 raw_date: fullDate,
                 hotel: viaje.hotel || "",
                 destino: viaje.destino || "",
+                aeropuerto: airport,
                 pax: viaje.pax || 1,
                 email,
                 phone,
@@ -2291,6 +2320,14 @@
       const month = months[dateObj.getMonth()];
       const year = dateObj.getFullYear();
       return `${day}/${month}/${year}`;
+    }
+
+    // Formato del aeropuerto: "SJO" → "Aeropuerto SJO". Si ya tiene prefijo, no duplica.
+    function formatAirport(code) {
+      if (!code) return null;
+      const lower = String(code).toLowerCase();
+      if (lower.startsWith('aeropuerto') || lower.startsWith('airport')) return code;
+      return `Aeropuerto ${code}`;
     }
 
     // Función para formatear hora a 12H (HH:MM AM/PM)
@@ -2683,8 +2720,9 @@
       currentItemIndex = trip.item_index !== undefined ? trip.item_index : null;
       currentTrip = trip;
       const hotel = trip.hotel || "Hotel no especificado";
-      const originName = isArrival ? "Aeropuerto LIR" : hotel;
-      const destName = isArrival ? hotel : "Aeropuerto LIR";
+      const airportName = formatAirport(trip.aeropuerto) || "Aeropuerto LIR";
+      const originName = isArrival ? airportName : hotel;
+      const destName = isArrival ? hotel : airportName;
       const contactParts = [trip.email, trip.phone].filter(Boolean);
 
       const statusKeyViaje = isArrival ? "status_llegada" : "status_salida";
@@ -2809,10 +2847,11 @@
       const displayHotelName = order.line_items?.[itemIdx]?.name || order.line_items?.[0]?.name || 'Hotel no especificado';
 
       // Update Origin/Dest based on Trip Type
+      const tripAirportName = formatAirport(trip.aeropuerto) || "Aeropuerto LIR";
       if (trip.type === 'arrival') {
         document.getElementById("trip-origin-icon").innerText = "🛬";
         document.getElementById("trip-dest-icon").innerText = "🏨";
-        document.getElementById("trip-origin-name").innerText = "Aeropuerto LIR";
+        document.getElementById("trip-origin-name").innerText = tripAirportName;
         document.getElementById("trip-dest-name").innerText = displayHotelName;
       } else if (trip.type === 'interno') {
         document.getElementById("trip-origin-icon").innerText = "📍";
@@ -2825,7 +2864,7 @@
         document.getElementById("trip-origin-icon").innerText = "🏨";
         document.getElementById("trip-dest-icon").innerText = "🛫";
         document.getElementById("trip-origin-name").innerText = displayHotelName;
-        document.getElementById("trip-dest-name").innerText = "Aeropuerto LIR";
+        document.getElementById("trip-dest-name").innerText = tripAirportName;
       }
       document.getElementById("trip-route-separator-emoji").innerText = "➡️";
 

@@ -506,6 +506,125 @@
             color: white;
         }
 
+        /* ═══ Comisión modal ═══ */
+        .comision-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 42, 63, 0.4);
+            backdrop-filter: blur(2px);
+            z-index: 500;
+            align-items: center;
+            justify-content: center;
+        }
+        .comision-overlay.active { display: flex; }
+
+        .comision-modal {
+            background: white;
+            border-radius: 14px;
+            width: 380px;
+            max-width: 95vw;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+            animation: notaIn 0.2s ease;
+        }
+
+        .comision-modal-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .comision-modal-header h3 {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 0;
+        }
+        .comision-modal-close {
+            width: 28px; height: 28px;
+            border-radius: 6px;
+            border: none;
+            background: #f1f5f9;
+            color: #64748b;
+            cursor: pointer;
+            font-size: 13px;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s;
+        }
+        .comision-modal-close:hover { background: var(--accent); color: white; }
+
+        .comision-modal-body { padding: 20px; }
+
+        .comision-opciones { display: flex; gap: 10px; margin-bottom: 16px; }
+        .comision-opcion {
+            flex: 1;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 14px 12px;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            text-align: center;
+            user-select: none;
+        }
+        .comision-opcion input[type="radio"] { display: none; }
+        .comision-opcion:has(input:checked) {
+            border-color: var(--primary);
+            background: #f0f6ff;
+        }
+        .comision-opcion-icon { font-size: 22px; }
+        .comision-opcion-title {
+            font-size: 12px;
+            font-weight: 800;
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        .comision-opcion-desc {
+            font-size: 10px;
+            color: #64748b;
+            line-height: 1.3;
+        }
+
+        .comision-pct-row { margin-top: 4px; }
+        .comision-pct-row label {
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            margin-bottom: 6px;
+        }
+        .comision-pct-row input {
+            width: 100%;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--primary);
+            box-sizing: border-box;
+        }
+        .comision-pct-row input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(0, 42, 63, 0.08);
+        }
+
+        .comision-modal-footer {
+            padding: 12px 20px 16px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
         /* ═══ Note modal overlay ═══ */
         .nota-overlay {
             display: none;
@@ -982,7 +1101,17 @@
                 : 'Precio Neto';
 
             document.getElementById('driver-title').innerHTML = `
-                ${cleanName} <span style="font-size: 13px; color: #64748b; font-family: Lato; text-transform: none; letter-spacing: 0;">— ${tipoLabel}</span>
+                ${cleanName}
+                <span style="font-size: 13px; color: #64748b; font-family: Lato; text-transform: none; letter-spacing: 0;">— ${tipoLabel}</span>
+                <button onclick="openComisionModal()" title="Editar tipo de comisión"
+                    style="margin-left:8px; background:none; border:1px solid #cbd5e1; border-radius:6px;
+                           padding:2px 9px; font-size:11px; cursor:pointer; color:#64748b;
+                           font-family:Lato,sans-serif; text-transform:none; letter-spacing:0;
+                           vertical-align:middle; transition:all 0.15s;"
+                    onmouseover="this.style.borderColor='#002a3f';this.style.color='#002a3f'"
+                    onmouseout="this.style.borderColor='#cbd5e1';this.style.color='#64748b'">
+                    ✏️ editar
+                </button>
             `;
 
             loadData();
@@ -1271,6 +1400,72 @@
             if (m.includes('card') || m.includes('tarjeta') || m.includes('stripe')) return 'Tarjeta';
             return method;
         }
+        // ═══ Modal Comisión ═══
+        function openComisionModal() {
+            if (!currentChoferInfo) return;
+            const isPct = currentChoferInfo.comision_tipo === 'porcentaje';
+            document.getElementById('comision-radio-pct').checked = isPct;
+            document.getElementById('comision-radio-neto').checked = !isPct;
+            document.getElementById('comision-pct-input').value = isPct
+                ? parseFloat(currentChoferInfo.comision_porcentaje) || ''
+                : '';
+            onComisionTipoChange();
+            document.getElementById('comision-overlay').classList.add('active');
+        }
+
+        function closeComisionModal() {
+            document.getElementById('comision-overlay').classList.remove('active');
+        }
+
+        function onComisionTipoChange() {
+            const isPct = document.getElementById('comision-radio-pct').checked;
+            document.getElementById('comision-pct-row').style.display = isPct ? '' : 'none';
+        }
+
+        async function saveComision() {
+            if (!currentChoferInfo) return;
+
+            const tipo = document.getElementById('comision-radio-pct').checked ? 'porcentaje' : 'neto';
+            const porcentaje = parseFloat(document.getElementById('comision-pct-input').value) || 0;
+
+            if (tipo === 'porcentaje' && (porcentaje <= 0 || porcentaje > 100)) {
+                alert('Ingresa un porcentaje válido entre 1 y 100.');
+                return;
+            }
+
+            const btn = document.getElementById('comision-btn-save');
+            btn.textContent = 'Guardando...';
+            btn.disabled = true;
+
+            try {
+                const token = sessionStorage.getItem('session_token');
+                const resp = await fetch(`api/choferes.php?id=${currentChoferInfo.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'X-Session-Token': token },
+                    body: JSON.stringify({ comision_tipo: tipo, comision_porcentaje: porcentaje })
+                });
+                if (!resp.ok) {
+                    const err = await resp.json().catch(() => ({}));
+                    throw new Error(err.error || 'Error al guardar');
+                }
+                const updated = await resp.json();
+
+                // Actualizar en el array global
+                const idx = allDrivers.findIndex(d => d.id == updated.id);
+                if (idx !== -1) allDrivers[idx] = { ...allDrivers[idx], ...updated };
+
+                // Actualizar info local y forzar recarga completa (recalcula comisiones)
+                currentChoferInfo = { ...currentChoferInfo, ...updated };
+                closeComisionModal();
+                selectDriver(currentDriver); // re-renderiza título y recarga viajes
+            } catch (err) {
+                alert('Error: ' + err.message);
+            } finally {
+                btn.textContent = 'Guardar';
+                btn.disabled = false;
+            }
+        }
+
         // ═══ Notas de contabilidad ═══
         let notaViajeId = null;
 
@@ -1337,6 +1532,46 @@
             }
         });
     </script>
+
+    <!-- Modal Tipo de Comisión -->
+    <div class="comision-overlay" id="comision-overlay" onclick="closeComisionModal()">
+        <div class="comision-modal" onclick="event.stopPropagation()">
+            <div class="comision-modal-header">
+                <h3>Tipo de Comisión</h3>
+                <button class="comision-modal-close" onclick="closeComisionModal()">&#10005;</button>
+            </div>
+            <div class="comision-modal-body">
+                <div class="comision-opciones">
+                    <label class="comision-opcion">
+                        <input type="radio" id="comision-radio-pct" name="comision-tipo" value="porcentaje"
+                               onchange="onComisionTipoChange()">
+                        <div class="comision-opcion-icon">📊</div>
+                        <div class="comision-opcion-title">Porcentaje</div>
+                        <div class="comision-opcion-desc">Recibe % del subtotal de cada viaje</div>
+                    </label>
+                    <label class="comision-opcion">
+                        <input type="radio" id="comision-radio-neto" name="comision-tipo" value="neto"
+                               onchange="onComisionTipoChange()">
+                        <div class="comision-opcion-icon">💵</div>
+                        <div class="comision-opcion-title">Precio Neto</div>
+                        <div class="comision-opcion-desc">Precio fijo definido por viaje</div>
+                    </label>
+                </div>
+                <div class="comision-pct-row" id="comision-pct-row">
+                    <label>Porcentaje (%)</label>
+                    <input type="number" id="comision-pct-input" min="1" max="100" step="0.5"
+                           placeholder="Ej: 20">
+                </div>
+            </div>
+            <div class="comision-modal-footer">
+                <button class="nota-btn nota-btn-cancel" onclick="closeComisionModal()">Cancelar</button>
+                <button id="comision-btn-save" onclick="saveComision()"
+                    class="px-6 py-2 bg-[#002a3f] text-white rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-[#003d5c] transition shadow-md">
+                    Guardar
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- Modal de Notas -->
     <div class="nota-overlay" id="nota-overlay">

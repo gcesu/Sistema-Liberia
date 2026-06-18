@@ -7,6 +7,7 @@
 session_start();
 require_once '../config/db.php';
 require_once '../config/env.php';
+require_once '../config/session_helper.php';
 
 // Headers
 header('Content-Type: application/json');
@@ -15,11 +16,25 @@ header('Cache-Control: no-cache, no-store, must-revalidate');
 header('Pragma: no-cache');
 header('Expires: 0');
 
-// Verificar autenticación
-if (!isset($_SESSION['user_id'])) {
-    http_response_code(401);
-    echo json_encode(['error' => 'No autorizado']);
-    exit;
+// Acceso público de solo lectura para vista personal de chofer
+$choferNombre = (isset($_GET['chofer_nombre']) && $_SERVER['REQUEST_METHOD'] === 'GET')
+    ? trim($_GET['chofer_nombre'])
+    : '';
+
+if (empty($choferNombre)) {
+    // Validar timeout de sesión por inactividad
+    if (!validateAndRefreshSession()) {
+        http_response_code(401);
+        echo json_encode(['error' => 'Sesión expirada']);
+        exit;
+    }
+
+    // Verificar autenticación
+    if (!isset($_SESSION['user_id'])) {
+        http_response_code(401);
+        echo json_encode(['error' => 'No autorizado']);
+        exit;
+    }
 }
 
 $method = $_SERVER['REQUEST_METHOD'];
@@ -416,6 +431,7 @@ function transformarReservaParaFrontend($r)
             'status' => $v['status'],
             'pax' => (int) ($v['pax'] ?? 1),
             'hotel' => $v['hotel'],
+            'aeropuerto' => $v['aeropuerto'] ?? null,
             'destino' => $v['destino_resuelto'] ?? ($v['destino'] ?? ''),
             'precio_neto' => $v['precio_neto'] ?? '',
             'subtotal' => $v['subtotal'] ?? ''
@@ -450,6 +466,8 @@ function transformarReservaParaFrontend($r)
         'fee_lines' => $r['cargos_adicionales'] > 0 ? [['name' => 'Cargos', 'total' => $r['cargos_adicionales']]] : [],
         'tax_lines' => $r['impuestos'] > 0 ? [['label' => 'Impuestos', 'tax_total' => $r['impuestos']]] : [],
         'coupon_lines' => $r['descuentos'] > 0 ? [['code' => 'Descuento', 'discount' => $r['descuentos']]] : [],
+        // Raw data del formulario/WC original (para extraer info como aeropuerto en cotizaciones)
+        'raw_data' => $r['raw_data'] ?? null,
     ];
 }
 

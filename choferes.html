@@ -922,6 +922,35 @@
                 </select>
             </div>
 
+            <div class="w-full md:w-48 input-group">
+                <label>Subchofer</label>
+                <select id="filter-subchofer" onchange="applyFilters()" class="custom-input">
+                    <option value="all">Todos</option>
+                    <option value="Pedro">Pedro</option>
+                    <option value="Fermín">Fermín</option>
+                    <option value="Manuel Alvarado">Manuel Alvarado</option>
+                    <option value="Albán">Albán</option>
+                    <option value="Chayo">Chayo</option>
+                    <option value="Alex Fila">Alex Fila</option>
+                    <option value="Alex Montero">Alex Montero</option>
+                    <option value="Daniel (Guardia)">Daniel (Guardia)</option>
+                    <option value="Gabriela">Gabriela</option>
+                    <option value="Tatiana (La Cruz)">Tatiana (La Cruz)</option>
+                    <option value="Roger">Roger</option>
+                    <option value="Jose (Pelón)">Jose (Pelón)</option>
+                    <option value="Esteban">Esteban</option>
+                    <option value="Marcos (primo Fermín)">Marcos (primo Fermín)</option>
+                    <option value="Jose (Cartagena)">Jose (Cartagena)</option>
+                    <option value="Rafa">Rafa</option>
+                    <option value="Kenneth (Belén)">Kenneth (Belén)</option>
+                    <option value="Martín (La Cruz)">Martín (La Cruz)</option>
+                    <option value="Julio">Julio</option>
+                    <option value="Don Manuel">Don Manuel</option>
+                    <option value="Rigoberto">Rigoberto</option>
+                    <option value="no_asignado">Sin subchofer</option>
+                </select>
+            </div>
+
             <div class="w-full md:w-64 input-group">
                 <label>Buscar</label>
                 <input type="text" id="search-text" oninput="applyFilters()" class="custom-input"
@@ -1139,6 +1168,7 @@
         const prevYear = currentYear - 1;
         const START_DATE_FILTER = `${prevYear}-01-01T00:00:00`;
 
+        let choferPublicoNombre = ''; // nombre real del chofer cuando se accede vía ?chofer=X
         let allTrips = [];
         let datePicker;
         let isIndexing = false;
@@ -1225,6 +1255,7 @@
 
                 // Convertir parámetro URL al nombre real del chofer
                 const realDriverName = mapUrlParamToDriverName(choferParam);
+                choferPublicoNombre = realDriverName; // permite bypass de auth en la API
 
                 // Mostrar header del chofer con su nombre
                 if (driverHeader) {
@@ -1305,7 +1336,8 @@
 
             try {
                 while (keepFetching) {
-                    const response = await fetch(`${API_PROXY}?per_page=100&page=${page}&orderby=date&order=desc&include_completed_cot=1`);
+                    const choferParam = choferPublicoNombre ? `&chofer_nombre=${encodeURIComponent(choferPublicoNombre)}` : '';
+                    const response = await fetch(`${API_PROXY}?per_page=100&page=${page}&orderby=date&order=desc&include_completed_cot=1${choferParam}`);
                     if (!response.ok) throw new Error("Error API");
 
                     if (page === 1) {
@@ -1350,6 +1382,31 @@
 
                 // NUEVO: Usar array de viajes de la API si está disponible
                 if (order.viajes && order.viajes.length > 0) {
+                    // Parsear raw_data una sola vez por order (para fallback de aeropuerto)
+                    let formTripsRaw = [];
+                    try {
+                        const rd = typeof order.raw_data === 'string' ? JSON.parse(order.raw_data) : order.raw_data;
+                        formTripsRaw = rd?.trips || [];
+                    } catch { }
+                    const extractAirportFromForm = (viaje) => {
+                        if (!Array.isArray(formTripsRaw) || formTripsRaw.length === 0) return null;
+                        let counter = 0;
+                        for (const trip of formTripsRaw) {
+                            const numViajes = trip?.type === 'roundtrip' ? 2 : 1;
+                            if (viaje.item_index >= counter && viaje.item_index < counter + numViajes) {
+                                const legIndex = viaje.item_index - counter;
+                                if (trip.type === 'arrival')   return trip.arrival_airport   || null;
+                                if (trip.type === 'departure') return trip.departure_airport || null;
+                                if (trip.type === 'roundtrip') return legIndex === 0
+                                    ? (trip.rt_arrival_airport   || null)
+                                    : (trip.rt_departure_airport || null);
+                                return null;
+                            }
+                            counter += numViajes;
+                        }
+                        return null;
+                    };
+
                     order.viajes.forEach((viaje) => {
                         const parsedDate = parseFlexibleDate(viaje.fecha);
                         if (parsedDate) {
@@ -1373,6 +1430,9 @@
                                 }
                             }
 
+                            // Aeropuerto: prefiero viaje.aeropuerto; si NULL, extraigo del raw_data del form
+                            const airport = formatAirport(viaje.aeropuerto || extractAirportFromForm(viaje)) || 'Aeropuerto LIR';
+
                             batchTrips.push({
                                 id: order.id,
                                 viaje_id: viaje.id,
@@ -1383,7 +1443,8 @@
                                 type: viaje.tipo === 'llegada' ? 'arrival' : (viaje.tipo === 'interno' ? 'interno' : 'departure'),
                                 dateStr: formatDateStandard(parsedDate),
                                 time: formatTime12H(viaje.hora),
-                                route: isArrival ? `Aeropuerto LIR ➝ ${destName}` : (viaje.tipo === 'interno' ? (() => { const rs = viaje.destino || viaje.hotel || ''; const rp = rs.split(/\s*(?:[\u2190-\u21FF\u27F0-\u27FF\u2900-\u297F\u2794\u279C\u279D\u279E]|->)\s*/); return rp.length >= 2 ? `${rp[0].trim()} ➝ ${rp[1].trim()}` : (destName || 'Viaje Interno'); })() : `${destName} ➝ Aeropuerto LIR`),
+                                aeropuerto: airport,
+                                route: isArrival ? `${airport} ➝ ${destName}` :(viaje.tipo === 'interno' ? (() => { const rs = viaje.destino || viaje.hotel || ''; const rp = rs.split(/\s*(?:[\u2190-\u21FF\u27F0-\u27FF\u2900-\u297F\u2794\u279C\u279D\u279E]|->)\s*/); return rp.length >= 2 ? `${rp[0].trim()} ➝ ${rp[1].trim()}` : (destName || 'Viaje Interno'); })() : `${destName} ➝ ${airport}`),
                                 flight: viaje.vuelo || '--',
                                 raw_date: parsedDate,
                                 driver: viaje.chofer || "",
@@ -1560,6 +1621,14 @@
             return `${dateObj.getDate().toString().padStart(2, '0')}/${months[dateObj.getMonth()]}/${dateObj.getFullYear()}`;
         }
 
+        // Formato del aeropuerto: "SJO" → "Aeropuerto SJO". Si ya tiene prefijo, no duplica.
+        function formatAirport(code) {
+            if (!code) return null;
+            const lower = String(code).toLowerCase();
+            if (lower.startsWith('aeropuerto') || lower.startsWith('airport')) return code;
+            return `Aeropuerto ${code}`;
+        }
+
         // Función para formatear hora a 12H (HH:MM AM/PM)
         function formatTime12H(timeStr) {
             if (!timeStr || timeStr === '--:--' || timeStr === '---') return '--:--';
@@ -1645,6 +1714,7 @@
             const range = datePicker.selectedDates;
             const typeFilter = document.getElementById('filter-type').value;
             const driverFilter = document.getElementById('filter-driver').value;
+            const subchoferFilter = document.getElementById('filter-subchofer').value;
             const searchText = document.getElementById('search-text').value.toLowerCase();
 
             // Filtro estricto: Solo mostrar viajes confirmados o contactados, y excluir reservas canceladas
@@ -1661,11 +1731,14 @@
                 if (driverFilter === 'no_asignado') {
                     filtered = filtered.filter(t => !t.driver || t.driver.trim() === '' || t.driver === 'No asignado');
                 } else {
-                    // Buscar en chofer O subchofer
-                    filtered = filtered.filter(t =>
-                        (t.driver && t.driver.trim() === driverFilter) ||
-                        (t.subchofer && t.subchofer.trim() === driverFilter)
-                    );
+                    filtered = filtered.filter(t => t.driver && t.driver.trim() === driverFilter);
+                }
+            }
+            if (subchoferFilter !== 'all') {
+                if (subchoferFilter === 'no_asignado') {
+                    filtered = filtered.filter(t => !t.subchofer || t.subchofer.trim() === '');
+                } else {
+                    filtered = filtered.filter(t => t.subchofer && t.subchofer.trim() === subchoferFilter);
                 }
             }
             if (searchText) {
@@ -1772,8 +1845,9 @@
             } else {
                 const hotel = trip.hotel || 'Hotel no especificado';
                 const displayHotelName = hotel || hotelManual || zoneName;
-                originName = isArrival ? 'Aeropuerto LIR' : displayHotelName;
-                destName = isArrival ? displayHotelName : 'Aeropuerto LIR';
+                const tripAirportName = formatAirport(trip.aeropuerto) || 'Aeropuerto LIR';
+                originName = isArrival ? tripAirportName : displayHotelName;
+                destName = isArrival ? displayHotelName : tripAirportName;
             }
 
             const statusKeyViaje = isArrival ? 'status_llegada' : 'status_salida';
